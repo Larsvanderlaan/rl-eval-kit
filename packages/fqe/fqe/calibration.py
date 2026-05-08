@@ -298,6 +298,7 @@ def recommend_bellman_calibration(
     diagnostics: dict[str, Any],
     *,
     min_error_reduction: float = 1e-3,
+    min_absolute_error_reduction: float = 1e-4,
     max_residual_mse_increase_fraction: float = 1e-3,
     max_small_bin_fraction: float = 0.5,
 ) -> dict[str, Any]:
@@ -318,8 +319,17 @@ def recommend_bellman_calibration(
     plugin_drop = _safe_relative_drop(plugin_before, plugin_after)
     debiased_drop = _safe_relative_drop(debiased_before, debiased_after)
     cross_drop = _safe_relative_drop(cross_before, cross_after)
+    plugin_abs_drop = _safe_absolute_drop(plugin_before, plugin_after)
+    debiased_abs_drop = _safe_absolute_drop(debiased_before, debiased_after)
+    cross_abs_drop = _safe_absolute_drop(cross_before, cross_after)
     residual_increase = _safe_relative_increase(resid_before, resid_after)
     small_bin_fraction = float(small_bins / max(effective_bins, 1))
+    best_relative_drop = max(_finite_or_neg_inf(debiased_drop), _finite_or_neg_inf(cross_drop), _finite_or_neg_inf(plugin_drop))
+    best_absolute_drop = max(
+        _finite_or_neg_inf(debiased_abs_drop),
+        _finite_or_neg_inf(cross_abs_drop),
+        _finite_or_neg_inf(plugin_abs_drop),
+    )
 
     reasons: list[str] = []
     if not finite_ok:
@@ -337,9 +347,7 @@ def recommend_bellman_calibration(
     elif np.isfinite(residual_increase) and residual_increase > float(max_residual_mse_increase_fraction):
         recommendation = "do_not_apply"
         reasons.append("Bellman residual MSE increases beyond the configured tolerance.")
-    elif max(_finite_or_neg_inf(debiased_drop), _finite_or_neg_inf(cross_drop), _finite_or_neg_inf(plugin_drop)) >= float(
-        min_error_reduction
-    ):
+    elif best_relative_drop >= float(min_error_reduction) and best_absolute_drop >= float(min_absolute_error_reduction):
         recommendation = "apply"
         reasons.append("Calibration reduces Bellman calibration error and residual diagnostics remain within tolerance.")
     else:
@@ -352,10 +360,14 @@ def recommend_bellman_calibration(
         "plugin_error_reduction_fraction": float(plugin_drop),
         "debiased_error_reduction_fraction": float(debiased_drop),
         "crossfit_error_reduction_fraction": float(cross_drop),
+        "plugin_error_absolute_reduction": float(plugin_abs_drop),
+        "debiased_error_absolute_reduction": float(debiased_abs_drop),
+        "crossfit_error_absolute_reduction": float(cross_abs_drop),
         "residual_mse_increase_fraction": float(residual_increase),
         "small_bin_fraction": float(small_bin_fraction),
         "recommendation_thresholds": {
             "min_error_reduction": float(min_error_reduction),
+            "min_absolute_error_reduction": float(min_absolute_error_reduction),
             "max_residual_mse_increase_fraction": float(max_residual_mse_increase_fraction),
             "max_small_bin_fraction": float(max_small_bin_fraction),
         },
@@ -835,6 +847,12 @@ def _safe_relative_increase(before: float, after: float) -> float:
         return float("nan")
     denom = max(abs(float(before)), 1e-12)
     return float((after - before) / denom)
+
+
+def _safe_absolute_drop(before: float, after: float) -> float:
+    if not np.isfinite(before) or not np.isfinite(after):
+        return float("nan")
+    return float(before - after)
 
 
 def _finite_or_neg_inf(value: float) -> float:
