@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bellman-trees"
+version = "0.1.0"
+description = "Target-weighted Bellman aggregation trees, forests, and tree-ensemble feature estimators."
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "scikit-learn>=1.2",
+]
+
+[project.optional-dependencies]
+fast = ["numba>=0.59"]
+xgboost = ["xgboost>=1.7"]
+test = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["bellman_trees*"]
+
+[tool.pytest.ini_options]
+markers = [
+  "slow: larger accuracy and runtime smoke tests for Bellman tree estimators",
+]

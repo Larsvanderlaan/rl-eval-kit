@@ -1,0 +1,52 @@
+seed: 52011
+replications: 10
+gamma: 0.90
+horizon: 30
+n_actions: 3
+sample_sizes: [400]
+state_dimensions: [6]
+coverage_settings: [moderate]
+reward_noise_settings: [0.0]
+transition_noise: 0.0
+test_transitions: 500
+diagnostic_test_transitions: 5000
+true_q_rollouts_per_state: 2
+calibration_error_bins: 50
+calibration_error_min_bin_size: 50
+calibration_error_folds: 5
+initial_eval_states: 500
+oracle_rollouts: 500
+policy_shift: {good: 0.15, moderate: 0.55, severe: 1.35, extrapolation: 1.7}
+environment_tier: mechanism_diagnostic
+misspecification: well_specified_linear
+baseline_learners:
+  - random_feature_fqe_affine_distorted
+  - random_feature_fqe_monotone_saturation_distorted
+calibration_protocols: [cross]
+calibrators: [linear, histogram, isotonic, isotonic_histogram]
+calibration_targets: [value_bellman]
+importance_weight_scheme: action_ratio
+importance_weight_clip: 20.0
+normalize_importance_weights: true
+value_calibration_iterations: 4
+cross_folds: 5
+split_fractions: []
+split_comparators: []
+calibrator_params: {n_bins: 12, bin_strategy: quantile, min_bin_size: 25}
+learner_params:
+  random_feature_fqe: {feature_type: linear, ridge: 0.0001, n_iters: 8}
+learner_variants:
+  random_feature_fqe_affine_distorted:
+    base_learner: random_feature_fqe
+    learner_quality_regime: misspecified
+    calibration_difficulty: affine_miscalibrated
+    main_figure_role: mechanism
+    params:
+      prediction_distortion: {kind: affine, intercept: 2.0, slope: 0.45}
+  random_feature_fqe_monotone_saturation_distorted:
+    base_learner: random_feature_fqe
+    learner_quality_regime: misspecified
+    calibration_difficulty: monotone_miscalibrated
+    main_figure_role: mechanism
+    params:
+      prediction_distortion: {kind: saturation, strength: 0.2}

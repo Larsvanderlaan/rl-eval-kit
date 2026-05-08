@@ -1,0 +1,157 @@
+seed: 42011
+replications: 10
+gamma: 0.95
+horizon: 60
+n_actions: 3
+sample_sizes: [1000]
+state_dimensions: [8]
+coverage_settings: [moderate]
+reward_noise_settings: [0.2]
+transition_noise: 0.25
+test_transitions: 2000
+diagnostic_test_transitions: 5000
+true_q_rollouts_per_state: 2
+calibration_error_bins: 50
+calibration_error_min_bin_size: 50
+calibration_error_folds: 5
+initial_eval_states: 2000
+oracle_rollouts: 2000
+policy_shift: {good: 0.15, moderate: 0.75, severe: 1.35, extrapolation: 1.7}
+environment_tier: nonlinear_synthetic
+misspecification_settings: [none, bellman_incomplete]
+reference_shift_scale: 0.7
+shifted_initial_eval_states: true
+baseline_learners:
+  - neural_fqe_well_tuned
+  - neural_fqe_one_step_reward_fit
+  - neural_fqe_few_step_bootstrap
+  - neural_fqe_high_variance
+  - random_feature_fqe_well_tuned
+  - random_feature_fqe_under_iterated
+  - random_feature_fqe_misspecified
+  - random_feature_fqe_affine_distorted
+  - random_feature_fqe_monotone_distorted
+  - regularized_bellman_well_tuned
+  - regularized_bellman_underregularized
+  - regularized_bellman_overregularized
+  - saddle_point_stabilized
+  - saddle_point_iterative_stable
+  - saddle_point_iterative_ill_conditioned
+  - ensemble_fqe_well_tuned
+  - ensemble_fqe_weak_members
+calibration_protocols: [cross, split, no_split]
+calibrators: [linear, histogram, isotonic, isotonic_histogram]
+calibration_targets: [value_bellman]
+importance_weight_scheme: action_ratio
+importance_weight_clip: 20.0
+normalize_importance_weights: true
+value_calibration_iterations: 4
+cross_folds: 5
+split_fractions: [0.8]
+split_comparators: []
+calibrator_params: {n_bins: 10, bin_strategy: quantile, min_bin_size: 20, value_calibration_iterations: 4}
+learner_params:
+  neural_fqe: {hidden_dims: [64, 64], n_iters: 12, epochs_per_iter: 5, batch_size: 128, lr: 0.001, weight_decay: 0.0001, target_tau: 0.2, device: cpu}
+  random_feature_fqe: {n_components: 128, bandwidth: 0.7, ridge: 0.001, n_iters: 25}
+  regularized_bellman: {n_components: 128, bandwidth: 0.7, ridge: 0.01}
+  saddle_point_bellman: {n_components: 128, bandwidth: 0.7, ridge: 0.01, critic_ridge: 0.01}
+  saddle_point_iterative: {n_components: 128, bandwidth: 0.7, q_ridge: 0.001, critic_ridge: 0.001, max_iters: 400, step_size: 0.02, averaging: true, gradient_clip: 100.0}
+  ensemble_fqe: {n_members: 5, n_components: 96, bandwidth: 0.7, ridge: 0.001, n_iters: 20}
+learner_variants:
+  neural_fqe_well_tuned:
+    base_learner: neural_fqe
+    learner_quality_regime: well_tuned
+    calibration_difficulty: already_well_calibrated
+    main_figure_role: main
+  neural_fqe_one_step_reward_fit:
+    base_learner: neural_fqe
+    learner_quality_regime: under_iterated
+    calibration_difficulty: affine_miscalibrated
+    main_figure_role: main
+    params: {hidden_dims: [24], n_iters: 1, epochs_per_iter: 1, bootstrap_on_first_iter: false, target_tau: 0.0}
+  neural_fqe_few_step_bootstrap:
+    base_learner: neural_fqe
+    learner_quality_regime: under_iterated
+    calibration_difficulty: monotone_miscalibrated
+    main_figure_role: main
+    params: {hidden_dims: [32], n_iters: 3, epochs_per_iter: 1, target_tau: 0.05, weight_decay: 0.0}
+  neural_fqe_high_variance:
+    base_learner: neural_fqe
+    learner_quality_regime: underregularized
+    calibration_difficulty: monotone_miscalibrated
+    main_figure_role: appendix
+    params: {hidden_dims: [128, 128], n_iters: 8, epochs_per_iter: 3, lr: 0.003, weight_decay: 0.0, target_tau: 0.5}
+  random_feature_fqe_well_tuned:
+    base_learner: random_feature_fqe
+    learner_quality_regime: well_tuned
+    calibration_difficulty: already_well_calibrated
+    main_figure_role: main
+  random_feature_fqe_under_iterated:
+    base_learner: random_feature_fqe
+    learner_quality_regime: under_iterated
+    calibration_difficulty: affine_miscalibrated
+    main_figure_role: main
+    params: {n_iters: 1}
+  random_feature_fqe_misspecified:
+    base_learner: random_feature_fqe
+    learner_quality_regime: misspecified
+    calibration_difficulty: bellman_incomplete
+    main_figure_role: appendix
+    params: {feature_type: linear, n_iters: 25, ridge: 0.001}
+  random_feature_fqe_affine_distorted:
+    base_learner: random_feature_fqe
+    learner_quality_regime: misspecified
+    calibration_difficulty: affine_miscalibrated
+    main_figure_role: mechanism
+    params: {prediction_distortion: {kind: affine, intercept: 0.8, slope: 0.65}}
+  random_feature_fqe_monotone_distorted:
+    base_learner: random_feature_fqe
+    learner_quality_regime: misspecified
+    calibration_difficulty: monotone_miscalibrated
+    main_figure_role: mechanism
+    params: {prediction_distortion: {kind: monotone, strength: 0.8}}
+  regularized_bellman_well_tuned:
+    base_learner: regularized_bellman
+    learner_quality_regime: well_tuned
+    calibration_difficulty: already_well_calibrated
+    main_figure_role: main
+  regularized_bellman_underregularized:
+    base_learner: regularized_bellman
+    learner_quality_regime: underregularized
+    calibration_difficulty: coverage_limited
+    main_figure_role: main
+    params: {n_components: 192, ridge: 0.00000001}
+  regularized_bellman_overregularized:
+    base_learner: regularized_bellman
+    learner_quality_regime: overregularized
+    calibration_difficulty: affine_miscalibrated
+    main_figure_role: appendix
+    params: {n_components: 128, ridge: 5.0}
+  saddle_point_stabilized:
+    base_learner: saddle_point_bellman
+    learner_quality_regime: well_tuned
+    calibration_difficulty: already_well_calibrated
+    main_figure_role: main
+  saddle_point_iterative_stable:
+    base_learner: saddle_point_iterative
+    learner_quality_regime: underregularized
+    calibration_difficulty: monotone_miscalibrated
+    main_figure_role: appendix
+    params: {n_components: 96, q_ridge: 0.001, critic_ridge: 0.01, max_iters: 250, step_size: 0.01, averaging: true, gradient_clip: 50.0}
+  saddle_point_iterative_ill_conditioned:
+    base_learner: saddle_point_iterative
+    learner_quality_regime: ill_conditioned
+    calibration_difficulty: coverage_limited
+    main_figure_role: diagnostic_only
+    params: {n_components: 192, q_ridge: 0.00000001, critic_ridge: 0.00000001, max_iters: 400, step_size: 20.0, averaging: false, gradient_clip: 1000000000.0, divergence_threshold: 10000.0}
+  ensemble_fqe_well_tuned:
+    base_learner: ensemble_fqe
+    learner_quality_regime: well_tuned
+    calibration_difficulty: already_well_calibrated
+    main_figure_role: main
+  ensemble_fqe_weak_members:
+    base_learner: ensemble_fqe
+    learner_quality_regime: weak_ensemble
+    calibration_difficulty: affine_miscalibrated
+    main_figure_role: main
+    params: {n_members: 2, n_components: 32, n_iters: 2}

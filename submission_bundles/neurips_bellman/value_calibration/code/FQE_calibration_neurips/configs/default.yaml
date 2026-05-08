@@ -1,0 +1,90 @@
+seed: 1729
+replications: 3
+gamma: 0.95
+horizon: 80
+n_actions: 3
+sample_sizes: [500]
+state_dimensions: [6]
+coverage_settings: [good, moderate, severe]
+reward_noise_settings: [0.2]
+transition_noise: 0.25
+test_transitions: 1000
+diagnostic_test_transitions: 5000
+true_q_rollouts_per_state: 2
+calibration_error_bins: 50
+calibration_error_min_bin_size: 50
+calibration_error_folds: 5
+initial_eval_states: 1000
+oracle_rollouts: 1000
+policy_shift:
+  good: 0.15
+  moderate: 0.75
+  severe: 1.35
+  extrapolation: 1.7
+extrapolation_scale: 0.0
+misspecification: none
+baseline_learners:
+  - random_feature_fqe
+  - neural_fqe
+  - regularized_bellman
+  - saddle_point_bellman
+  - ensemble_fqe
+calibration_protocols: [cross, split, no_split]
+calibrators: [linear, histogram, isotonic, isotonic_histogram]
+calibration_targets: [value_bellman]
+importance_weight_scheme: action_ratio
+importance_weight_clip: 20.0
+normalize_importance_weights: true
+value_calibration_iterations: 4
+cross_folds: 5
+split_fractions: [0.5, 0.6, 0.7, 0.8, 0.9]
+split_comparators:
+  - fine_tuning_all_layers
+  - fine_tuning_final_layer
+  - offset_correction
+  - residual_correction
+  - regularized_toward_first_stage
+calibrator_params:
+  n_bins: 10
+  bin_strategy: quantile
+  min_bin_size: 20
+comparator_params:
+  n_components: 64
+  ridge: 0.01
+learner_params:
+  random_feature_fqe:
+    n_components: 128
+    bandwidth: 0.7
+    ridge: 0.001
+    n_iters: 25
+  linear_fqe:
+    n_components: 96
+    bandwidth: 1.0
+    ridge: 0.01
+    n_iters: 20
+  neural_fqe:
+    hidden_dims: [64, 64]
+    n_iters: 12
+    epochs_per_iter: 5
+    batch_size: 128
+    lr: 0.001
+    weight_decay: 0.0001
+    target_tau: 0.2
+    device: cpu
+  regularized_bellman:
+    n_components: 128
+    bandwidth: 0.7
+    ridge: 0.01
+  saddle_point_bellman:
+    n_components: 128
+    bandwidth: 0.7
+    ridge: 0.01
+    critic_ridge: 0.01
+    max_iters: 250
+    step_size: 0.01
+  ensemble_fqe:
+    n_members: 5
+    n_components: 96
+    bandwidth: 0.7
+    ridge: 0.001
+    n_iters: 20

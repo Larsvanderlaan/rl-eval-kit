@@ -1,0 +1,72 @@
+seed: 12345
+replications: 3
+runner: temporal_reward_shift
+gamma: 0.95
+horizon: 80
+n_actions: 3
+sample_sizes: [2000]
+recent_current_sizes: [100]
+state_dimensions: [5]
+coverage_settings: [moderate]
+reward_noise_settings: [0.08]
+transition_noise: 0.12
+current_reward_shift_intercept: 2.0
+current_reward_shift_scale: 1.5
+recent_calibration_policy: behavior
+temporal_calibration_kind: bellman
+current_retrain_learner_params:
+  all:
+    prediction_distortion: {kind: none, clip: 50.0}
+test_transitions: 800
+diagnostic_test_transitions: 5000
+true_q_rollouts_per_state: 1
+true_v_rollouts_per_state: 1
+compute_true_q_mse: false
+direct_true_v_rollout: true
+calibration_error_bins: 50
+calibration_error_min_bin_size: 100
+calibration_error_folds: 5
+initial_eval_states: 1000
+oracle_rollouts: 1000
+policy_shift:
+  good: 0.10
+  moderate: 0.55
+  severe: 1.25
+  extrapolation: 1.7
+extrapolation_scale: 0.0
+reference_shift_scale: 0.0
+misspecification: none
+baseline_learners:
+  - temporal_rf_fqe
+calibration_protocols: [recent_heldout]
+calibrators: [linear, isotonic]
+calibration_targets: [value_bellman]
+importance_weight_scheme: action_ratio
+importance_weight_clip: 20.0
+normalize_importance_weights: true
+value_calibration_iterations: 6
+cross_folds: 5
+split_fractions: []
+split_comparators: []
+calibrator_params:
+  n_bins: 10
+  bin_strategy: quantile
+  min_bin_size: 20
+  value_calibration_iterations: 6
+learner_params:
+  random_feature_fqe:
+    n_components: 80
+    bandwidth: 0.9
+    ridge: 0.01
+    n_iters: 30
+learner_variants:
+  temporal_rf_fqe:
+    base_learner: random_feature_fqe
+    learner_quality_regime: temporally_shifted
+    calibration_difficulty: temporal_reward_shift
+    main_figure_role: main
+    params:
+      n_components: 80
+      bandwidth: 0.9
+      ridge: 0.01
+      n_iters: 30

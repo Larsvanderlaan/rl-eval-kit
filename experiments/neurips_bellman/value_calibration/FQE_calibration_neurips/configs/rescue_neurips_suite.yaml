@@ -1,0 +1,497 @@
+output_subdir:
+  debug: rescue_debug
+  pilot: rescue_pilot
+  confirm: rescue_confirm
+  final: rescue_final
+
+validation:
+  name: well_specified_debug
+  config: configs/well_specified_debug.yaml
+  replications_by_mode:
+    final: 10
+  gate:
+    bias_threshold: 2.0
+    mse_threshold: 8.0
+    degradation_factor: 4.0
+    degradation_abs_tolerance: 0.25
+    sample_trend_abs_tolerance: 0.05
+  mode_overrides:
+    debug: &rescue_debug
+      seed: 910001
+      replications: 1
+      sample_sizes: [80]
+      state_dimensions: [3]
+      coverage_settings: [moderate]
+      reward_noise_settings: [0.02]
+      test_transitions: 60
+      diagnostic_test_transitions: 80
+      true_q_rollouts_per_state: 1
+      true_v_rollouts_per_state: 1
+      compute_true_q_mse: false
+      direct_true_v_rollout: true
+      calibration_error_bins: 6
+      calibration_error_min_bin_size: 5
+      calibration_error_folds: 2
+      initial_eval_states: 60
+      oracle_rollouts: 50
+      cross_folds: 2
+      calibration_protocols: [cross]
+      calibrators: [linear, isotonic]
+      calibration_targets: [value_bellman]
+      split_fractions: []
+      split_comparators: []
+      learner_params:
+        linear_fqe: {feature_type: linear, ridge: 0.0001, n_iters: 6}
+        random_feature_fqe: {n_components: 12, bandwidth: 0.7, ridge: 0.01, n_iters: 3}
+        neural_fqe: {hidden_dims: [8], n_iters: 1, epochs_per_iter: 1, batch_size: 16, lr: 0.002, device: cpu}
+    pilot: &rescue_pilot
+      seed: 920001
+      replication_seed_stride: 1000000
+      replications: 5
+      sample_sizes: [300]
+      state_dimensions: [4]
+      coverage_settings: [moderate]
+      reward_noise_settings: [0.1]
+      test_transitions: 250
+      diagnostic_test_transitions: 1000
+      true_q_rollouts_per_state: 1
+      true_v_rollouts_per_state: 1
+      compute_true_q_mse: false
+      direct_true_v_rollout: true
+      calibration_error_bins: 20
+      calibration_error_min_bin_size: 25
+      calibration_error_folds: 3
+      initial_eval_states: 250
+      oracle_rollouts: 250
+      cross_folds: 3
+      calibration_protocols: [cross]
+      calibrators: [linear, isotonic]
+      calibration_targets: [value_bellman]
+      split_fractions: []
+      split_comparators: []
+    confirm: &rescue_confirm
+      <<: *rescue_pilot
+      seed: 2000002
+      replications: 10
+      test_transitions: 400
+      diagnostic_test_transitions: 2500
+      calibration_error_bins: 30
+      calibration_error_min_bin_size: 40
+      calibration_error_folds: 5
+      initial_eval_states: 400
+      oracle_rollouts: 400
+      cross_folds: 5
+    final: &rescue_final
+      seed: 3000001
+      replication_seed_stride: 1000000
+      replications: 100
+      sample_sizes: [1000]
+      state_dimensions: [6]
+      coverage_settings: [moderate]
+      reward_noise_settings: [0.1]
+      test_transitions: 500
+      diagnostic_test_transitions: 2500
+      true_q_rollouts_per_state: 1
+      true_v_rollouts_per_state: 1
+      compute_true_q_mse: false
+      direct_true_v_rollout: true
+      calibration_error_bins: 30
+      calibration_error_min_bin_size: 50
+      calibration_error_folds: 5
+      initial_eval_states: 500
+      oracle_rollouts: 500
+      cross_folds: 5
+      calibration_protocols: [cross]
+      calibrators: [linear, isotonic]
+      calibration_targets: [value_bellman]
+      split_fractions: []
+      split_comparators: []
+      baseline_learners: [linear_fqe]
+
+suites:
+  - name: model_misspecification_sweep
+    config: configs/model_misspecification_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *rescue_debug
+        misspecification_settings: [affine, monotone_distortion]
+        baseline_learners: [linear_fqe_misspecified, random_feature_fqe_restricted]
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 6}
+          random_feature_fqe: {n_components: 12, bandwidth: 0.9, ridge: 0.02, n_iters: 4}
+      pilot: &rescue_model_misspec
+        <<: *rescue_pilot
+        misspecification_settings: [affine, monotone_distortion, nonmonotone]
+        policy_shift: {good: 0.15, moderate: 0.75, severe: 1.35, extrapolation: 1.7}
+        reference_shift_scale: 0.5
+        shifted_initial_eval_states: true
+        calibrator_params: {n_bins: 8, bin_strategy: quantile, min_bin_size: 10, value_calibration_iterations: 4}
+        baseline_learners:
+          - linear_fqe_misspecified
+          - linear_fqe_affine_ridge_light
+          - random_feature_fqe_restricted
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 20}
+          random_feature_fqe: {n_components: 48, bandwidth: 1.0, ridge: 0.02, n_iters: 20}
+        learner_variants:
+          linear_fqe_misspecified:
+            base_learner: linear_fqe
+            learner_quality_regime: misspecified
+            calibration_difficulty: model_misspecified
+            main_figure_role: main
+            params: {feature_type: linear, ridge: 0.001, n_iters: 20}
+          linear_fqe_affine_ridge_light:
+            base_learner: linear_fqe
+            learner_quality_regime: misspecified
+            calibration_difficulty: affine_miscalibrated
+            main_figure_role: main
+            params: {feature_type: linear, ridge: 0.0001, n_iters: 25}
+          random_feature_fqe_restricted:
+            base_learner: random_feature_fqe
+            learner_quality_regime: misspecified
+            calibration_difficulty: model_misspecified
+            main_figure_role: main
+            params: {n_components: 20, bandwidth: 1.4, ridge: 0.02, n_iters: 20}
+      confirm:
+        <<: *rescue_model_misspec
+        <<: *rescue_confirm
+      final:
+        <<: *rescue_model_misspec
+        <<: *rescue_final
+        misspecification_settings: [affine]
+        sample_sizes: [500]
+        reward_noise_settings: [0.2]
+        transition_noise: 0.25
+        test_transitions: 400
+        initial_eval_states: 500
+        oracle_rollouts: 500
+        value_calibration_iterations: 5
+        calibrator_params: {n_bins: 12, bin_strategy: quantile, min_bin_size: 20, value_calibration_iterations: 5}
+        baseline_learners:
+          - linear_fqe_misspecified
+          - linear_fqe_affine_ridge_light
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 30}
+          random_feature_fqe: {n_components: 80, bandwidth: 0.9, ridge: 0.02, n_iters: 30}
+
+  - name: undertraining_sweep
+    config: configs/undertraining_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *rescue_debug
+        gamma: 0.97
+        horizon: 16
+        misspecification: finite_iteration_scale
+        baseline_learners: [random_feature_fqe_iter2, neural_fqe_iter1]
+        calibrator_params: {n_bins: 4, bin_strategy: quantile, min_bin_size: 5, value_calibration_iterations: 2}
+        learner_params:
+          random_feature_fqe: {feature_type: linear, ridge: 0.001, n_components: 12, bandwidth: 0.7, n_iters: 4}
+          neural_fqe: {hidden_dims: [8], n_iters: 1, epochs_per_iter: 1, batch_size: 16, lr: 0.002, device: cpu}
+      pilot: &rescue_undertraining
+        <<: *rescue_pilot
+        gamma: 0.985
+        horizon: 120
+        state_dimensions: [4]
+        reward_noise_settings: [0.05]
+        transition_noise: 0.04
+        misspecification: finite_iteration_scale
+        reference_shift_scale: 0.15
+        shifted_initial_eval_states: true
+        policy_shift: {good: 0.10, moderate: 0.45, severe: 1.15, extrapolation: 1.7}
+        baseline_learners:
+          - random_feature_fqe_iter2
+          - random_feature_fqe_iter3
+          - random_feature_fqe_iter4
+          - neural_fqe_iter1
+          - neural_fqe_iter2
+        value_calibration_iterations: 8
+        calibrator_params: {n_bins: 10, bin_strategy: quantile, min_bin_size: 20, value_calibration_iterations: 8}
+        learner_params:
+          random_feature_fqe: {feature_type: linear, ridge: 0.0005, n_components: 64, bandwidth: 0.7, n_iters: 35}
+          neural_fqe: {hidden_dims: [24], n_iters: 3, epochs_per_iter: 1, batch_size: 64, lr: 0.001, weight_decay: 0.0001, target_tau: 0.05, device: cpu}
+        learner_variants:
+          random_feature_fqe_iter2:
+            base_learner: random_feature_fqe
+            learner_quality_regime: under_iterated
+            calibration_difficulty: finite_iteration_bias
+            main_figure_role: main
+            params: {n_iters: 2}
+          random_feature_fqe_iter3:
+            base_learner: random_feature_fqe
+            learner_quality_regime: under_iterated
+            calibration_difficulty: finite_iteration_bias
+            main_figure_role: main
+            params: {n_iters: 3}
+          random_feature_fqe_iter4:
+            base_learner: random_feature_fqe
+            learner_quality_regime: under_iterated
+            calibration_difficulty: finite_iteration_bias
+            main_figure_role: main
+            params: {n_iters: 4}
+          neural_fqe_iter1:
+            base_learner: neural_fqe
+            learner_quality_regime: under_iterated
+            calibration_difficulty: finite_iteration_bias
+            main_figure_role: main
+            params: {hidden_dims: [24], n_iters: 1, epochs_per_iter: 1, bootstrap_on_first_iter: false, target_tau: 0.0}
+          neural_fqe_iter2:
+            base_learner: neural_fqe
+            learner_quality_regime: under_iterated
+            calibration_difficulty: finite_iteration_bias
+            main_figure_role: main
+            params: {hidden_dims: [32], n_iters: 2, epochs_per_iter: 1, target_tau: 0.05, weight_decay: 0.0}
+      confirm:
+        <<: *rescue_undertraining
+        <<: *rescue_confirm
+      final:
+        <<: *rescue_undertraining
+        <<: *rescue_final
+        sample_sizes: [1200]
+        state_dimensions: [4]
+        reward_noise_settings: [0.05]
+        transition_noise: 0.04
+        initial_eval_states: 500
+        oracle_rollouts: 500
+        baseline_learners:
+          - random_feature_fqe_iter2
+          - random_feature_fqe_iter3
+          - random_feature_fqe_iter4
+
+  - name: mechanism_distortion_sweep
+    config: configs/mechanism_distortion_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *rescue_debug
+        misspecification: well_specified_linear
+        baseline_learners: [random_feature_fqe_affine_distorted, random_feature_fqe_monotone_saturation_distorted]
+        learner_params:
+          random_feature_fqe: {feature_type: linear, ridge: 0.0001, n_components: 12, bandwidth: 0.7, n_iters: 3}
+        calibrator_params: {n_bins: 4, bin_strategy: quantile, min_bin_size: 5, value_calibration_iterations: 2}
+      pilot: &rescue_mechanism
+        <<: *rescue_pilot
+        gamma: 0.90
+        horizon: 30
+        sample_sizes: [400]
+        state_dimensions: [6]
+        reward_noise_settings: [0.0]
+        transition_noise: 0.0
+        misspecification: well_specified_linear
+        environment_tier: mechanism_diagnostic
+        policy_shift: {good: 0.15, moderate: 0.55, severe: 1.35, extrapolation: 1.7}
+        baseline_learners:
+          - random_feature_fqe_affine_distorted
+          - random_feature_fqe_affine_mild_distorted
+          - random_feature_fqe_monotone_saturation_distorted
+          - random_feature_fqe_monotone_strong_distorted
+        calibrator_params: {n_bins: 12, bin_strategy: quantile, min_bin_size: 20, value_calibration_iterations: 4}
+        learner_params:
+          random_feature_fqe: {feature_type: linear, ridge: 0.0001, n_iters: 8}
+        learner_variants:
+          random_feature_fqe_affine_distorted:
+            base_learner: random_feature_fqe
+            learner_quality_regime: misspecified
+            calibration_difficulty: affine_miscalibrated
+            main_figure_role: mechanism
+            params: {prediction_distortion: {kind: affine, intercept: 2.0, slope: 0.45}}
+          random_feature_fqe_affine_mild_distorted:
+            base_learner: random_feature_fqe
+            learner_quality_regime: misspecified
+            calibration_difficulty: affine_miscalibrated
+            main_figure_role: mechanism
+            params: {prediction_distortion: {kind: affine, intercept: 1.2, slope: 0.65}}
+          random_feature_fqe_monotone_saturation_distorted:
+            base_learner: random_feature_fqe
+            learner_quality_regime: misspecified
+            calibration_difficulty: monotone_miscalibrated
+            main_figure_role: mechanism
+            params: {prediction_distortion: {kind: saturation, strength: 0.2}}
+          random_feature_fqe_monotone_strong_distorted:
+            base_learner: random_feature_fqe
+            learner_quality_regime: misspecified
+            calibration_difficulty: monotone_miscalibrated
+            main_figure_role: mechanism
+            params: {prediction_distortion: {kind: saturation, strength: 0.1}}
+      confirm:
+        <<: *rescue_mechanism
+        <<: *rescue_confirm
+      final:
+        <<: *rescue_mechanism
+        <<: *rescue_final
+        sample_sizes: [400]
+        state_dimensions: [6]
+        reward_noise_settings: [0.0]
+        transition_noise: 0.0
+        test_transitions: 500
+        initial_eval_states: 500
+        oracle_rollouts: 500
+        baseline_learners:
+          - random_feature_fqe_affine_distorted
+          - random_feature_fqe_monotone_saturation_distorted
+
+  - name: temporal_reward_shift_sweep
+    config: configs/temporal_reward_shift_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *rescue_debug
+        runner: temporal_reward_shift
+        sample_sizes: [80]
+        recent_current_sizes: [30]
+        test_transitions: 60
+        diagnostic_test_transitions: 80
+        initial_eval_states: 60
+        oracle_rollouts: 50
+        calibration_error_bins: 6
+        calibration_error_min_bin_size: 5
+        baseline_learners: [temporal_rf_fqe]
+        learner_params:
+          random_feature_fqe: {n_components: 12, bandwidth: 0.9, ridge: 0.01, n_iters: 4}
+        learner_variants:
+          temporal_rf_fqe:
+            base_learner: random_feature_fqe
+            learner_quality_regime: temporally_shifted
+            calibration_difficulty: temporal_reward_shift
+            main_figure_role: main
+            params: {n_components: 12, bandwidth: 0.9, ridge: 0.01, n_iters: 4}
+      pilot: &rescue_temporal_reward
+        <<: *rescue_pilot
+        runner: temporal_reward_shift
+        gamma: 0.95
+        horizon: 80
+        sample_sizes: [2000]
+        recent_current_sizes: [100]
+        state_dimensions: [5]
+        reward_noise_settings: [0.08]
+        transition_noise: 0.12
+        current_reward_shift_intercept: 2.0
+        current_reward_shift_scale: 1.5
+        recent_calibration_policy: behavior
+        temporal_calibration_kind: bellman
+        current_retrain_learner_params:
+          all:
+            prediction_distortion: {kind: none, clip: 50.0}
+        policy_shift: {good: 0.10, moderate: 0.55, severe: 1.25, extrapolation: 1.7}
+        test_transitions: 400
+        diagnostic_test_transitions: 8000
+        initial_eval_states: 500
+        oracle_rollouts: 500
+        calibration_error_bins: 25
+        calibration_error_min_bin_size: 200
+        calibration_error_folds: 5
+        value_calibration_iterations: 6
+        calibrator_params: {n_bins: 10, bin_strategy: quantile, min_bin_size: 15, value_calibration_iterations: 6}
+        baseline_learners: [temporal_rf_fqe]
+        learner_params:
+          random_feature_fqe: {n_components: 80, bandwidth: 0.9, ridge: 0.01, n_iters: 30}
+        learner_variants:
+          temporal_rf_fqe:
+            base_learner: random_feature_fqe
+            learner_quality_regime: temporally_shifted
+            calibration_difficulty: temporal_reward_shift
+            main_figure_role: main
+            params: {n_components: 80, bandwidth: 0.9, ridge: 0.01, n_iters: 30}
+      confirm:
+        <<: *rescue_temporal_reward
+        <<: *rescue_confirm
+        seed: 2000002
+        sample_sizes: [2000]
+        recent_current_sizes: [100]
+        test_transitions: 500
+        diagnostic_test_transitions: 10000
+        initial_eval_states: 500
+        oracle_rollouts: 500
+      final:
+        <<: *rescue_temporal_reward
+        <<: *rescue_final
+        sample_sizes: [2000]
+        recent_current_sizes: [100]
+        state_dimensions: [5]
+        reward_noise_settings: [0.08]
+        transition_noise: 0.12
+        test_transitions: 500
+        diagnostic_test_transitions: 2500
+        initial_eval_states: 500
+        oracle_rollouts: 500
+        calibration_error_bins: 30
+        calibration_error_min_bin_size: 50
+        baseline_learners: [temporal_rf_fqe]
+        learner_params:
+          random_feature_fqe: {n_components: 80, bandwidth: 0.9, ridge: 0.01, n_iters: 30}
+        learner_variants:
+          temporal_rf_fqe:
+            base_learner: random_feature_fqe
+            learner_quality_regime: temporally_shifted
+            calibration_difficulty: temporal_reward_shift
+            main_figure_role: main
+            params: {n_components: 80, bandwidth: 0.9, ridge: 0.01, n_iters: 30}
+
+  - name: calibration_quality_sweep
+    config: configs/calibration_quality_sweep.yaml
+    skip_modes: [confirm, final]
+    mode_overrides:
+      debug:
+        <<: *rescue_debug
+        baseline_learners: [neural_fqe_few_step_bootstrap, saddle_point_stabilized, saddle_point_iterative_stable]
+        learner_params:
+          neural_fqe: {hidden_dims: [8], n_iters: 2, epochs_per_iter: 1, batch_size: 16, lr: 0.002, device: cpu}
+          saddle_point_bellman: {n_components: 12, bandwidth: 0.7, ridge: 0.01, critic_ridge: 0.01}
+          saddle_point_iterative: {n_components: 10, bandwidth: 0.7, q_ridge: 0.01, critic_ridge: 0.01, max_iters: 4, step_size: 0.002, gradient_clip: 10.0}
+      pilot: &rescue_quality
+        <<: *rescue_pilot
+        reference_shift_scale: 0.7
+        shifted_initial_eval_states: true
+        baseline_learners:
+          - neural_fqe_few_step_bootstrap
+          - neural_fqe_one_step_reward_fit
+          - saddle_point_stabilized
+          - saddle_point_iterative_stable
+          - saddle_point_iterative_ill_conditioned
+        calibrator_params: {n_bins: 8, bin_strategy: quantile, min_bin_size: 15, value_calibration_iterations: 4}
+        learner_params:
+          neural_fqe: {hidden_dims: [24], n_iters: 4, epochs_per_iter: 1, batch_size: 64, lr: 0.0015, weight_decay: 0.0001, target_tau: 0.1, device: cpu}
+          saddle_point_bellman: {n_components: 48, bandwidth: 0.7, ridge: 0.01, critic_ridge: 0.01}
+          saddle_point_iterative: {n_components: 32, bandwidth: 0.7, q_ridge: 0.001, critic_ridge: 0.001, max_iters: 40, step_size: 0.01, averaging: true, gradient_clip: 50.0}
+      confirm:
+        <<: *rescue_quality
+        <<: *rescue_confirm
+      final:
+        <<: *rescue_quality
+        <<: *rescue_final
+        baseline_learners:
+          - neural_fqe_few_step_bootstrap
+          - neural_fqe_one_step_reward_fit
+          - saddle_point_stabilized
+          - saddle_point_iterative_stable
+
+  - name: temporal_regime_shift_sweep
+    config: configs/model_misspecification_sweep.yaml
+    skip_modes: [confirm, final]
+    mode_overrides:
+      debug:
+        <<: *rescue_debug
+        environment_tier: temporal_shift_proxy
+        misspecification_settings: [affine]
+        reference_shift_scale: 0.3
+        shifted_initial_eval_states: true
+        baseline_learners: [linear_fqe_misspecified]
+      pilot: &rescue_temporal
+        <<: *rescue_pilot
+        environment_tier: temporal_shift_proxy
+        misspecification_settings: [affine, monotone_distortion]
+        policy_shift: {good: 0.15, moderate: 0.75, severe: 1.35, extrapolation: 1.7}
+        reference_shift_scale: 0.9
+        shifted_initial_eval_states: true
+        baseline_learners: [linear_fqe_misspecified, random_feature_fqe_restricted]
+        calibrator_params: {n_bins: 8, bin_strategy: quantile, min_bin_size: 10, value_calibration_iterations: 4}
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 20}
+          random_feature_fqe: {n_components: 32, bandwidth: 1.2, ridge: 0.02, n_iters: 20}
+      confirm:
+        <<: *rescue_temporal
+        <<: *rescue_confirm
+      final:
+        <<: *rescue_temporal
+        <<: *rescue_final
+        sample_sizes: [500]
+        test_transitions: 500
+        initial_eval_states: 2000
+        oracle_rollouts: 2000

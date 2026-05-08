@@ -1,0 +1,5 @@
+{
+  "mode": "final",
+  "suite_name": "temporal_reward_shift_sweep",
+  "validation_gate_passed": true
+}

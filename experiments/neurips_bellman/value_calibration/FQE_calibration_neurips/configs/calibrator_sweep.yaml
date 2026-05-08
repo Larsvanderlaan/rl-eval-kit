@@ -1,0 +1,28 @@
+seed: 1739
+replications: 20
+gamma: 0.95
+horizon: 80
+n_actions: 3
+sample_sizes: [1000]
+state_dimensions: [6]
+coverage_settings: [moderate]
+reward_noise_settings: [0.2]
+baseline_learners: [random_feature_fqe, neural_fqe, regularized_bellman, saddle_point_bellman, ensemble_fqe]
+calibration_protocols: [cross, split, no_split]
+calibrators: [linear, histogram, isotonic, isotonic_histogram]
+calibration_targets: [value_bellman]
+importance_weight_scheme: action_ratio
+importance_weight_clip: 20.0
+normalize_importance_weights: true
+value_calibration_iterations: 4
+split_fractions: [0.5, 0.6, 0.7, 0.8, 0.9]
+test_transitions: 3000
+diagnostic_test_transitions: 5000
+true_q_rollouts_per_state: 2
+calibration_error_bins: 50
+calibration_error_min_bin_size: 50
+calibration_error_folds: 5
+initial_eval_states: 3000
+oracle_rollouts: 3000
+policy_shift: {good: 0.15, moderate: 0.75, severe: 1.35, extrapolation: 1.7}
+calibrator_params: {n_bins: 6, bin_strategy: quantile, min_bin_size: 25}

@@ -1,0 +1,116 @@
+\section{Additional Experimental Details}
+\label{app:experiments}
+
+\paragraph{Data-generating processes.}
+The simulations are discounted MDPs with continuous states
+\(S\in\mathbb{R}^d\), three discrete actions, nonlinear rewards, nonlinear
+transitions, stochastic behavior policies, and shifted target policies. The
+target-policy value is computed using independent Monte Carlo oracle rollouts.
+Training transitions, cross-calibration folds, Bellman-evaluation transitions, initial
+evaluation states, and oracle rollouts are generated from independent random
+seeds.
+
+\paragraph{Baseline value predictors.}
+Each method first fits a \(Q\)-function from the offline behavior-policy data
+and then forms
+\[
+  \widehat V(s)=\sum_a \pi(a\mid s)\widehat Q(s,a).
+\]
+The experiments use random-feature FQE and linear FQE because these families
+expose two transparent error mechanisms: finite Bellman-iteration bias and
+monotone or affine value-scale misspecification.
+
+\paragraph{Strict cross-calibration.}
+For fold \(k\), the \(Q\)-learner is fit on the other folds. The held-out fold
+supplies \((\widehat V^{(-k)}(S_i),\widehat V^{(-k)}(S_i'),R_i)\). These
+out-of-fold tuples are pooled to fit a single value-space calibration map by
+importance-weighted fitted value iteration. At evaluation time, calibrated
+values are aggregated as
+\[
+  \widehat V_{\mathrm{cal}}(s)
+  =
+  \mathrm{median}_{k=1,\ldots,K_{\mathrm{fold}}}
+  g\!\left(\widehat V^{(-k)}(s)\right).
+\]
+The matched uncalibrated comparator is a \(Q\)-learner refit on all available
+training data.
+
+\paragraph{Value-space fitted value iteration.}
+Let \(\rho_i=\pi(A_i\mid S_i)/\mu(A_i\mid S_i)\). In all reported runs the
+action-ratio weights are clipped at 20 and normalized to mean one within each
+calibration fit. Starting from the identity map, calibration iterates
+\[
+  g_{t+1}\in\arg\min_g\sum_i \rho_i
+  \left[g(\widehat V(S_i))-\{R_i+\gamma g_t(\widehat V(S_i'))\}\right]^2.
+\]
+The implemented calibrators are weighted affine regression, weighted histogram
+binning, weighted isotonic regression, and a weighted isotonic-histogram
+hybrid.
+
+\paragraph{Metrics.}
+The scalar OPE estimate is the mean of \(g(\widehat V(S_0))\) over independent
+initial evaluation states. The main function-level metric is held-out
+value-function MSE,
+\[
+  \mathbb{E}\!\left[\{g(\widehat V(S))-V^\pi(S)\}^2\right],
+\]
+estimated using independent target-policy oracle values. Bellman calibration
+error is estimated on 50,000 independent Bellman-evaluation transitions by binning
+\(g(\widehat V(S))\) into 50 quantile bins, with a target minimum bin size of
+1,000 observations, and averaging the weighted squared gaps between bin-mean
+predictions and bin-mean Bellman outcomes
+\[
+  r_0(S,A)+\gamma g(\widehat V(S')) .
+\]
+Raw outputs also store a cross-fitted debiased calibration-error estimate based
+on the moment
+\(\mathbb{E}_w[(Y-\Delta)(\widehat\gamma(\Delta)-\Delta)]\), together with the
+plug-in and floored debiased estimates, importance-weight effective sample
+size, maximum weight, runtimes, and failure flags.
+
+\subsection{Deep OPE/RL Unplugged \texttt{cheetah\_run}}
+\label{app:cheetah-benchmark}
+
+\paragraph{Policy-value calibration.}
+We use the Deep OPE/RL Unplugged \texttt{cheetah\_run} policy snapshots as a
+standard continuous-control benchmark for post-hoc value correction. The
+benchmark bundle provides, for each target policy, an official FQE-L2 scalar
+policy-value estimate and an official return estimate. We use three official
+learning curves, each with eight policy snapshots in released order. Let
+\(Z_{cj}\) denote the official FQE-L2 estimate for snapshot \(j\) on curve
+\(c\), and let \(J_{cj}\) denote its official return. The raw score is
+\(Z_{cj}\). Linear calibration fits \(a+bZ_{cj}\) by least squares on
+calibration policies; isotonic calibration fits a monotone map from \(Z_{cj}\)
+to \(J_{cj}\). Performance is the mean absolute OPE error
+\(|g(Z_{cj})-J_{cj}|\) on held-out policies, reported relative to the raw
+FQE-L2 error \(|Z_{cj}-J_{cj}|\).
+
+Within each curve, we use three policy-disjoint splits: policies \(0\)--\(3\)
+for calibration and \(4\)--\(7\) for evaluation, policies \(0,2,4,6\) for
+calibration and \(1,3,5,7\) for evaluation, and policies \(0\)--\(4\) for
+calibration and \(5\)--\(7\) for evaluation. This benchmark isolates the
+value-scale component of the method on a standard OPE task: the base FQE-L2
+scores are fixed before calibration, and the fitted one-dimensional map is
+evaluated only on policies not used to fit that map.
+
+\paragraph{Model-based FQE reproduction.}
+For a model-based version, we load
+\texttt{rlu\_control\_suite/cheetah\_run} through TFDS/RLDS and train a single
+FQE critic for each target policy using the public Google Research
+\texttt{policy\_eval} architecture: a two-hidden-layer \((256,256)\) critic on
+state-action pairs, AdamW with learning rate \(3\cdot10^{-4}\), weight decay
+\(10^{-5}\), target-network soft updates with \(\tau=0.005\), normalized states
+and rewards, and clipped Bellman targets. We first compare the learned critic's
+initial-state value estimate with the official FQE-L2 policy-value estimate.
+Bellman calibration is then fit on held-out transitions by regressing
+\(\widehat V(S)\) on \(R+\gamma \widehat V(S')\), and evaluated on separate
+held-out episodes. Official returns are used only for scalar OPE evaluation, not
+for fitting the critic or Bellman calibration map.
+
+\paragraph{Reproducibility.}
+The strict-cross submission run used 100 replications and the configuration
+\path{configs/strict_cross_submission_suite.yaml} in the
+\path{FQE_calibration_neurips} experiment directory. Raw replication-level
+results, grouped summaries, validation output, and the figure-generation script
+are stored with the same directory under
+\path{results/paper_strict_cross_submission_v3_50k}.

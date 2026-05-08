@@ -1,0 +1,76 @@
+seed: 20260430
+replications: 2
+gamma: 0.90
+horizon: 50
+n_actions: 3
+sample_sizes: [200, 800]
+state_dimensions: [4]
+coverage_settings: [good]
+reward_noise_settings: [0.05]
+transition_noise: 0.0
+test_transitions: 1000
+diagnostic_test_transitions: 5000
+true_q_rollouts_per_state: 2
+calibration_error_bins: 50
+calibration_error_min_bin_size: 50
+calibration_error_folds: 5
+initial_eval_states: 1000
+oracle_rollouts: 1000
+policy_shift:
+  good: 0.05
+  moderate: 0.50
+  severe: 1.00
+  extrapolation: 1.50
+extrapolation_scale: 0.0
+misspecification: well_specified_linear
+baseline_learners:
+  - linear_fqe
+  - random_feature_fqe
+  - regularized_bellman
+  - saddle_point_bellman
+  - ensemble_fqe
+  - neural_fqe
+calibration_protocols: [cross, split, no_split]
+calibrators: [linear, histogram, isotonic, isotonic_histogram]
+calibration_targets: [value_bellman]
+importance_weight_scheme: action_ratio
+importance_weight_clip: 20.0
+normalize_importance_weights: true
+value_calibration_iterations: 4
+cross_folds: 5
+split_fractions: [0.8]
+split_comparators: []
+calibrator_params:
+  n_bins: 8
+  bin_strategy: quantile
+  min_bin_size: 10
+learner_params:
+  linear_fqe:
+    feature_type: linear
+    ridge: 0.000001
+    n_iters: 80
+  random_feature_fqe:
+    feature_type: linear
+    ridge: 0.000001
+    n_iters: 80
+  regularized_bellman:
+    feature_type: linear
+    ridge: 0.000001
+  saddle_point_bellman:
+    feature_type: linear
+    ridge: 0.000001
+    critic_ridge: 0.000001
+  ensemble_fqe:
+    feature_type: linear
+    n_members: 3
+    ridge: 0.000001
+    n_iters: 80
+  neural_fqe:
+    hidden_dims: [32, 32]
+    n_iters: 16
+    epochs_per_iter: 6
+    batch_size: 128
+    lr: 0.001
+    weight_decay: 0.00001
+    target_tau: 0.3
+    device: cpu

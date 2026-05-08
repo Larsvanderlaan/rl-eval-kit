@@ -3,16 +3,36 @@
 
 # --- Logs ---
 *.log
+.codex_*.py
 
 # --- Build/output anywhere ---
+archive/generated/*
+!archive/generated/README.md
+outputs/
+**/outputs/
+FQE_neurips/outputs/
+FQE_calibration_neurips/.cache/
+FQE_calibration_neurips/.mplconfig/
+hopper_fqe_benchmark/outputs/
+hopper_fqe_benchmark/artifacts/cache/
+hopper_fqe_benchmark/artifacts/mplconfig/
 **/dist/
 **/build/
 **/target/
 **/*.egg-info/
 **/.pytest_cache/
 **/__pycache__/
+**/.cache/
+**/.mplconfig/
 **/.Rproj.user/
 **/.ipynb_checkpoints/
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.toc
 
 # --- Node (if any packages are JS/TS) ---
 **/node_modules/
@@ -30,6 +50,6 @@ myenv3
 myenv3/
 myenv3/**
 *.ipynb
-
-
-
+*.pyc
+*.hdf5
+*.onnx

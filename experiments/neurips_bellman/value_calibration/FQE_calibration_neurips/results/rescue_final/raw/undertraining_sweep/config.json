@@ -1,0 +1,210 @@
+{
+  "baseline_learners": [
+    "random_feature_fqe_iter2",
+    "random_feature_fqe_iter3",
+    "random_feature_fqe_iter4"
+  ],
+  "calibration_error_bins": 30,
+  "calibration_error_folds": 5,
+  "calibration_error_min_bin_size": 50,
+  "calibration_protocols": [
+    "cross"
+  ],
+  "calibration_targets": [
+    "value_bellman"
+  ],
+  "calibrator_params": {
+    "bin_strategy": "quantile",
+    "min_bin_size": 20,
+    "n_bins": 10,
+    "value_calibration_iterations": 8
+  },
+  "calibrators": [
+    "linear",
+    "isotonic"
+  ],
+  "compute_true_q_mse": false,
+  "coverage_settings": [
+    "moderate"
+  ],
+  "cross_folds": 5,
+  "diagnostic_test_transitions": 2500,
+  "direct_true_v_rollout": true,
+  "environment_tier": "nonlinear_synthetic",
+  "gamma": 0.985,
+  "horizon": 120,
+  "importance_weight_clip": 20.0,
+  "importance_weight_scheme": "action_ratio",
+  "initial_eval_states": 500,
+  "interval_bootstrap_reps": 200,
+  "learner_params": {
+    "ensemble_fqe": {
+      "feature_type": "linear",
+      "n_iters": 30,
+      "n_members": 5,
+      "ridge": 0.0005
+    },
+    "neural_fqe": {
+      "batch_size": 64,
+      "device": "cpu",
+      "epochs_per_iter": 1,
+      "hidden_dims": [
+        24
+      ],
+      "lr": 0.001,
+      "n_iters": 3,
+      "target_tau": 0.05,
+      "weight_decay": 0.0001
+    },
+    "random_feature_fqe": {
+      "bandwidth": 0.7,
+      "feature_type": "linear",
+      "n_components": 64,
+      "n_iters": 35,
+      "ridge": 0.0005
+    }
+  },
+  "learner_variants": {
+    "ensemble_fqe_weak_members": {
+      "base_learner": "ensemble_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "weak_ensemble",
+      "main_figure_role": "appendix",
+      "params": {
+        "n_components": 32,
+        "n_iters": 2,
+        "n_members": 2
+      }
+    },
+    "ensemble_fqe_well_tuned": {
+      "base_learner": "ensemble_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "well_tuned",
+      "main_figure_role": "appendix",
+      "params": {
+        "n_iters": 60
+      }
+    },
+    "neural_fqe_iter1": {
+      "base_learner": "neural_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "under_iterated",
+      "main_figure_role": "main",
+      "params": {
+        "bootstrap_on_first_iter": false,
+        "epochs_per_iter": 1,
+        "hidden_dims": [
+          24
+        ],
+        "n_iters": 1,
+        "target_tau": 0.0
+      }
+    },
+    "neural_fqe_iter2": {
+      "base_learner": "neural_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "under_iterated",
+      "main_figure_role": "main",
+      "params": {
+        "epochs_per_iter": 1,
+        "hidden_dims": [
+          32
+        ],
+        "n_iters": 2,
+        "target_tau": 0.05,
+        "weight_decay": 0.0
+      }
+    },
+    "neural_fqe_well_tuned": {
+      "base_learner": "neural_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "well_tuned",
+      "main_figure_role": "main",
+      "params": {
+        "epochs_per_iter": 5,
+        "hidden_dims": [
+          48,
+          48
+        ],
+        "n_iters": 30,
+        "target_tau": 0.3
+      }
+    },
+    "random_feature_fqe_iter1": {
+      "base_learner": "random_feature_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "under_iterated",
+      "main_figure_role": "main",
+      "params": {
+        "n_iters": 1
+      }
+    },
+    "random_feature_fqe_iter2": {
+      "base_learner": "random_feature_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "under_iterated",
+      "main_figure_role": "main",
+      "params": {
+        "n_iters": 2
+      }
+    },
+    "random_feature_fqe_iter3": {
+      "base_learner": "random_feature_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "under_iterated",
+      "main_figure_role": "main",
+      "params": {
+        "n_iters": 3
+      }
+    },
+    "random_feature_fqe_iter4": {
+      "base_learner": "random_feature_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "under_iterated",
+      "main_figure_role": "main",
+      "params": {
+        "n_iters": 4
+      }
+    },
+    "random_feature_fqe_well_tuned": {
+      "base_learner": "random_feature_fqe",
+      "calibration_difficulty": "finite_iteration_bias",
+      "learner_quality_regime": "well_tuned",
+      "main_figure_role": "main",
+      "params": {
+        "n_iters": 70
+      }
+    }
+  },
+  "misspecification": "finite_iteration_scale",
+  "n_actions": 3,
+  "normalize_importance_weights": true,
+  "oracle_rollouts": 500,
+  "policy_shift": {
+    "extrapolation": 1.7,
+    "good": 0.1,
+    "moderate": 0.45,
+    "severe": 1.15
+  },
+  "reference_shift_scale": 0.15,
+  "replication_seed_stride": 1000000,
+  "replications": 100,
+  "reward_noise_settings": [
+    0.05
+  ],
+  "sample_sizes": [
+    1200
+  ],
+  "seed": 3000001,
+  "shifted_initial_eval_states": true,
+  "split_comparators": [],
+  "split_fractions": [],
+  "state_dimensions": [
+    4
+  ],
+  "test_transitions": 500,
+  "transition_noise": 0.04,
+  "true_q_rollouts_per_state": 1,
+  "true_v_rollouts_per_state": 1,
+  "value_calibration_iterations": 8
+}

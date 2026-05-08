@@ -1,0 +1,34 @@
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/fqe/tests",
+    "packages/occupancy-ratio/occupancy_ratio_benchmark/tests",
+    "packages/bellman-trees/tests",
+]
+pythonpath = [
+    ".",
+    "packages/fqe",
+    "packages/occupancy-ratio",
+    "packages/bellman-trees",
+    "experiments/neurips_bellman/fqe_stationary_weighting",
+    "experiments/neurips_bellman/hopper_fqe_benchmark",
+    "experiments/neurips_bellman/soft_fqi_stationary_weighting",
+    "experiments/irl/conference_genpqr/repro",
+    "experiments/irl/journal_debiased_irl",
+]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = [
+    "archive/generated",
+    "legacy",
+    "outputs",
+    "submission_bundles",
+    "**/__pycache__",
+    "**/.ipynb_checkpoints",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501"]

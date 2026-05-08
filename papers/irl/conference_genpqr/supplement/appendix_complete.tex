@@ -1,0 +1,1041 @@
+\appendix
+\onecolumn
+
+\section{Appendix Overview}
+\label{app:overview}
+
+This appendix is organized around the proof dependencies used in the current
+draft:
+\begin{enumerate}
+    \item identification and representation results from
+    Section~\ref{sec:char},
+    \item reward-recovery and finite-sample guarantees from
+    Section~\ref{sec:theory},
+    \item the least-squares generalization tool cited in the FQE analysis.
+\end{enumerate}
+Legacy proofs from earlier draft versions have been removed so that this
+appendix matches the results actually used in the paper.
+
+\section{Identification and Representation}
+\label{app:identification}
+
+\subsection{Proof of Lemma~\ref{lem:trivial}}
+
+\begin{proof}
+Let \(u^\star(s,a):=\log \pi(a\mid s)\). Since
+\[
+\sum_{a'}\exp\{u^\star(s,a')\}
+=
+\sum_{a'} \pi(a'\mid s)
+=
+1,
+\]
+we have \(\Xi(u^\star)(s)=0\) for every \(s\). Hence
+\[
+P\Xi(u^\star)(s,a)=0,
+\]
+so \((u^\star,0)\) is feasible for \eqref{eq:relaxed-irl}.
+
+To prove optimality, define \(q(s,a):=r(s,a)+\gamma v(s,a)\). For any feasible
+\((r,v)\), the objective in \eqref{eq:relaxed-irl} can be written as
+\[
+\E_{(s,a)\sim \nu_\pi}\!\big[q(s,a)-\Xi q(s)\big].
+\]
+For each state \(s\), the quantity \(q(s,a)-\Xi q(s)\) is the log-probability
+of action \(a\) under the softmax policy induced by \(q\),
+\[
+\pi_q(a\mid s)
+:=
+\exp\{q(s,a)-\Xi q(s)\}.
+\]
+Therefore
+\begin{align*}
+\E_{(s,a)\sim \nu_\pi}\!\big[q(s,a)-\Xi q(s)\big]
+&=
+\E_{s\sim \rho}\!\left[
+\sum_a \pi(a\mid s)\log \pi_q(a\mid s)
+\right] \\
+&=
+-\E_{s\sim \rho}\!\Bigl[
+\KL\!\bigl(\pi(\cdot\mid s)\,\|\,\pi_q(\cdot\mid s)\bigr)
+\Bigr]
++ \E_{s\sim \rho}\!\bigl[H(\pi(\cdot\mid s))\bigr].
+\end{align*}
+This is maximized when \(\pi_q(\cdot\mid s)=\pi(\cdot\mid s)\) for every
+\(s\), which is attained by \(q=u^\star\), i.e., by \((r,v)=(u^\star,0)\).
+\end{proof}
+
+\subsection{Proof of Lemma~\ref{lem:shaping}}
+
+\begin{proof}
+Let \(q:=r+\gamma v\), and define
+\[
+\tilde r=r+c-\gamma Pc,
+\qquad
+\tilde v=v+Pc.
+\]
+Then
+\[
+\tilde r+\gamma \tilde v
+=
+r+\gamma v + c
+=
+q+c,
+\]
+where \(c\) is understood as a state-only function added to every action at
+the same state. Consequently,
+\[
+\Xi(\tilde r+\gamma\tilde v)(s)
+=
+\Xi(q+c)(s)
+=
+c(s)+\Xi q(s).
+\]
+Applying \(P\) to both sides gives
+\[
+P\Xi(\tilde r+\gamma\tilde v)
+=
+Pc + P\Xi q
+=
+Pc + v
+=
+\tilde v,
+\]
+so \((\tilde r,\tilde v)\) is feasible for \eqref{eq:relaxed-irl}.
+
+The objective value is unchanged because
+\[
+\tilde r(s,a)+\gamma \tilde v(s,a)-\Xi(\tilde r+\gamma\tilde v)(s)
+=
+q(s,a)+c(s)-\bigl(\Xi q(s)+c(s)\bigr)
+=
+q(s,a)-\Xi q(s).
+\]
+Thus \((\tilde r,\tilde v)\) attains the same objective value as \((r,v)\).
+The induced log-policy,
+\[
+\tilde r+\gamma \tilde v-\Xi(\tilde r+\gamma\tilde v)
+=
+q-\Xi q,
+\]
+is therefore also unchanged.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:unique}}
+
+\begin{proof}
+Let \(Q^\mu_{u^\star-g}\) denote the unique bounded fixed point of
+\[
+Q = u^\star-g+\gamma P\mu Q.
+\]
+Define
+\[
+r^\star
+:=
+Q^\mu_{u^\star-g}-\mu Q^\mu_{u^\star-g}+g,
+\qquad
+v^\star
+:=
+\frac{1}{\gamma}\bigl(u^\star-g-Q^\mu_{u^\star-g}\bigr).
+\]
+
+We first verify feasibility for \eqref{eq:main-irl}. The normalization is
+immediate:
+\[
+\mu r^\star
+=
+\mu Q^\mu_{u^\star-g}-\mu Q^\mu_{u^\star-g}+g
+=
+g.
+\]
+Next, the Bellman equation for \(Q^\mu_{u^\star-g}\) implies
+\[
+v^\star
+=
+\frac{1}{\gamma}\bigl(u^\star-g-Q^\mu_{u^\star-g}\bigr)
+=
+-P\mu Q^\mu_{u^\star-g}.
+\]
+Hence
+\[
+r^\star+\gamma v^\star
+=
+Q^\mu_{u^\star-g}-\mu Q^\mu_{u^\star-g}+g
++
+u^\star-g-Q^\mu_{u^\star-g}
+=
+u^\star-\mu Q^\mu_{u^\star-g}.
+\]
+Since \(\mu Q^\mu_{u^\star-g}\) is state-only and \(\Xi(u^\star)=0\),
+\[
+\Xi(r^\star+\gamma v^\star)
+=
+\Xi\!\bigl(u^\star-\mu Q^\mu_{u^\star-g}\bigr)
+=
+-\mu Q^\mu_{u^\star-g}.
+\]
+Applying \(P\) gives
+\[
+P\Xi(r^\star+\gamma v^\star)
+=
+-P\mu Q^\mu_{u^\star-g}
+=
+v^\star.
+\]
+Thus \((r^\star,v^\star)\) is feasible.
+
+To prove optimality, observe that
+\[
+r^\star+\gamma v^\star
+=
+u^\star+c^\star,
+\qquad
+c^\star(s):= -(\mu Q^\mu_{u^\star-g})(s).
+\]
+By the same log-likelihood argument as in Lemma~\ref{lem:trivial}, adding a
+state-only shift \(c^\star\) does not change the induced policy, so
+\((r^\star,v^\star)\) attains the same objective value as \((u^\star,0)\).
+Hence it is optimal.
+
+It remains to show uniqueness. Let \((r,v)\) be any optimal feasible pair for
+\eqref{eq:main-irl}, and set \(q:=r+\gamma v\). Since \((r,v)\) is also
+feasible for the relaxed problem and achieves the same maximal likelihood as
+\((u^\star,0)\), the induced policy must equal \(\pi\). Therefore
+\[
+u^\star(s,a)
+=
+q(s,a)-\Xi q(s),
+\]
+which implies
+\[
+q(s,a)=u^\star(s,a)+c(s),
+\qquad
+c(s):=\Xi q(s).
+\]
+Feasibility then gives
+\[
+v
+=
+P\Xi q
+=
+Pc,
+\qquad
+r
+=
+q-\gamma v
+=
+u^\star+c-\gamma Pc.
+\]
+The normalization condition \(\mu r=g\) becomes
+\[
+g
+=
+\mu u^\star + c - \gamma P_\mu c,
+\qquad
+P_\mu c(s):=\int Pc(s,a)\,\mu(da\mid s).
+\]
+Equivalently,
+\[
+(I-\gamma P_\mu)c
+=
+g-\mu u^\star.
+\]
+Since \(P_\mu\) is a Markov operator with \(\|P_\mu\|_\infty\le 1\) and
+\(\gamma<1\), the operator \(I-\gamma P_\mu\) is invertible on bounded
+functions via the Neumann series. Thus \(c\) is unique, and so are \(v=Pc\)
+and \(r=u^\star+c-\gamma Pc\).
+\end{proof}
+
+\subsection{An Equivalent Identification}
+
+The next result is the zero-normalization specialization \(g\equiv 0\) of
+Theorem~\ref{thm:unique}. We keep it separate because it is a convenient
+reparameterization for later comparisons and appendix discussion.
+
+\begin{theorem}[An equivalent identification]
+\label{thm:unique2}
+\Cref{eq:main-irl} admits a unique optimal solution \((r^\star,v^\star)\), where
+\[
+r^\star = \ustar + \mu(\gamma v^\star - \ustar) - \gamma v^\star,
+\]
+and \(v^\star\) is the unique bounded solution to the fixed-point equation
+\[
+v^\star = P\mu(\gamma v^\star - \ustar).
+\]
+\end{theorem}
+
+\begin{proof}
+Specialize Theorem~\ref{thm:unique} to the case \(g\equiv 0\). Let
+\(Q^\mu_{u^\star}\) denote the unique bounded solution to
+\[
+Q^\mu_{u^\star}
+=
+u^\star+\gamma P\mu Q^\mu_{u^\star}.
+\]
+Theorem~\ref{thm:unique} gives
+\[
+r^\star
+=
+Q^\mu_{u^\star}-\mu Q^\mu_{u^\star},
+\qquad
+v^\star
+=
+\frac{1}{\gamma}\bigl(u^\star-Q^\mu_{u^\star}\bigr).
+\]
+Equivalently,
+\[
+Q^\mu_{u^\star}=u^\star-\gamma v^\star.
+\]
+Substituting this identity into the Bellman equation for \(Q^\mu_{u^\star}\)
+yields
+\[
+u^\star-\gamma v^\star
+=
+u^\star+\gamma P\mu(u^\star-\gamma v^\star),
+\]
+and therefore
+\[
+v^\star
+=
+-P\mu(u^\star-\gamma v^\star)
+=
+P\mu(\gamma v^\star-\ustar).
+\]
+This is the claimed fixed-point equation.
+
+Similarly,
+\[
+r^\star
+=
+Q^\mu_{u^\star}-\mu Q^\mu_{u^\star}
+=
+\bigl(u^\star-\gamma v^\star\bigr)-\mu\bigl(u^\star-\gamma v^\star\bigr)
+=
+\ustar + \mu(\gamma v^\star-\ustar)-\gamma v^\star.
+\]
+Uniqueness follows directly from the uniqueness statement in
+Theorem~\ref{thm:unique}.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:identification}}
+
+\begin{proof}
+Let \((r,v)\) solve \eqref{eq:relaxed-irl}, and define
+\[
+q:=r+\gamma v,
+\qquad
+c(s):=\Xi q(s).
+\]
+Since \((r,v)\) is optimal for the relaxed problem, it induces the behavior
+policy \(\pi\). Therefore
+\[
+u^\star(s,a)
+=
+q(s,a)-\Xi q(s)
+=
+q(s,a)-c(s),
+\]
+so
+\[
+q(s,a)=u^\star(s,a)+c(s).
+\]
+The Bellman feasibility condition then gives
+\[
+v=P\Xi q=Pc,
+\qquad
+r=q-\gamma v=u^\star+c-\gamma Pc.
+\]
+
+Fix any policy \(\pi_1\), and let \(Q^\pi_{u^\star}\) denote the unique bounded
+solution to
+\[
+Q^\pi_{u^\star}
+=
+u^\star+\gamma \pi_1 P Q^\pi_{u^\star}.
+\]
+Because \(c\) is state-only,
+\[
+\pi_1 P c = Pc.
+\]
+Hence
+\begin{align*}
+r+\gamma \pi_1 P\bigl(Q^\pi_{u^\star}+c\bigr)
+&=
+u^\star+c-\gamma Pc+\gamma \pi_1 P Q^\pi_{u^\star}+\gamma \pi_1 P c \\
+&=
+u^\star+\gamma \pi_1 P Q^\pi_{u^\star}+c \\
+&=
+Q^\pi_{u^\star}+c.
+\end{align*}
+So \(Q^\pi_{u^\star}+c\) solves the Bellman equation for reward \(r\) under
+policy \(\pi_1\). By uniqueness of bounded Bellman fixed points,
+\[
+Q_r^{\pi_1}=Q_{u^\star}^{\pi_1}+c,
+\]
+which is equivalent to
+\[
+Q_{u^\star}^{\pi_1}=Q_r^{\pi_1}-c.
+\]
+
+Now let \(c^\star\) denote the state shift corresponding to the normalized
+solution \(r^\star\). By Theorem~\ref{thm:unique}, \(r^\star\) is also a shaped
+version of \(u^\star\), so the same argument gives
+\[
+Q_{r^\star}^{\pi_i}=Q_{u^\star}^{\pi_i}+c^\star,
+\qquad i\in\{1,2\}.
+\]
+Taking policy values and using that \(c\) and \(c^\star\) are state-only,
+\[
+V_r^{\pi_i}
+=
+V_{u^\star}^{\pi_i}+c,
+\qquad
+V_{r^\star}^{\pi_i}
+=
+V_{u^\star}^{\pi_i}+c^\star.
+\]
+Subtracting the identities for \(i=1\) and \(i=2\) proves
+\[
+V_{r^\star}^{\pi_1}(s)-V_{r^\star}^{\pi_2}(s)
+=
+V_r^{\pi_1}(s)-V_r^{\pi_2}(s).
+\qedhere
+\]
+\end{proof}
+
+\section{Reward Recovery and Finite-Sample Analysis}
+\label{app:recovery}
+
+\subsection{Proof of Theorem~\ref{thm:reward-recovery}}
+
+\begin{proof}
+For any measure \(d\) on \(\mathcal S\), define
+\[
+\|h\|_{2,d} := \Bigl(\E_{s \sim d}[h(s)^2]\Bigr)^{1/2}.
+\]
+Since
+\[
+r^\star(s,a)
+=
+Q^\mu_{u^\star-g}(s,a)
+-
+(\mu Q^\mu_{u^\star-g})(s)
++
+g(s),
+\]
+we have
+\[
+r^\star-\hat r
+=
+\widetilde\Delta_Q-\mu\widetilde\Delta_Q,
+\qquad
+\widetilde\Delta_Q:=Q^\mu_{u^\star-g}-\hat Q.
+\]
+Thus
+\begin{equation}
+\label{eq:reward-split}
+\|r^\star-\hat r\|_{2,\mathrm{beh}}
+\le
+\|\widetilde\Delta_Q\|_{2,\mathrm{beh}}
++
+\|\mu\widetilde\Delta_Q\|_{2,\mathrm{beh}}.
+\end{equation}
+
+For any measurable \(f:\mathcal S\times\mathcal A\to\mathbb R\), Jensen's
+inequality gives
+\[
+|\mu f(s)|^2
+=
+\Bigl|\sum_a \mu(a\mid s)f(s,a)\Bigr|^2
+\le
+\sum_a \mu(a\mid s)f(s,a)^2.
+\]
+Therefore,
+\begin{align*}
+\|\mu f\|_{2,\mathrm{beh}}^2
+&=
+\int |\mu f(s)|^2\,d\rho(s) \\
+&\le
+\int \sum_a \mu(a\mid s)f(s,a)^2\,d\rho(s) \\
+&=
+\int \frac{\mu(a\mid s)}{\pi(a\mid s)} f(s,a)^2\,d\nu_\pi(s,a) \\
+&\le
+C_{\mu/\pi}\|f\|_{2,\mathrm{beh}}^2.
+\end{align*}
+Hence
+\[
+\|\mu f\|_{2,\mathrm{beh}}
+\le
+\sqrt{C_{\mu/\pi}}\|f\|_{2,\mathrm{beh}}.
+\]
+Applying this in \eqref{eq:reward-split} yields
+\begin{equation}
+\label{eq:reward-to-Q}
+\|r^\star-\hat r\|_{2,\mathrm{beh}}
+\le
+\bigl(1+\sqrt{C_{\mu/\pi}}\bigr)
+\|\widetilde\Delta_Q\|_{2,\mathrm{beh}}.
+\end{equation}
+
+Next, write
+\[
+\Delta Q:=Q^\mu_{u^\star-g}-Q^\mu_{\hat u-g},
+\qquad
+\Delta u:=u^\star-\hat u.
+\]
+Then
+\begin{equation}
+\label{eq:Q-triangle}
+\|\widetilde\Delta_Q\|_{2,\mathrm{beh}}
+\le
+\|Q^\mu_{\hat u-g}-\hat Q\|_{2,\mathrm{beh}}
++
+\|\Delta Q\|_{2,\mathrm{beh}}.
+\end{equation}
+Subtracting the Bellman equations gives
+\[
+\Delta Q=\Delta u+\gamma P\mu\,\Delta Q,
+\]
+and hence
+\[
+\|\Delta Q\|_{2,\mathrm{beh}}
+\le
+\|\Delta u\|_{2,\mathrm{beh}}
++
+\gamma\|P\mu\,\Delta Q\|_{2,\mathrm{beh}}.
+\]
+
+By Jensen's inequality,
+\[
+(P\mu \Delta Q)^2 \le P\mu\bigl((\Delta Q)^2\bigr),
+\]
+so
+\begin{align*}
+\|P\mu\,\Delta Q\|_{2,\mathrm{beh}}^2
+&\le
+\int P\mu\bigl((\Delta Q)^2\bigr)\,d\nu_\pi
+=
+\int (\Delta Q)^2\,d(\nu_\pi P\mu) \\
+&=
+\int \sum_a (\Delta Q(s,a))^2 \mu(a\mid s)\, d(\nu_\pi P)(s) \\
+&\le
+C_{\nu_\pi P/d_\mu}
+\int \sum_a (\Delta Q(s,a))^2 \mu(a\mid s)\, d d_\mu(s) \\
+&=
+C_{\nu_\pi P/d_\mu}\|\Delta Q\|_{2,\lambda_\mu}^2.
+\end{align*}
+It follows that
+\begin{equation}
+\label{eq:DeltaQ-beh}
+\|\Delta Q\|_{2,\mathrm{beh}}
+\le
+\|\Delta u\|_{2,\mathrm{beh}}
++
+\gamma\sqrt{C_{\nu_\pi P/d_\mu}}\,
+\left\{
+\int \sum_a (\Delta Q(s,a))^2\mu(a\mid s)\,d_\mu(s)
+\right\}^{1/2}.
+\end{equation}
+
+It remains to bound the mixed \(L^2(d_\mu,\mu)\) term on the right-hand side.
+Define
+\[
+\|f\|_{2,d_\mu,\mu}
+:=
+\left\{
+\int \sum_a f(s,a)^2\mu(a\mid s)\,d_\mu(s)
+\right\}^{1/2}.
+\]
+Taking \(\|\cdot\|_{2,d_\mu,\mu}\) norms in
+\[
+\Delta Q=\Delta u+\gamma P\mu\,\Delta Q
+\]
+gives
+\[
+\|\Delta Q\|_{2,d_\mu,\mu}
+\le
+\|\Delta u\|_{2,d_\mu,\mu}
++
+\gamma\|P\mu\,\Delta Q\|_{2,d_\mu,\mu}.
+\]
+Because \(d_\mu\) is stationary for \(P_\mu\), Jensen's inequality implies
+\[
+\|P\mu f\|_{2,d_\mu,\mu}
+\le
+\|f\|_{2,d_\mu,\mu}
+\qquad
+\text{for all }f.
+\]
+Thus
+\[
+(1-\gamma)\|\Delta Q\|_{2,d_\mu,\mu}
+\le
+\|\Delta u\|_{2,d_\mu,\mu}.
+\]
+Now compare the \(d_\mu\)-weighted mixed norm to the behavior norm:
+\[
+\|\Delta u\|_{2,d_\mu,\mu}^2
+=
+\int (\Delta u(s,a))^2\,d_\mu(s)\mu(da\mid s)
+\]
+\[
+=
+\int (\Delta u(s,a))^2
+\frac{d d_\mu}{d\rho}(s)\frac{\mu(a\mid s)}{\pi(a\mid s)}
+\,d\nu_\pi(s,a).
+\]
+By Assumption~\ref{cond::coverage},
+\[
+\|\Delta u\|_{2,d_\mu,\mu}^2
+\le
+C_{d_\mu/\rho}C_{\mu/\pi}\|\Delta u\|_{2,\mathrm{beh}}^2.
+\]
+Hence
+\begin{equation}
+\label{eq:DeltaQ-lambda}
+\|\Delta Q\|_{2,d_\mu,\mu}
+\le
+\frac{\sqrt{C_{d_\mu/\rho}C_{\mu/\pi}}}{1-\gamma}\|u^\star-\hat u\|_{2,\mathrm{beh}}.
+\end{equation}
+
+Combining \eqref{eq:Q-triangle}, \eqref{eq:DeltaQ-beh}, and
+\eqref{eq:DeltaQ-lambda} yields
+\[
+\|\widetilde\Delta_Q\|_{2,\mathrm{beh}}
+\le
+\|Q^\mu_{\hat u-g}-\hat Q\|_{2,\mathrm{beh}}
++
+\left(
+1+\frac{\gamma\sqrt{C_{\nu_\pi P/d_\mu}\,C_{d_\mu/\rho}C_{\mu/\pi}}}{1-\gamma}
+\right)
+\|u^\star-\hat u\|_{2,\mathrm{beh}}.
+\]
+Substituting this bound into \eqref{eq:reward-to-Q} proves the result.
+\end{proof}
+
+\subsection{Technical Lemmas}
+
+\begin{lemma}
+\label{lemma::KLell2}
+Under Assumption~\ref{assump:policy-gen}, there exists a constant
+\(C \in (0,\infty)\) such that, with probability at least \(1-\delta\),
+\[
+\|\hat u-u^\star\|_{2, \mathrm{beh}}
+\le
+C\,\hat\rho_{\pi}(n,\delta).
+\]
+\end{lemma}
+
+\begin{proof}
+Let \(u^\star=\log \pi\), \(\hat u=\log \hat\pi\), and define the likelihood
+ratio
+\[
+\vartheta(a\mid s):=\frac{\hat\pi(a\mid s)}{\pi(a\mid s)}.
+\]
+Since \(u^\star\) and \(\hat u\) are uniformly bounded, there exists \(L<\infty\)
+such that
+\[
+|\log \vartheta(a\mid s)| = |\hat u(s,a)-u^\star(s,a)| \le L
+\]
+for all \((s,a)\). Equivalently, \(\vartheta(a\mid s)\in [e^{-L},e^L]\).
+
+Define \(\phi(t):=-\log t-(1-t)\). Since \(\phi''(t)=t^{-2}\), the function
+\(\phi\) is \(e^{-2L}\)-strongly convex on \([e^{-L},e^L]\). Also,
+\(\E_{\pi(\cdot\mid s)}[\vartheta]=1\), so for each \(s\),
+\begin{align*}
+\mathrm{KL}\!\big(\pi(\cdot\mid s)\,\|\,\hat\pi(\cdot\mid s)\big)
+&=
+\E_{\pi(\cdot\mid s)}[-\log \vartheta]
+=
+\E_{\pi(\cdot\mid s)}[\phi(\vartheta)] \\
+&\ge
+\frac{e^{-2L}}{2}\,
+\E_{\pi(\cdot\mid s)}[(\vartheta-1)^2].
+\end{align*}
+Moreover, by the mean value theorem, for \(t\in[e^{-L},e^L]\),
+\[
+|\log t|
+\le
+e^L |t-1|.
+\]
+Applying this with \(t=\vartheta\) gives
+\begin{align*}
+\E_{\pi(\cdot\mid s)}\big[(\hat u-u^\star)^2\big]
+&=
+\E_{\pi(\cdot\mid s)}\big[(\log \vartheta)^2\big] \\
+&\le
+e^{2L}\,\E_{\pi(\cdot\mid s)}\big[(\vartheta-1)^2\big] \\
+&\le
+2e^{4L}\,
+\mathrm{KL}\!\big(\pi(\cdot\mid s)\,\|\,\hat\pi(\cdot\mid s)\big).
+\end{align*}
+Averaging over \(s\) and invoking Assumption~\ref{assump:policy-gen} yields
+\[
+\|\hat u-u^\star\|_{2,\mathrm{beh}}
+\le
+\sqrt{2}\,e^{2L}
+\left\{
+\E_s\!\left[
+\mathrm{KL}\!\big(\pi(\cdot\mid s)\,\|\,\hat\pi(\cdot\mid s)\big)
+\right]
+\right\}^{1/2}
+\le
+C\,\hat\rho_{\pi}(n,\delta),
+\]
+where \(C:=\sqrt{2}\,e^{2L}\).
+\end{proof}
+
+\begin{lemma}[Per-iteration error bound]
+\label{lemma::periter}
+Under Assumptions~\ref{assump:policy-gen}--\ref{assump:q-gen}, there exists a
+constant \(C \in (0,\infty)\) such that, with probability at least \(1-\delta\),
+\[
+\|\mathcal T_{\hat u}^\mu(\hat Q^{(k-1)})-\hat Q^{(k)}\|_{2,\mathrm{beh}}
+\le
+C\,\hat\rho_\pi(n,\delta)+\hat\rho_{Q}(n,\delta)+\varepsilon_{\mathcal F}.
+\]
+\end{lemma}
+
+\begin{proof}
+Use \(\|\cdot\|\) to denote \(\|\cdot\|_{2,\mathrm{beh}}\). Let
+\[
+R_k
+:=
+\|\mathcal T_{\hat u}^\mu(\hat Q^{(k-1)})-\hat Q^{(k)}\|,
+\qquad
+R_k^\star
+:=
+\inf_{f\in\mathcal F}
+\|\mathcal T_{\hat u}^\mu(\hat Q^{(k-1)})-f\|.
+\]
+By definition of the regret and Assumption~\ref{assump:q-gen}, with probability
+at least \(1-\delta/2\),
+\[
+R_k^2-(R_k^\star)^2
+=
+\mathrm{reg}(\hat Q^{(k)}\mid \hat u,\hat Q^{(k-1)})
+\le
+\hat\rho_{Q}(n,\delta/2)^2.
+\]
+Since
+\[
+R_k^2-(R_k^\star)^2=(R_k-R_k^\star)(R_k+R_k^\star)\ge (R_k-R_k^\star)^2,
+\]
+it follows that
+\[
+R_k
+\le
+R_k^\star+\hat\rho_{Q}(n,\delta/2).
+\]
+
+Moreover, for any \(f\in\mathcal F\),
+\begin{align*}
+\|\mathcal T_{\hat u}^\mu(\hat Q^{(k-1)})-f\|
+&\le
+\|\mathcal T_{\hat u}^\mu(\hat Q^{(k-1)})
+-\mathcal T_{u^\star}^\mu(\hat Q^{(k-1)})\| \\
+&\quad+
+\|\mathcal T_{u^\star}^\mu(\hat Q^{(k-1)})-f\| \\
+&=
+\|\hat u-u^\star\|
++
+\|\mathcal T_{u^\star}^\mu(\hat Q^{(k-1)})-f\|.
+\end{align*}
+Taking the infimum over \(f\in\mathcal F\) yields
+\[
+R_k^\star
+\le
+\|\hat u-u^\star\|
++
+\inf_{f\in\mathcal F}
+\|\mathcal T_{u^\star}^\mu(\hat Q^{(k-1)})-f\|.
+\]
+Since \(\nu_\pi\) is a probability measure,
+\[
+\|h\|_{2,\mathrm{beh}}\le \|h\|_\infty
+\qquad\text{for all }h,
+\]
+so by the definition of \(\varepsilon_{\mathcal F}\),
+\[
+\inf_{f\in\mathcal F}
+\|\mathcal T_{u^\star}^\mu(\hat Q^{(k-1)})-f\|
+\le
+\inf_{f\in\mathcal F}
+\|\mathcal T_{u^\star}^\mu(\hat Q^{(k-1)})-f\|_\infty
+\le
+\varepsilon_{\mathcal F}.
+\]
+Therefore, with probability at least \(1-\delta/2\),
+\[
+\|\mathcal T_{\hat u}^\mu(\hat Q^{(k-1)})-\hat Q^{(k)}\|
+\le
+\hat\rho_{Q}(n,\delta/2)+\|\hat u-u^\star\|+\varepsilon_{\mathcal F}.
+\]
+
+Finally, Lemma~\ref{lemma::KLell2} implies that, with probability at least
+\(1-\delta/2\),
+\[
+\|\hat u-u^\star\|_{2,\mathrm{beh}}
+\le
+C\,\hat\rho_\pi(n,\delta/2)
+\]
+for a constant \(C \in (0,\infty)\) depending only on the bounded-logit
+constant in Assumption~\ref{assump:policy-gen}. A union bound gives the
+claimed inequality.
+\end{proof}
+
+\subsection{GenPQR + FQE Bound}
+
+\paragraph{Boundedness condition for the FQE recursion.}
+In addition to Assumptions~\ref{assump:policy-gen}--\ref{assump:q-gen},
+assume that the regression class is uniformly bounded:
+\[
+\sup_{f\in\mathcal F}\|f\|_\infty \le B_{\mathcal F}<\infty.
+\]
+Assumption~\ref{assump:policy-gen} already gives
+\(\|\hat u\|_\infty \vee \|u^\star\|_\infty \le B\), and \(g\) is bounded by
+construction. Hence the Bellman targets \(\mathcal T^\mu_{\hat u}f\) are
+uniformly bounded whenever \(f\in\mathcal F\) is. This is the standard
+boundedness condition used in sup-norm FQE analyses.
+
+\begin{lemma}[FQE error bound]
+\label{lem:fqe-bound}
+Let \(\mathcal T^\mu_u f := u-g+\gamma P\mu f\), and let
+\(Q^\mu_{\hat u-g}\) denote the unique fixed point of
+\(\mathcal T^\mu_{\hat u}\). Suppose \(\hat Q^{(k)}\) is produced by
+Algorithm~\ref{alg:simple-irl}. Under
+Assumptions~\ref{assump:policy-gen}--\ref{assump:q-gen} and the boundedness
+condition above, there exists a constant \(C\in(0,\infty)\) such that, with
+probability at least \(1-\delta\),
+\begin{align*}
+\|Q^\mu_{\hat u-g}-\hat Q^{(K)}\|_{2,\mathrm{beh}}
+&\le
+\gamma^K\|Q^\mu_{\hat u-g}-\hat Q^{(0)}\|_{\infty}\\
+&\qquad+
+\frac{1}{1-\gamma}
+\Bigl(
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\Bigr).
+\end{align*}
+\end{lemma}
+
+\begin{proof}
+Write \(Q_{\hat u}:=Q^\mu_{\hat u-g}\), and define the Bellman residual at step
+\(k\) by
+\[
+\xi_k
+:=
+\mathcal T^\mu_{\hat u}\hat Q^{(k-1)}-\hat Q^{(k)}.
+\]
+Since \(Q_{\hat u}\) is the fixed point of \(\mathcal T^\mu_{\hat u}\),
+\[
+Q_{\hat u}-\hat Q^{(k)}
+=
+\mathcal T^\mu_{\hat u}(Q_{\hat u})
+-\mathcal T^\mu_{\hat u}(\hat Q^{(k-1)})
++\xi_k
+=
+\gamma P\mu\bigl(Q_{\hat u}-\hat Q^{(k-1)}\bigr)+\xi_k.
+\]
+Taking sup norms and using that \(P\mu\) is a contraction in
+\(\|\cdot\|_\infty\),
+\[
+\|Q_{\hat u}-\hat Q^{(k)}\|_\infty
+\le
+\gamma\|Q_{\hat u}-\hat Q^{(k-1)}\|_\infty
++\|\xi_k\|_\infty.
+\]
+Iterating yields the standard inexact Picard recursion
+\begin{equation}
+\label{eq:picard-unroll}
+\|Q_{\hat u}-\hat Q^{(K)}\|_\infty
+\le
+\gamma^K\|Q_{\hat u}-\hat Q^{(0)}\|_\infty
++
+\sum_{j=1}^K \gamma^{K-j}\|\xi_j\|_\infty.
+\end{equation}
+Since \(\nu_\pi\) is a probability measure,
+\(\|f\|_{2,\mathrm{beh}}\le \|f\|_\infty\), it suffices to control
+\(\|\xi_j\|_\infty\).
+
+Fix \(j\in[K]\). By Lemma~\ref{lemma::periter},
+\[
+\|\mathcal T^\mu_{\hat u}\hat Q^{(j-1)}-\hat Q^{(j)}\|_{2,\mathrm{beh}}
+\le
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\]
+with probability at least \(1-\delta/(2K)\), where the last term uses
+Lemma~\ref{lemma::KLell2} and absorbs the bounded-logit constant into \(C\).
+Under the boundedness condition above, this is precisely the standard
+population Bellman-residual control used in the sup-norm FQE argument of
+\citet{munos2008finite}; equivalently, one may state
+Assumption~\ref{assump:q-gen} directly in the Picard norm, or replace
+\(\varepsilon_{\mathcal F}\) by the weighted inherent Bellman error of
+\citet{van2025fitted}. Thus, after enlarging \(C\) if necessary, we may write
+\[
+\|\xi_j\|_\infty
+\le
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\]
+simultaneously for all \(j\in[K]\) on an event of probability at least
+\(1-\delta\), by a union bound over \(j=1,\dots,K\). Substituting this into
+\eqref{eq:picard-unroll} and summing the geometric series gives
+\[
+\|Q_{\hat u}-\hat Q^{(K)}\|_\infty
+\le
+\gamma^K\|Q_{\hat u}-\hat Q^{(0)}\|_\infty
++
+\frac{1}{1-\gamma}
+\Bigl(
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\Bigr).
+\]
+Finally,
+\(
+\|Q_{\hat u}-\hat Q^{(K)}\|_{2,\mathrm{beh}}
+\le
+\|Q_{\hat u}-\hat Q^{(K)}\|_\infty
+\),
+which proves the claim.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:pqr-fqe}]
+Apply Theorem~\ref{thm:reward-recovery} with \(\hat Q=\hat Q^{(K)}\):
+\begin{align*}
+\|r^\star-\hat r\|_{2,\mathrm{beh}}
+&\le
+\bigl(1+\sqrt{C_{\mu/\pi}}\bigr)
+\Bigg\{
+\|Q^\mu_{\hat u-g}-\hat Q^{(K)}\|_{2,\mathrm{beh}}\\
+&\qquad\qquad+
+\left(
+1+\frac{\gamma\sqrt{C_{\nu_\pi P/d_\mu}C_{d_\mu/\rho}C_{\mu/\pi}}}{1-\gamma}
+\right)
+\|u^\star-\hat u\|_{2,\mathrm{beh}}
+\Bigg\}.
+\end{align*}
+By Lemma~\ref{lem:fqe-bound},
+\begin{align*}
+\|Q^\mu_{\hat u-g}-\hat Q^{(K)}\|_{2,\mathrm{beh}}
+&\le
+\gamma^K\|Q^\mu_{\hat u-g}-\hat Q^{(0)}\|_{\infty}\\
+&\qquad+
+\frac{1}{1-\gamma}
+\Bigl(
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\Bigr).
+\end{align*}
+Moreover, Lemma~\ref{lemma::KLell2} gives
+\[
+\|u^\star-\hat u\|_{2,\mathrm{beh}}
+\le
+C\,\hat\rho_\pi(n,\delta/2)
+\]
+with probability at least \(1-\delta/2\). Substituting these two bounds into
+Theorem~\ref{thm:reward-recovery}, and absorbing all \(B\)-dependent constants
+into \(C\), yields
+\begin{align*}
+\|r^\star-\hat r\|_{2,\mathrm{beh}}
+&\le
+\bigl(1+\sqrt{C_{\mu/\pi}}\bigr)
+\Bigg\{
+\gamma^K\|\hat Q^{(0)}-Q^\mu_{\hat u-g}\|_{\infty}
++
+\frac{1}{1-\gamma}
+\Bigl(
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
+\Bigr)\\
+&\qquad\qquad+
+\left(
+C
++\frac{\gamma\sqrt{C_{\nu_\pi P/d_{\mu}}C_{d_\mu/\rho}C_{\mu/\pi}}}{1-\gamma}
+\right)
+\hat\rho_\pi(n,\delta/2)
+\Bigg\},
+\end{align*}
+with probability at least \(1-\delta\), after a final union bound. This is the
+claimed result.
+\end{proof}
+
+\section{Least-Squares Generalization Tool}
+\label{appendix::LSE}
+
+The following theorem is, up to notation, equivalent to Theorem 5.2 in
+\cite{koltchinskii2011oracle}.
+
+\begin{theorem}[Theorem 5.2 in \cite{koltchinskii2011oracle}]
+\label{thm:ls-erm-rad}
+Let \(\mathcal G\) be a convex class of bounded functions and let \(\hat g\)
+denote the least squares estimator of the regression function
+\[
+\hat g \;:=\; \arg\min_{g\in\mathcal G}\ \frac{1}{n}\sum_{j=1}^n (Y_j - g(X_j))^2,
+\]
+where each \(Y_j\) is almost surely uniformly bounded.
+
+Then, there exist constants \(K>0\), \(C>0\) such that for all \(t>0\),
+\[
+\mathbb P\!\left\{
+\|\hat g - g^\star\|_{2}^2
+\;\ge\;
+\inf_{g\in\mathcal G}\|g - g^\star\|_{2}^2
+\;+\; K\Bigl(\hat r_{\mathcal G}(n)^2 + \tfrac{t}{n}\Bigr)
+\right\}
+\;\le\; C e^{-t},
+\]
+where
+\[
+\hat r_{\mathcal G}(n)
+\;:=\;\inf\Bigl\{r>0:\ \hat{\mathfrak{R}}_n(\mathcal G,r)\ \lesssim\ r^2\Bigr\},
+\qquad
+\hat{\mathfrak{R}}_n(\mathcal G,r)
+:= \E_{\varepsilon}\!\left[
+\sup_{\substack{g,h\in\mathcal G:\,\|g-h\|_2 \le r}}
+\frac{1}{n}\sum_{i=1}^n \varepsilon_i\{g-h\}(X_i)
+\right].
+\]
+\end{theorem}
+
+We use the following corollary in the one-step regression analysis.
+
+\begin{corollary}[PAC form; well-specified]
+\label{cor::excessLS}
+Under the conditions of Theorem~\ref{thm:ls-erm-rad} and assuming
+\(g^\star \in \mathcal G\), for any \(\delta\in(0,1)\), with probability at
+least \(1-\delta\),
+\[
+\|\hat g - g^\star\|_{2}^2
+\;\le\;
+K\Bigl(\hat r_{\mathcal G}(n)^2 + \tfrac{1}{n}\log\tfrac{1}{\delta}\Bigr).
+\]
+\end{corollary}
+
+\begin{proof}
+By Theorem~\ref{thm:ls-erm-rad}, for all \(t>0\),
+\[
+\Pr\!\left\{
+\|\hat g-g^\star\|_{2}^2
+\;\ge\; \inf_{g\in\mathcal{G}}\|g-g^\star\|_{2}^2
++ K\!\left(\hat r_{\mathcal{G}}(n)^2+\tfrac{t}{n}\right)
+\right\}\le C e^{-t}.
+\]
+Under \(g^\star\in\mathcal{G}\), the infimum is \(0\). Set
+\(t=\log(C/\delta)\) so that \(Ce^{-t}=\delta\). Then with probability at
+least \(1-\delta\),
+\[
+\|\hat g-g^\star\|_{2}^2
+\;\le\; K\!\left(\hat r_{\mathcal{G}}(n)^2+\tfrac{1}{n}\log\tfrac{C}{\delta}\right)
+\;\le\; K'\!\left(\hat r_{\mathcal{G}}(n)^2+\tfrac{1}{n}\log\tfrac{1}{\delta}\right),
+\]
+absorbing \(\log C\) into \(K'\).
+\end{proof}

@@ -1,0 +1,18 @@
+{
+  "label_counts": {
+    "limitation": 9,
+    "mechanism_only": 4,
+    "promote_main": 12,
+    "validation_control": 3
+  },
+  "n_appendix_support": 0,
+  "n_organic_promote_main": 12,
+  "n_promote_main": 12,
+  "results_dir": "<project-root>/FQE_calibration_neurips/results/rescue_final",
+  "thresholds": {
+    "raw_correlation": 0.0,
+    "relative_bellman_calibration_error": 0.95,
+    "relative_true_v_mse": 0.98,
+    "true_v_win_rate": 0.6
+  }
+}

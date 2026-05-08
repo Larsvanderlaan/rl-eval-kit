@@ -1,0 +1,105 @@
+{
+  "baseline_learners": [
+    "temporal_rf_fqe"
+  ],
+  "calibration_error_bins": 30,
+  "calibration_error_folds": 5,
+  "calibration_error_min_bin_size": 50,
+  "calibration_protocols": [
+    "cross"
+  ],
+  "calibration_targets": [
+    "value_bellman"
+  ],
+  "calibrator_params": {
+    "bin_strategy": "quantile",
+    "min_bin_size": 15,
+    "n_bins": 10,
+    "value_calibration_iterations": 6
+  },
+  "calibrators": [
+    "linear",
+    "isotonic"
+  ],
+  "compute_true_q_mse": false,
+  "coverage_settings": [
+    "moderate"
+  ],
+  "cross_folds": 5,
+  "current_retrain_learner_params": {
+    "all": {
+      "prediction_distortion": {
+        "clip": 50.0,
+        "kind": "none"
+      }
+    }
+  },
+  "current_reward_shift_intercept": 2.0,
+  "current_reward_shift_scale": 1.5,
+  "diagnostic_test_transitions": 2500,
+  "direct_true_v_rollout": true,
+  "extrapolation_scale": 0.0,
+  "gamma": 0.95,
+  "horizon": 80,
+  "importance_weight_clip": 20.0,
+  "importance_weight_scheme": "action_ratio",
+  "initial_eval_states": 500,
+  "learner_params": {
+    "random_feature_fqe": {
+      "bandwidth": 0.9,
+      "n_components": 80,
+      "n_iters": 30,
+      "ridge": 0.01
+    }
+  },
+  "learner_variants": {
+    "temporal_rf_fqe": {
+      "base_learner": "random_feature_fqe",
+      "calibration_difficulty": "temporal_reward_shift",
+      "learner_quality_regime": "temporally_shifted",
+      "main_figure_role": "main",
+      "params": {
+        "bandwidth": 0.9,
+        "n_components": 80,
+        "n_iters": 30,
+        "ridge": 0.01
+      }
+    }
+  },
+  "misspecification": "none",
+  "n_actions": 3,
+  "normalize_importance_weights": true,
+  "oracle_rollouts": 500,
+  "policy_shift": {
+    "extrapolation": 1.7,
+    "good": 0.1,
+    "moderate": 0.55,
+    "severe": 1.25
+  },
+  "recent_calibration_policy": "behavior",
+  "recent_current_sizes": [
+    100
+  ],
+  "reference_shift_scale": 0.0,
+  "replication_seed_stride": 1000000,
+  "replications": 100,
+  "reward_noise_settings": [
+    0.08
+  ],
+  "runner": "temporal_reward_shift",
+  "sample_sizes": [
+    2000
+  ],
+  "seed": 3000001,
+  "split_comparators": [],
+  "split_fractions": [],
+  "state_dimensions": [
+    5
+  ],
+  "temporal_calibration_kind": "bellman",
+  "test_transitions": 500,
+  "transition_noise": 0.12,
+  "true_q_rollouts_per_state": 1,
+  "true_v_rollouts_per_state": 1,
+  "value_calibration_iterations": 6
+}
