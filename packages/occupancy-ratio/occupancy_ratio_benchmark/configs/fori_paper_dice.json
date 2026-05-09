@@ -1,0 +1,44 @@
+{
+  "profile": "smoke",
+  "settings": [
+    "discrete_grid",
+    "linear_gaussian"
+  ],
+  "estimators": [
+    "oracle",
+    "boosted_tree_stable",
+    "neural_network_stable",
+    "neural_network_google_parity",
+    "google_dualdice_neural"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "sample_sizes": [
+    500
+  ],
+  "gammas": [
+    0.9,
+    0.95
+  ],
+  "linear_gaussian_policy_shifts": [
+    1.0,
+    2.0
+  ],
+  "include_google_dual_dice": true,
+  "boosted_num_iterations": 40,
+  "boosted_mcmc_samples": 24,
+  "neural_num_iterations": 40,
+  "neural_gradient_steps_per_iteration": 4,
+  "neural_mcmc_samples": 24,
+  "neural_action_steps": 500,
+  "neural_transition_steps": 700,
+  "google_num_updates": 1000,
+  "google_batch_size": 128,
+  "source_state_correction_mode": "auto",
+  "estimator_timeout_sec": 600,
+  "resume": true,
+  "write_plots": true
+}
