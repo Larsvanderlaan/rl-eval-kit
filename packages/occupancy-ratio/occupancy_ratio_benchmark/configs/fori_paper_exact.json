@@ -1,0 +1,45 @@
+{
+  "profile": "medium",
+  "settings": [
+    "discrete_chain",
+    "discrete_grid"
+  ],
+  "estimators": [
+    "oracle",
+    "boosted_tree_stable",
+    "boosted_tree_transition_norm",
+    "boosted_tree_calibrated",
+    "neural_network_stable",
+    "neural_network_transition_norm",
+    "neural_network_calibrated"
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "sample_sizes": [
+    500,
+    2000
+  ],
+  "gammas": [
+    0.5,
+    0.9,
+    0.95,
+    0.99
+  ],
+  "include_google_dual_dice": false,
+  "boosted_num_iterations": 80,
+  "boosted_mcmc_samples": 48,
+  "neural_num_iterations": 60,
+  "neural_gradient_steps_per_iteration": 5,
+  "neural_mcmc_samples": 32,
+  "neural_action_steps": 700,
+  "neural_transition_steps": 900,
+  "source_state_correction_mode": "auto",
+  "estimator_timeout_sec": 600,
+  "resume": true,
+  "write_plots": true
+}

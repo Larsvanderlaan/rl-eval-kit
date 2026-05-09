@@ -1,0 +1,2109 @@
+\documentclass{article}
+
+\usepackage{iclr2026_conference,times}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{microtype}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{xurl}
+\usepackage[colorlinks=true,citecolor=blue,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\sS}{\mathcal{S}}
+\newcommand{\sA}{\mathcal{A}}
+\newcommand{\sX}{\mathcal{X}}
+\newcommand{\sZ}{\mathcal{Z}}
+\newcommand{\sF}{\mathcal{F}}
+\newcommand{\sH}{\mathcal{H}}
+\newcommand{\sM}{\mathcal{M}}
+\newcommand{\mhat}{\widehat m}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\1}{\mathbf{1}}
+\newcommand{\dd}{\mathrm{d}}
+
+\newcommand{\nup}{\nu_\pi^+}
+\newcommand{\cpi}{c_\pi}
+\newcommand{\omegazero}{\omega_0}
+\newcommand{\omegastar}{\omega_{\pi,\gamma}}
+\newcommand{\omegahatzero}{\widehat{\omega}_0}
+\newcommand{\Bpig}{\mathsf{B}_\gamma^\pi}
+\newcommand{\Pback}{P_{\pi,\nu}^{\leftarrow}}
+\newcommand{\Mpi}{\Pback}
+\newcommand{\Ppi}{P_\pi}
+\newcommand{\dinit}{d_0}
+\newcommand{\omegahat}{\widehat{\omega}}
+\newcommand{\omegatilde}{\widetilde{\omega}}
+\newcommand{\chat}{\widehat{c}_\pi}
+\newcommand{\Proj}{\Pi}
+
+\newcommand{\norm}[2][]{\left\lVert #2 \right\rVert_{#1}}
+\newcommand{\LoneNu}[1]{\norm[L^1(\nu)]{#1}}
+\newcommand{\LoneNuPlus}[1]{\norm[L^1(\nu_\pi^+)]{#1}}
+\newcommand{\LtwoNu}[1]{\norm[L^2(\nu)]{#1}}
+\newcommand{\LtwoNuPlus}[1]{\norm[L^2(\nu_\pi^+)]{#1}}
+\newcommand{\Linfty}[1]{\norm[L^\infty]{#1}}
+\newcommand{\abs}[1]{\left\lvert #1 \right\rvert}
+\newcommand{\given}{\,\middle|\,}
+\newcommand{\tvnorm}[1]{\left\lVert #1 \right\rVert_{\mathrm{TV}}}
+\newcommand{\Risk}{\mathcal{R}}
+\newcommand{\Emp}{\mathbb{P}}
+\newcommand{\Clip}{\operatorname{clip}}
+\newcommand{\Rad}{\mathfrak{R}}
+\newcommand{\crit}{\mathfrak{r}}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+
+\title{Fitted Occupancy-Ratio Iteration for Offline Reinforcement Learning}
+\author{Lars van der Laan}
+% \iclrfinalcopy
+
+\begin{document}
+
+\maketitle
+\begin{abstract}
+Discounted occupancy ratios are central to distribution-shift correction and
+statistically efficient off-policy evaluation. Existing DICE-style and minimax
+methods estimate these ratios through Bellman moment restrictions, leading to
+coupled saddle-point problems over ratio models, critic classes, and
+regularization choices. We introduce fitted occupancy-ratio iteration
+(\textsc{FORI}), a fitted-regression analogue of fitted Q evaluation for
+discounted occupancy ratios. \textsc{FORI} estimates two preliminary density
+ratios---one for the target initial distribution and one for the one-step
+target distribution---and then iterates supervised one-step adjoint regressions to
+solve the adjoint Bellman equation for the discounted occupancy ratio. We show
+that the population adjoint Bellman update is contractive in total variation and
+has the discounted occupancy ratio as its unique fixed point. We then prove
+modular finite-sample bounds that separate preliminary density-ratio error, regression
+error, approximation and excess-risk terms, stabilization error, and
+finite-iteration bias. Thus \textsc{FORI} turns discounted occupancy-ratio
+estimation from a coupled minimax problem into a sequence of supervised learning
+problems with transparent error propagation.
+\end{abstract}
+
+\section{Introduction}
+
+Fitted Q evaluation is a standard workhorse of offline reinforcement learning:
+it turns Bellman fixed-point computation into a sequence of supervised
+regression problems
+\citep{lagoudakisParr2003LSPI,ernstEtAl2005TreeBatchRL,antosEtAl2007FQI,munosSzepesvari2008FVI,leEtAl2019BatchPolicyConstraints}.
+Occupancy-ratio estimation has an analogous fixed-point structure, but lacks a
+comparably simple fitted-iteration method. This paper develops such a method
+for estimating the ratios that underlie off-policy evaluation, distribution
+correction, and weighted fitted value methods.
+
+Offline reinforcement learning aims to evaluate and improve policies using a
+fixed collection of transition data, without further interaction with the
+environment. A central obstacle is distribution shift: the state-action
+distribution induced by a target policy can differ substantially from the one
+represented in the offline sample. Occupancy ratios quantify this mismatch and
+provide the reweighting needed for target-policy evaluation, stationary
+distribution correction, efficient doubly robust estimation, and emphatic
+weighting in temporal-difference and fitted value methods
+\citep{thomasBrunskill2016DataEfficientOPE,jiangLi2016DoublyRobust,xieEtAl2019MarginalizedIS,yinWang2020EfficientTabularOPE,kallusUehara2020DoubleRL,liuEtAl2018InfiniteHorizonOPE,hallakMannor2017COPTD,suttonEtAl2016EmphaticTD,geladaBellemare2019CovariateShift}.
+
+Discounted occupancy-ratio estimation is more subtle than ordinary density-ratio
+estimation. A standard density ratio compares two distributions that can be
+sampled from directly
+\citep{tsuboiEtAl2008KLIEP,huangEtAl2006KMM,kanamoriEtAl2009LSIF,nguyenEtAl2010ConvexRatio,menonOng2016DensityRatioClassification,sugiyamaEtAl2012DensityRatioBook}.
+By contrast, the discounted occupancy measure of a target policy is defined
+recursively: it combines the target initial state-action distribution with
+repeated propagation through the environment dynamics under the target policy.
+Relative to the offline sampling law, the corresponding density ratio solves an
+adjoint Bellman fixed-point equation, equivalently a discounted Poisson
+equation
+\citep{puterman1994MDP,meynTweedieGlynn2009MarkovChains,glynnMeyn1996PoissonEquation,nachumEtAl2019DualDICE,liuEtAl2018InfiniteHorizonOPE}.
+The ratio must therefore capture both initial and one-step distribution mismatch and the
+temporal propagation of these mismatches.
+
+Existing DICE-style and minimax methods estimate occupancy ratios by enforcing
+Bellman moment restrictions
+\citep{nachumEtAl2019DualDICE,zhangEtAl2020GenDICE,zhangEtAl2020GradientDICE,yangEtAl2020RegularizedLagrangianDICE,daiEtAl2020CoinDICE,ueharaEtAl2020MWLMQL}.
+These methods are principled and influential, but they typically lead to
+coupled saddle-point objectives involving a ratio model, a critic class,
+regularization, and numerical stabilization. As a result, approximation,
+variance, optimization error, and stabilization bias are handled inside one
+interdependent procedure, rather than through modular supervised-learning
+subproblems with direct predictive losses. In this respect, existing
+occupancy-ratio methods resemble minimax Bellman-residual methods for
+value-function estimation: statistically motivated and theoretically grounded,
+but built around coupled moment optimization rather than the modular
+fitted-regression structure of FQE-style algorithms.
+
+We introduce \textsc{FORI}, fitted occupancy-ratio iteration, a fitted-iteration
+algorithm for discounted occupancy-ratio estimation. The key observation is that
+the discounted occupancy ratio is the unique fixed point of an adjoint Bellman
+equation. \textsc{FORI} uses this structure to replace a coupled saddle-point
+objective with a sequence of supervised one-step adjoint-regression problems. It first
+estimates two preliminary density ratios---one for the target initial
+distribution and one for the one-step target distribution---and then iterates
+fitted one-step adjoint regressions followed by adjoint Bellman updates. Stabilization
+mechanisms such as clipping, normalization, and damping can be applied after
+each fitted update, rather than embedded inside a minimax objective.
+
+The analogy with FQE is direct at the level of fixed-point structure. FQE
+estimates a target value function by iterating a projected Bellman evaluation
+operator; \textsc{FORI} estimates the discounted occupancy ratio by iterating a
+fitted approximation to the adjoint Bellman update. Thus a single coupled saddle-point problem
+is replaced by a sequence of standard prediction problems, while preserving the
+dynamic equation that defines the target ratio.
+
+Our analysis mirrors this modular construction. At the population level, we show
+that the adjoint Bellman update is well posed: it is contractive in
+total-variation norm and has the discounted occupancy ratio as its unique fixed
+point. At the fitted level, we prove that the final error decomposes into
+preliminary density-ratio error, one-step adjoint-regression error, projection and excess-risk
+terms, stabilization error, and finite-iteration bias. The resulting bound
+separates the effects of estimating the initial density ratio and one-step density ratio,
+temporal propagation, function approximation, finite-sample regression, and
+post-update stabilization.
+
+\paragraph{Contributions.} This paper makes the following contributions:
+\begin{enumerate}
+    \item We identify the adjoint Bellman fixed-point equation that
+    characterizes the discounted occupancy ratio, yielding the occupancy-ratio
+    analogue of the Bellman evaluation equation underlying FQE.
+
+    \item We introduce \textsc{FORI}, a fitted-iteration algorithm that reduces
+    discounted occupancy-ratio estimation to two preliminary density-ratio
+    estimation problems and a sequence of supervised one-step adjoint regressions.
+
+    \item We establish population-level well-posedness: the adjoint Bellman
+    update is contractive in total-variation norm and has the discounted
+    occupancy ratio as its unique fixed point.
+
+    \item We provide a fitted-level error decomposition separating first-stage
+    ratio error, one-step adjoint-regression error, projection and excess-risk terms,
+    and finite-iteration bias.
+\end{enumerate}
+
+\subsection{Related Work}
+
+\paragraph{Off-policy evaluation and occupancy corrections.}
+Classical off-policy evaluation uses trajectory or per-decision importance
+ratios to reweight returns, while doubly robust estimators combine importance
+weighting with value-function estimates to reduce variance and retain correction
+terms for distribution shift
+\citep{thomasBrunskill2016DataEfficientOPE,jiangLi2016DoublyRobust,kallusUehara2020DRL_ICML,kallusUehara2020DoubleRL}.
+Marginalized importance sampling replaces trajectory products with marginal
+state or state-action ratios, yielding finite- and infinite-horizon estimators
+based on occupancy or stationary corrections
+\citep{xieEtAl2019MarginalizedIS,yinWang2020EfficientTabularOPE,liuEtAl2018InfiniteHorizonOPE}.
+Related semiparametric work develops efficient and doubly robust estimators for
+off-policy evaluation and related policy-learning targets in Markov decision
+processes
+\citep{kallusUehara2019IntrinsicOPE,kallusUehara2020DRL_ICML,kallusUehara2020DoubleRL,kallusUehara2020PolicyGradients,kallusUehara2020DeterministicPolicyDR,kallusUehara2022BreakingHorizonDRL,kallusUehara2024NaturalPolicies,ueharaShiKallus2022OPEReview,vanDerLaanEtAl2025AutomaticDRL,vanDerLaanKallusBibaut2025ClassificationIRL,vanDerLaanBibautKallus2025EfficientIRL}.
+Stationary-distribution corrections also appear in consistent off-policy TD,
+emphatic weighting, and covariate-shift bootstrapping for value learning
+\citep{hallakMannor2017COPTD,suttonEtAl2016EmphaticTD,geladaBellemare2019CovariateShift,pattersonEtAl2022GeneralizedPBE}.
+\textsc{FORI} also estimates state-action occupancy corrections, but does so
+through a fitted adjoint-Bellman iteration built from one-step density-ratio
+estimation and supervised one-step adjoint regression.
+
+\paragraph{DICE-style and minimax weight estimation.}
+DICE-style methods estimate distribution corrections by enforcing Bellman
+moment restrictions through saddle-point, minimax, or temporal-difference
+objectives. DualDICE estimates discounted distribution corrections without
+requiring behavior-policy probabilities or products of per-step importance
+ratios \citep{nachumEtAl2019DualDICE}. GenDICE and GradientDICE develop
+generalized objectives and optimization procedures for stationary distribution
+correction and off-policy evaluation
+\citep{zhangEtAl2020GenDICE,zhangEtAl2020GradientDICE}. Related approaches
+include infinite-horizon density-ratio estimation, minimax weight and
+value-function learning, regularized-Lagrangian formulations, CoinDICE
+confidence intervals, and the regression-based AVG-DICE estimator
+\citep{liuEtAl2018InfiniteHorizonOPE,ueharaEtAl2020MWLMQL,
+ueharaEtAl2021FiniteSampleMinimax,yangEtAl2020RegularizedLagrangianDICE,
+daiEtAl2020CoinDICE,cheEtAl2025AVGDICE}. DICE-style corrections have also been
+used for policy optimization, constrained control, and imitation learning,
+including AlgaeDICE, ValueDICE, OptiDICE, COptiDICE, SMODICE, and LobsDICE
+\citep{nachumEtAl2019AlgaeDICE,kostrikovEtAl2020ValueDICE,
+leeEtAl2021OptiDICE,leeEtAl2022COptiDICE,maEtAl2022SMODICE,
+kimEtAl2022LobsDICE}.
+
+These methods are occupancy-ratio analogues of minimax Bellman-residual methods
+for value estimation: they impose global Bellman moment conditions through
+coupled optimization over ratios and critics
+\citep{liuEtAl2018InfiniteHorizonOPE,nachumEtAl2019DualDICE,
+ueharaEtAl2020MWLMQL,ueharaEtAl2021FiniteSampleMinimax}. \textsc{FORI} keeps
+the same goal---estimating the discounted occupancy ratio without trajectory
+importance products---but uses a different computational principle. Instead of
+solving a coupled ratio--critic saddle-point problem, it estimates the initial
+density ratio and one-step density ratio as local nuisance functions and then
+propagates them through the discounted adjoint Bellman equation using supervised
+one-step adjoint regressions. Thus the main error sources are first-stage
+density-ratio error, adjoint-regression error, function-class approximation
+error, finite-iteration bias, and stabilization bias. Our fitted perturbation
+bound isolates these terms explicitly, giving a regression-based counterpart to
+DICE-style minimax estimation.
+
+\paragraph{Fitted Bellman methods.}
+Fitted value iteration and fitted policy evaluation approximate Bellman
+recursions by repeatedly solving supervised regression problems for future values
+or value functions
+\citep{lagoudakisParr2003LSPI,ernstEtAl2005TreeBatchRL,antosEtAl2007FQI,munosSzepesvari2008FVI,leEtAl2019BatchPolicyConstraints}.
+Stationary-weighted FQE and stationary-reweighted soft FQI use stationary ratios
+to align fitted Bellman regression with the contraction geometry of the value or
+soft-optimality operator, while generalized projected Bellman-error objectives
+provide another route to stable off-policy value estimation
+\citep{vanDerLaanKallus2025StationaryWeightedFQE,vanDerLaanKallus2025SoftFQI,pattersonEtAl2022GeneralizedPBE}.
+\textsc{FORI} has the same fitted-iteration structure, but applies it to the
+adjoint Bellman equation for occupancy ratios. Thus the target of the fitted
+recursion is not a value function or Bellman residual, but the density correction
+that transports the offline distribution to the target-policy occupancy
+distribution.
+
+\paragraph{Density-ratio estimation.}
+The preliminary one-step density ratio in \textsc{FORI} can be estimated using standard
+density-ratio or classification-based methods that distinguish one-step
+target-policy successor samples from reference samples. Direct density-ratio
+estimation methods for covariate shift, including KLIEP-style objectives,
+kernel mean matching, least-squares importance fitting, unconstrained LSIF,
+convex-risk and $f$-divergence approaches, and classification-to-density-ratio
+reductions, provide one relevant toolbox
+\citep{tsuboiEtAl2008KLIEP,huangEtAl2006KMM,kanamoriEtAl2009LSIF,nguyenEtAl2010ConvexRatio,menonOng2016DensityRatioClassification,sugiyamaEtAl2012DensityRatioBook}.
+Our theory treats this preliminary fit through an explicit one-step density-ratio error term,
+and is therefore modular with respect to the particular density-ratio estimator
+used.
+
+\section{Problem Setup and Identification}
+
+\subsection{Data Distribution and Target Occupancy}
+
+Let $\sS$ and $\sA$ be measurable state and action spaces. Write
+$\sX=\sS\times\sA$ and $X=(S,A)$. The environment transition kernel and target
+policy induce the state-action Markov kernel
+\[
+    \Ppi(\dd s',\dd a'\mid s,a)
+    =
+    P(\dd s'\mid s,a)\pi(\dd a'\mid s').
+\]
+For any state-action distribution $\mu$, let $\mu\Ppi$ denote its one-step
+pushforward under this kernel.
+
+The data distribution is a probability measure $\nu$ on state-action pairs. It
+may be the marginal law of observed behavior data; the theory uses only this
+marginal law. Let $\mu_0$ be the target initial state distribution, and define
+the target initial state-action distribution by
+\[
+    \dinit(\dd s,\dd a)=\mu_0(\dd s)\pi(\dd a\mid s).
+\]
+For $\gamma\in[0,1)$, define the normalized discounted target occupancy measure
+and its density ratio with respect to $\nu$ by
+\[
+    d_{\pi,\gamma}
+    =
+    (1-\gamma)\sum_{t=0}^{\infty}\gamma^t \dinit \Ppi^t,
+    \qquad
+    \omegastar=\frac{\dd d_{\pi,\gamma}}{\dd \nu}.
+\]
+The ratio $\omegastar$ is the discounted state-action correction that converts
+expectations under the data distribution into expectations under the target
+occupancy measure. Our goal is to estimate this ratio from offline transition
+data.
+\subsection{One-Step Target Distribution and Absolute Continuity}
+
+Given an observed transition with $X_i=(S_i,A_i)\sim\nu$ and
+$S_i'\sim P(\cdot\mid S_i,A_i)$, draw only the target-policy action
+$A_i^+\sim\pi(\cdot\mid S_i')$ and set
+\[
+    X_i^+=(S_i',A_i^+).
+\]
+Then $X_i^+$ has marginal law
+\[
+    \nup=\nu\Ppi,
+\]
+the distribution obtained by applying one target-policy transition to $\nu$.
+
+\begin{assumption}[One-step absolute continuity]
+\label{ass:overlap}
+The target initial distribution and one-step target distribution are absolutely
+continuous with respect to the data distribution:
+\[
+    \dinit\ll\nu,
+    \qquad
+    \nup\ll\nu.
+\]
+\end{assumption}
+
+Under Assumption~\ref{ass:overlap}, define the initial and one-step density
+ratios
+\[
+    \omegazero=\frac{\dd\dinit}{\dd\nu},
+    \qquad
+    \cpi=\frac{\dd\nup}{\dd\nu}.
+\]
+This assumption also implies $d_{\pi,\gamma}\ll\nu$ for every $\gamma<1$; see
+Appendix~\ref{app:overlap}. We use the term \emph{initial density ratio} for
+$\omegazero$, \emph{one-step density ratio} for $\cpi$, and \emph{discounted
+occupancy ratio} for $\omegastar$. The phrase ``one-step'' always refers to the
+pushed-forward marginal law $\nup=\nu\Ppi$, not to a ratio of transition kernels.
+
+\subsection{Identification by an Adjoint Bellman Equation}
+
+For any $\omega\in L^1(\nu)$, define the one-step adjoint regression operator
+\[
+    \Mpi\omega(x)
+    =
+    \E[\omega(X)\mid X^+=x],
+    \qquad
+    X\sim\nu,\quad X^+\mid X\sim\Ppi(\cdot\mid X).
+\]
+This conditional expectation is defined under the joint law of $(X,X^+)$ and is
+$\nup$-almost everywhere defined. Operationally, $\Mpi\omega$ is obtained by
+regressing predecessor weights $\omega(X)$ on successor covariates $X^+$.
+
+The one-step transition of the weighted distribution $\omega\nu$ has density
+\[
+    \frac{\dd((\omega\nu)\Ppi)}{\dd\nu}
+    =
+    \cpi\,\Mpi\omega .
+\]
+Therefore, define the adjoint Bellman update for occupancy ratios by
+\begin{equation}
+\label{eq:operator}
+    \Bpig\omega
+    =
+    (1-\gamma)\omegazero+\gamma\cpi\Mpi\omega .
+\end{equation}
+The discounted occupancy ratio is the fixed point of this update:
+\begin{equation}
+\label{eq:adjoint-bellman}
+    \omegastar
+    =
+    \Bpig\omegastar
+    =
+    (1-\gamma)\omegazero+\gamma\cpi\Mpi\omegastar .
+\end{equation}
+Here $\omegazero$ accounts for the target initial law, $\cpi$ accounts for
+one-step absolute continuity, and $\Mpi$ is the one-step adjoint regression
+operator. This adjoint Bellman equation motivates the fitted algorithm in the
+next section; Section~\ref{sec:main-guarantees} establishes the contraction and
+fixed-point guarantees.
+
+\section{\textsc{FORI}: Fitted Occupancy-Ratio Iteration}
+\label{sec:algorithm}
+
+\subsection{Algorithm}
+
+Let $\omegahatzero$ estimate $\omegazero=\dd\dinit/\dd\nu$, and let
+$\chat$ estimate $\cpi=\dd(\nu\Ppi)/\dd\nu$. \textsc{FORI} applies the adjoint
+Bellman equation by fitted iteration. Starting from an initial estimate
+$\omegahat^{(0)}$, iteration $k$ estimates the one-step adjoint regression
+\[
+    m_k(x)=\E[\omegahat^{(k)}(X)\mid X^+=x]
+\]
+from pairs $(X_i^+,\omegahat^{(k)}(X_i))$, and forms the raw update
+\[
+    \omegatilde^{(k+1)}(x)
+    =
+    (1-\gamma)\omegahatzero(x)
+    +
+    \gamma\chat(x)\mhat_k(x).
+\]
+The next iterate is
+\[
+    \omegahat^{(k+1)}=\Proj(\omegatilde^{(k+1)}),
+\]
+where $\Proj$ is an optional post-hoc stabilization map, such as nonnegativity
+truncation, clipping, normalization, or damping. Thus the only iterative
+learning step is an ordinary supervised regression of predecessor weights on
+successor covariates. The full procedure is summarized in
+Algorithm~\ref{alg:fori}.
+
+When the initial law is known or sampleable, $\omegazero$ can be computed or fit
+from initial state-action samples; otherwise it is an additional density-ratio
+problem relative to $\nu$. The one-step density ratio $\cpi$ can be estimated from
+successor samples $\{X_i^+\}$ and reference samples $\{X_i\}$ using any
+density-ratio or classification-based method.
+
+\begin{algorithm}[t]
+\caption{\textsc{FORI}: Fitted Occupancy-Ratio Iteration}
+\label{alg:fori}
+\begin{algorithmic}[1]
+\Require Data transitions $\{X_i=(S_i,A_i),S_i'\}_{i=1}^n$, target policy $\pi$, discount $\gamma$, iteration count $K$, projection map $\Proj$
+\State Draw $A_i^+\sim \pi(\cdot\mid S_i')$ and set $X_i^+=(S_i',A_i^+)$ for $i=1,\ldots,n$
+\State Estimate $\omegahatzero\approx \omegazero=\dd\dinit/\dd\nu$
+\State Estimate $\chat\approx \cpi=\dd(\nu\Ppi)/\dd\nu$ using samples $\{X_i^+\}$ and $\{X_i\}$
+\State Initialize $\omegahat^{(0)}$, for example $\omegahat^{(0)}(x)\equiv 1$
+\For{$k=0,\ldots,K-1$}
+    \State Set pseudo-outcomes $Y_i^{(k)}=\omegahat^{(k)}(X_i)$
+    \State Regress $Y_i^{(k)}$ on $X_i^+$ to obtain $\mhat_k(x)\approx \Mpi\omegahat^{(k)}(x)$
+    \State Form the raw adjoint Bellman update
+    \[
+        \omegatilde^{(k+1)}(x)
+        =
+        (1-\gamma)\omegahatzero(x)+\gamma \chat(x)\mhat_k(x)
+    \]
+    \State Set $\omegahat^{(k+1)}=\Proj(\omegatilde^{(k+1)})$
+\EndFor
+\Ensure Final ratio estimate $\omegahat^{(K)}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{First-Stage Density-Ratio Estimation}
+\label{sec:first-stage-ratios}
+
+The fitted iteration requires estimates of two density ratios,
+\[
+    \omegazero=\frac{\dd\dinit}{\dd\nu},
+    \qquad
+    \cpi=\frac{\dd(\nu\Ppi)}{\dd\nu}.
+\]
+Both are ordinary density-ratio estimation problems relative to the data
+distribution $\nu$.
+
+For concreteness, suppose that we have samples from a numerator distribution
+$\rho$ and from the reference distribution $\nu$, and want to estimate
+$r_\rho=\dd\rho/\dd\nu$. A least-squares density-ratio estimator minimizes
+\[
+    \mathcal L_{\mathrm{LS}}(r)
+    =
+    \frac12 \int r(x)^2\,\nu(\dd x)
+    -
+    \int r(x)\,\rho(\dd x)
+\]
+over a chosen function class. At the population level, the unrestricted
+minimizer is $r_\rho$, since
+\[
+    \int h(x) r_\rho(x)\,\nu(\dd x)
+    =
+    \int h(x)\,\rho(\dd x)
+    \qquad
+    \text{for all test functions } h .
+\]
+In practice, these integrals are replaced by empirical averages. For $\cpi$,
+the numerator sample is $\{X_i^+\}_{i=1}^n$ and the reference sample is
+$\{X_i\}_{i=1}^n$. For $\omegazero$, the numerator sample comes from the target
+initial state-action law $\dinit$, when such samples are available.
+
+Other proper density-ratio losses can be used without changing the fitted
+Bellman iteration. For example, logistic classification estimates the ratio by
+discriminating numerator samples from reference samples and converting the
+estimated class probability into a density ratio. More generally, Bregman
+density-ratio losses replace the quadratic objective by another convex scoring
+rule whose population minimizer is again $r_\rho=\dd\rho/\dd\nu$. Thus
+\textsc{FORI} treats $\omegahatzero$ and $\chat$ as first-stage inputs, and is
+modular with respect to the density-ratio learner used to construct them.
+
+\section{Main Guarantees}
+\label{sec:main-guarantees}
+
+We first give the population contraction result and then the fitted-error bound.
+For functions, write
+\[
+    \LoneNu{f}=\int \abs{f(x)}\,\nu(\dd x),
+    \qquad
+    \LoneNuPlus{f}=\int \abs{f(x)}\,\nup(\dd x).
+\]
+The $L^1(\nu)$ norm is the density form of total variation for signed
+perturbations of the data distribution.
+
+\subsection{Population Update and Contraction}
+
+\begin{theorem}[One-step regression representation]
+\label{thm:reverse-regression}
+Assume the overlap condition in Assumption~\ref{ass:overlap}. For every $\omega\in L^1(\nu)$, the one-step adjoint regression operator $\Mpi\omega$ is integrable under $\nup$ and
+\[
+    \frac{\dd((\omega\nu)\Ppi)}{\dd\nu}
+    =
+    \cpi\,\Mpi\omega
+    \qquad \nu\text{-a.e.}
+\]
+Consequently, $\Bpig\omega$ is the density of
+\[
+    (1-\gamma)\dinit+\gamma(\omega\nu)\Ppi
+\]
+with respect to $\nu$.
+\end{theorem}
+
+The theorem gives the population identity behind Algorithm~\ref{alg:fori}. A
+single target-policy propagation of the weighted data distribution $\omega\nu$
+can be written as a one-step adjoint regression, $\Mpi\omega$, followed by multiplication
+by the one-step density ratio $\cpi$.
+
+\begin{theorem}[Contraction and fixed point]
+\label{thm:population-contraction}
+Assume the overlap condition in Assumption~\ref{ass:overlap} and let $\gamma\in[0,1)$. Then
+$\Bpig:L^1(\nu)\to L^1(\nu)$ is well defined and satisfies
+\[
+    \LoneNu{\Bpig\omega-\Bpig\omega'}
+    \leq
+    \gamma\LoneNu{\omega-\omega'}
+    \qquad
+    \text{for all }\omega,\omega'\in L^1(\nu).
+\]
+Moreover, $d_{\pi,\gamma}\ll\nu$, and
+$\omegastar=\dd d_{\pi,\gamma}/\dd\nu$ is the unique fixed point of $\Bpig$ in
+$L^1(\nu)$. For any $\omega\in L^1(\nu)$,
+\[
+    \LoneNu{(\Bpig)^K\omega-\omegastar}
+    \leq
+    \gamma^K\LoneNu{\omega-\omegastar}.
+\]
+\end{theorem}
+
+\paragraph{Proof idea.}
+By Theorem~\ref{thm:reverse-regression}, differences of two updates are densities of
+the propagated signed measure $\gamma\{(\omega-\omega')\nu\}\Ppi$. Markov
+kernels contract total variation, and the total variation of
+$(\omega-\omega')\nu$ is $\LoneNu{\omega-\omega'}$. This gives the
+$\gamma$-contraction. The fixed-point claim follows from the discounted
+occupancy recursion and Banach's contraction theorem.
+
+
+\subsection{Fitted Perturbation Bound}
+
+The population adjoint Bellman update is a $\gamma$-contraction. The fitted
+update follows the same recursion, up to four perturbations: error in the
+initial density ratio, error in the one-step density ratio, error in the one-step adjoint regression,
+and error introduced by the stabilization map.
+
+\begin{assumption}[Projection excess]
+\label{ass:projection-error}
+For each $k=0,\ldots,K-1$,
+\[
+    \LoneNu{\Proj(\omegatilde^{(k+1)})-\omegastar}
+    \leq
+    \LoneNu{\omegatilde^{(k+1)}-\omegastar}
+    +
+    \varepsilon_{\mathrm{proj},k}.
+\]
+\end{assumption}
+
+The term $\varepsilon_{\mathrm{proj},k}$ records any excess error introduced by
+projection. A conservative choice is
+\[
+    \varepsilon_{\mathrm{proj},k}
+    =
+    \LoneNu{\Proj(\omegatilde^{(k+1)})-\omegatilde^{(k+1)}}.
+\]
+If $\Proj$ is nonexpansive around $\omegastar$ in $L^1(\nu)$, then
+$\varepsilon_{\mathrm{proj},k}=0$.
+
+Let $\varepsilon_{\mathrm{init}}$ and $\varepsilon_{\mathrm{step}}$ denote the
+initial density-ratio and one-step density-ratio errors, and let $\varepsilon_{\mathrm{reg},k}$
+denote the $k$th one-step adjoint-regression error. If $B$ bounds the fitted
+one-step adjoint-regression outputs, define
+\[
+    \varepsilon_{\mathrm{reg}}
+    =
+    \max_{0\le k<K}\varepsilon_{\mathrm{reg},k},
+    \qquad
+    \varepsilon_{\mathrm{proj}}
+    =
+    \max_{0\le k<K}\varepsilon_{\mathrm{proj},k},
+\]
+and
+\[
+    \varepsilon_{\mathrm{fit}}
+    =
+    (1-\gamma)\varepsilon_{\mathrm{init}}
+    +
+    \gamma B\varepsilon_{\mathrm{step}}
+    +
+    \gamma\varepsilon_{\mathrm{reg}}
+    +
+    \varepsilon_{\mathrm{proj}}.
+\]
+
+\begin{theorem}[Fitted perturbation bound]
+\label{thm:oracle}
+Assume that the fitted iterates are defined by Algorithm~\ref{alg:fori} and
+that Assumption~\ref{ass:projection-error} holds. Suppose there is an event
+$\mathcal E$ with probability at least $1-\delta$ on which
+\[
+    \LoneNu{\omegahatzero-\omegazero}
+    \leq
+    \varepsilon_{\mathrm{init}},
+    \qquad
+    \LoneNu{\chat-\cpi}
+    \leq
+    \varepsilon_{\mathrm{step}},
+\]
+and, for each $k=0,\ldots,K-1$,
+\[
+    \LoneNuPlus{\mhat_k-\Mpi\omegahat^{(k)}}
+    \leq
+    \varepsilon_{\mathrm{reg},k},
+    \qquad
+    \abs{\mhat_k(x)}\leq B\quad \nu\text{-a.e.}.
+\]
+Then, on $\mathcal E$,
+\[
+    \LoneNu{\omegahat^{(K)}-\omegastar}
+    \leq
+    \gamma^K\LoneNu{\omegahat^{(0)}-\omegastar}
+    +
+    \frac{1-\gamma^K}{1-\gamma}\varepsilon_{\mathrm{fit}}.
+\]
+Consequently, the same bound holds with probability at least $1-\delta$.
+\end{theorem}
+
+\paragraph{Interpretation.}
+Theorem~\ref{thm:oracle} shows that fitted occupancy-ratio iteration inherits the
+stability of the population adjoint Bellman update. The final error consists of
+a finite-iteration term and a geometrically accumulated one-step perturbation.
+The perturbation is modular: preliminary density-ratio estimation, one-step adjoint regression,
+and stabilization each enter through separate error terms. One concrete
+sample-split least-squares instantiation is given in
+Section~\ref{sec:finite-sample-ls}.
+
+
+\subsection{Value Consequences}
+
+For a bounded evaluation function $r:\sX\to\R$, define
+\[
+    V_\gamma^{\mathrm{norm}}(\pi;r)
+    =
+    \int r(x)\,d_{\pi,\gamma}(\dd x),
+    \qquad
+    V^{\mathrm{norm}}(\omega;r)
+    =
+    \int r(x)\omega(x)\,\nu(\dd x).
+\]
+Under the standard unnormalized discounted-return convention, write
+\[
+    V_\gamma^{\mathrm{std}}(\pi;r)
+    =
+    \frac{1}{1-\gamma}V_\gamma^{\mathrm{norm}}(\pi;r),
+    \qquad
+    V^{\mathrm{std}}(\omega;r)
+    =
+    \frac{1}{1-\gamma}V^{\mathrm{norm}}(\omega;r).
+\]
+
+\begin{corollary}[Value error]
+\label{cor:value-error}
+For any $\widehat\omega\in L^1(\nu)$,
+\[
+    \abs{V^{\mathrm{norm}}(\widehat\omega;r)
+    -
+    V_\gamma^{\mathrm{norm}}(\pi;r)}
+    \leq
+    \Linfty{r}\,\LoneNu{\widehat\omega-\omegastar}.
+\]
+Similarly,
+\[
+    \abs{V^{\mathrm{std}}(\widehat\omega;r)
+    -
+    V_\gamma^{\mathrm{std}}(\pi;r)}
+    \leq
+    \frac{\Linfty{r}}{1-\gamma}
+    \LoneNu{\widehat\omega-\omegastar}.
+\]
+In particular, applying Theorem~\ref{thm:oracle} with
+$\widehat\omega=\omegahat^{(K)}$ gives the corresponding fitted value-error
+bound.
+\end{corollary}
+
+Section~\ref{sec:finite-sample-ls} verifies the component error events in
+Theorem~\ref{thm:oracle} for sample-split least-squares density-ratio fitting and
+one-step adjoint regression with bounded finite-dimensional linear function classes.
+
+\section{Least-Squares Finite-Sample Instantiation}
+\label{sec:finite-sample-ls}
+
+\subsection{Squared-Loss Nuisance Fits}
+
+The fitted perturbation bound in Theorem~\ref{thm:oracle} is modular: it requires
+$L^1(\nu)$ error bounds for the initial density ratio, the one-step density ratio, and each
+one-step adjoint regression. This section gives one concrete sample-split least-squares
+instantiation. We estimate $\omegazero$ and $\cpi$ by least-squares density-ratio
+estimation, and estimate each $\Mpi\omegahat^{(k)}$ by ordinary least-squares
+regression of current predecessor weights on successor covariates.
+
+The two density-ratio nuisances are estimated once and reused across iterations,
+whereas the one-step adjoint regression is updated at each iteration. To obtain an
+explicit finite-sample statement, we use bounded finite-dimensional linear
+function classes and clip the fitted nuisances. Write
+\[
+    \Clip_B(t)=\max\{0,\min\{t,B\}\},
+\]
+applied pointwise to functions.
+
+
+\subsection{Finite-Dimensional Linear-Class Bound}
+
+Consider the bounded linear-function implementation of Algorithm~\ref{alg:fori}.
+The initial density-ratio fit, one-step density-ratio fit, and $k$th one-step adjoint regression use
+finite-dimensional linear classes $\sF_0$, $\sF_c$, and $\sM_k$ with dimensions
+$D_0$, $D_c$, and at most $D_M$, and envelopes $B_0$, $B_c$, and $B_M$. The fitted nuisance functions are
+\[
+    \omegahatzero=\Clip_{B_0}\bar\omega_0,
+    \qquad
+    \chat=\Clip_{B_c}\bar c,
+    \qquad
+    \mhat_k=\Clip_{B_M}\bar m_k .
+\]
+The initial density-ratio estimator uses independent samples of sizes
+$(n_0^\nu,n_0^0)$ from $(\nu,\dinit)$; the one-step density-ratio estimator uses
+independent samples of sizes $(n_c^\nu,n_c^+)$ from $(\nu,\nup)$; and the
+$k$th one-step adjoint regression uses an independent sample block of size $n_k$ from
+the joint law of $(X,X^+)$. Clipping is included because occupancy and preliminary density
+ratios may be heavy-tailed; the bound separates bounded-class estimation error
+from nuisance clipping bias and projection/excess-risk terms.
+
+Fix \(K\ge 1\) and let \(t=\log((K+2)/\delta)\). Define the worst-case
+approximation errors for the two preliminary density-ratio fits and for the
+one-step adjoint-regression steps by
+\[
+\begin{aligned}
+    b_{\mathrm{ratio}}
+    &=
+    \max\left\{
+        \inf_{f\in\sF_0}\LtwoNu{f-\omegazero},
+        \inf_{f\in\sF_c}\LtwoNu{f-\cpi}
+    \right\},\\
+    b_{\mathrm{adj}}
+    &=
+    \max_{0\le k<K}
+    \inf_{m\in\sM_k}
+    \LtwoNuPlus{m-\Mpi\omegahat^{(k)}} .
+\end{aligned}
+\]
+Here \(b_{\mathrm{ratio}}\) measures approximation error in the initial density-ratio and
+one-step density-ratio classes.T he term \(b_{\mathrm{adj}}\) is the inherent adjoint-regression approximation
+error along the fitted iterates. Analogously to inherent Bellman error for value
+approximation, it measures how well the regression classes approximate the
+conditional adjoint component \(\Mpi\omegahat^{(k)}\) appearing in the adjoint
+Bellman update.
+
+Also define
+\[
+\begin{gathered}
+    D_{\mathrm{ratio}}=\max\{D_0,D_c\},
+    \qquad
+    C_{\mathrm{ratio}}
+    =
+    \max\{\|\omegazero\|_{\infty,\nu},\|\cpi\|_{\infty,\nu}\},\\
+    n_{\mathrm{ratio}}
+    =
+    \min\{n_0^\nu,n_0^0,n_c^\nu,n_c^+\},
+    \qquad
+    n_{\mathrm{reg}}
+    =
+    \min_{0\le k<K} n_k .
+\end{gathered}
+\]
+Finally, define the nuisance clipping biases
+\[
+\begin{aligned}
+    \tau_{\mathrm{init}}
+    &=
+    \LoneNu{\Clip_{B_0}\omegazero-\omegazero},
+    \qquad
+    \tau_{\mathrm{step}}
+    =
+    \LoneNu{\Clip_{B_c}\cpi-\cpi},\\
+    \tau_{\mathrm{adj}}
+    &=
+    \max_{0\le k<K}
+    \LoneNuPlus{
+        \Clip_{B_M}(\Mpi\omegahat^{(k)})
+        -
+        \Mpi\omegahat^{(k)}
+    },
+    \qquad
+    \tau_{\mathrm{clip}}
+    =
+    \max\{\tau_{\mathrm{init}},\tau_{\mathrm{step}},\tau_{\mathrm{adj}}\}.
+\end{aligned}
+\]
+Let \(\varepsilon_{\mathrm{proj}}=\max_{0\le k<K}\varepsilon_{\mathrm{proj},k}\),
+where \(\varepsilon_{\mathrm{proj},k}\) is the projection/excess-risk term from
+Assumption~\ref{ass:projection-error}.
+
+For a constant \(A_B<\infty\) depending only on the envelopes
+\(B_0,B_c,B_M,B_\omega\), define
+\begin{equation}
+\label{eq:ls-statistical-floor}
+\begin{aligned}
+    \varepsilon_{\mathrm{LS}}
+    =
+    A_B\Bigg[
+        b_{\mathrm{ratio}}
+        + \gamma b_{\mathrm{adj}}
+        + \sqrt{\frac{C_{\mathrm{ratio}}(D_{\mathrm{ratio}}+t)}
+        {n_{\mathrm{ratio}}}}
+        + \gamma\sqrt{\frac{D_M+t}{n_{\mathrm{reg}}}} \\
+        \qquad
+        + \frac{D_{\mathrm{ratio}}+t}{n_{\mathrm{ratio}}}
+        + \gamma\frac{D_M+t}{n_{\mathrm{reg}}}
+        + \tau_{\mathrm{clip}}
+    \Bigg]
+    +
+    \varepsilon_{\mathrm{proj}} .
+\end{aligned}
+\end{equation}
+The constant \(A_B\) hides only bounded-envelope constants; approximation
+errors, dimensions, sample sizes, nuisance clipping bias, projection/excess-risk
+terms, and the ratio bound \(C_{\mathrm{ratio}}\) remain explicit.
+
+
+\begin{theorem}[Finite-sample least-squares perturbation]
+\label{thm:ls-finite-sample}
+Assume the overlap condition in Assumption~\ref{ass:overlap} and the bounded sample-split least-squares setup
+above. Suppose $C_{\mathrm{ratio}}<\infty$ and
+$0\le \omegahat^{(k)}\le B_\omega$ for $k=0,\ldots,K-1$. Then, with probability
+at least $1-\delta$,
+\[
+    \LoneNu{\omegahat^{(K)}-\omegastar}
+    \le
+    \gamma^K\LoneNu{\omegahat^{(0)}-\omegastar}
+    +
+    \frac{1-\gamma^K}{1-\gamma}\,
+    \varepsilon_{\mathrm{LS}} .
+\]
+If $\omegazero\le B_0$, $\cpi\le B_c$, and
+$0\le \Mpi\omegahat^{(k)}\le B_M$ almost everywhere for each $k$, then the
+corresponding nuisance clipping biases vanish.
+\end{theorem}
+
+The final occupancy-ratio error is therefore the sum of a geometric finite-iteration term
+and a least-squares error floor. The latter contains first-stage density-ratio
+error, one-step adjoint-regression error, approximation error, nuisance clipping bias,
+and projection-excess error. We state Theorem~\ref{thm:ls-finite-sample} with
+worst-case constants across iterations to display the main dependence on these
+terms; sharper componentwise bounds are given in Appendix~\ref{app:least-squares}.
+Other density-ratio losses, model-selection procedures, cross-fitting schemes,
+or controlled data reuse can be handled by verifying the same $L^1$
+component-error conditions used in Theorem~\ref{thm:oracle}.
+
+
+
+% References
+\bibliographystyle{iclr2026_conference}
+\bibliography{refs}
+\appendix
+
+\section{Proofs}
+\label{app:proofs}
+
+For a finite signed measure $\mu$, write $\abs{\mu}$ for its total variation measure and
+\[
+    \tvnorm{\mu}=\abs{\mu}(\sX)
+    =
+    \sup_{\abs{f}\leq 1}\abs{\int f\,\dd\mu}.
+\]
+
+\subsection{Propagation of Absolute Continuity}
+\label{app:overlap}
+
+\begin{lemma}[Propagation of absolute continuity]
+\label{lem:ac-propagation}
+Assume $\nu\Ppi\ll\nu$.
+If a finite signed measure $\mu$ satisfies $\abs{\mu}\ll\nu$, then $\abs{\mu\Ppi}\ll\nu$.
+Consequently, under Assumption~\ref{ass:overlap}, $d_{\pi,\gamma}\ll\nu$ for every $\gamma\in[0,1)$.
+\end{lemma}
+
+\begin{proof}[Proof of Lemma~\ref{lem:ac-propagation}]
+Let $B\subseteq\sX$ be measurable with $\nu(B)=0$.
+Since $\nu\Ppi\ll\nu$,
+\[
+    0=(\nu\Ppi)(B)=\int \Ppi(B\mid x)\,\nu(\dd x).
+\]
+The integrand is nonnegative, so $\Ppi(B\mid x)=0$ for $\nu$-almost every $x$.
+If $\abs{\mu}\ll\nu$, the same null set is also $\abs{\mu}$-null, and therefore
+\[
+    (\abs{\mu}\Ppi)(B)=\int \Ppi(B\mid x)\,\abs{\mu}(\dd x)=0.
+\]
+For every measurable $A$, $\abs{\mu\Ppi}(A)\leq(\abs{\mu}\Ppi)(A)$; this follows by taking finite partitions of $A$ in the definition of total variation and applying the triangle inequality under the integral.
+Thus $\abs{\mu\Ppi}(B)=0$ for every $\nu$-null set $B$.
+Hence $\abs{\mu\Ppi}\ll\nu$.
+Under Assumption~\ref{ass:overlap}, $\dinit\ll\nu$. Applying the first part inductively
+with $\mu=\dinit\Ppi^t$ shows $\dinit\Ppi^t\ll\nu$ for every $t\geq 0$.
+The countable nonnegative mixture
+\[
+    d_{\pi,\gamma}
+    =
+    (1-\gamma)\sum_{t=0}^\infty \gamma^t\dinit\Ppi^t
+\]
+is therefore also absolutely continuous with respect to $\nu$.
+\end{proof}
+
+\subsection{One-Step Regression Representation}
+
+\begin{proof}[Proof of Theorem~\ref{thm:reverse-regression}]
+Let $J$ be the joint law of $(X,X^+)$ generated by $X\sim\nu$ and $X^+\mid X\sim\Ppi(\cdot\mid X)$.
+The second marginal of $J$ is $\nup=\nu\Ppi$.
+Since $\omega\in L^1(\nu)$,
+\[
+    \E_J[\abs{\omega(X)}]=\LoneNu{\omega}<\infty,
+\]
+so the conditional expectation $\Mpi\omega(x)=\E[\omega(X)\mid X^+=x]$ exists as a $\nup$-almost-everywhere equivalence class in $L^1(\nup)$.
+Choose any measurable version and extend it by zero outside a chosen full-$\nup$-measure set.
+By Jensen's inequality,
+\[
+    \LoneNuPlus{\Mpi\omega}
+    =
+    \E_J[\abs{\E[\omega(X)\mid X^+]}]
+    \leq
+    \E_J[\abs{\omega(X)}]
+    =
+    \LoneNu{\omega}.
+\]
+For any measurable $B\subseteq\sX$,
+\[
+\begin{aligned}
+    \int_B \cpi(x)\Mpi\omega(x)\,\nu(\dd x)
+    &=
+    \int_B \Mpi\omega(x)\,\nup(\dd x)\\
+    &=
+    \E_J[\Mpi\omega(X^+)\1\{X^+\in B\}]\\
+    &=
+    \E_J[\omega(X)\1\{X^+\in B\}]\\
+    &=
+    \int \Ppi(B\mid x)\omega(x)\,\nu(\dd x)\\
+    &=
+    ((\omega\nu)\Ppi)(B).
+\end{aligned}
+\]
+The equality holds for every measurable $B$, so $\cpi\,\Mpi\omega$ is a Radon--Nikodym derivative of $((\omega\nu)\Ppi)$ with respect to $\nu$.
+If a different $\nup$-almost-everywhere version of $\Mpi\omega$ is chosen, then $\cpi\,\Mpi\omega$ changes only on a $\nu$-null set because $\nup(\dd x)=\cpi(x)\nu(\dd x)$.
+The final statement follows by adding the initial measure:
+\[
+    (1-\gamma)\dinit+\gamma(\omega\nu)\Ppi
+    \ll\nu,
+    \qquad
+    \frac{\dd[(1-\gamma)\dinit+\gamma(\omega\nu)\Ppi]}{\dd\nu}
+    =
+    (1-\gamma)\omegazero+\gamma\cpi\,\Mpi\omega.
+\]
+\end{proof}
+
+\subsection{Population Contraction}
+
+\begin{proof}[Proof of Theorem~\ref{thm:population-contraction}]
+First, Theorem~\ref{thm:reverse-regression} and the bound
+\[
+    \LoneNu{\cpi\,\Mpi\omega}
+    =
+    \int \abs{\Mpi\omega(x)}\,\nup(\dd x)
+    \leq
+    \LoneNu{\omega}
+\]
+show that $\Bpig\omega\in L^1(\nu)$ whenever $\omega\in L^1(\nu)$.
+Thus $\Bpig:L^1(\nu)\to L^1(\nu)$ is well defined.
+
+For $\omega,\omega'\in L^1(\nu)$, define the finite signed measure
+\[
+    \mu=(\omega-\omega')\nu.
+\]
+By Theorem~\ref{thm:reverse-regression}, $\Bpig\omega-\Bpig\omega'$ is the density of $\gamma\mu\Ppi$ with respect to $\nu$.
+Therefore
+\[
+    \LoneNu{\Bpig\omega-\Bpig\omega'}
+    =
+    \gamma\tvnorm{\mu\Ppi}.
+\]
+It remains to show $\tvnorm{\mu\Ppi}\leq\tvnorm{\mu}$.
+Using the variational characterization of total variation for finite signed measures,
+\[
+    \tvnorm{\mu\Ppi}
+    =
+    \sup_{\abs{f}\leq 1}\abs{\int f(y)(\mu\Ppi)(\dd y)}
+    =
+    \sup_{\abs{f}\leq 1}\abs{\int \left[\int f(y)\Ppi(\dd y\mid x)\right]\mu(\dd x)}.
+\]
+For every measurable $f$ with $\abs{f}\leq 1$, the function
+\[
+    \Ppi f(x)=\int f(y)\Ppi(\dd y\mid x)
+\]
+also satisfies $\abs{\Ppi f(x)}\leq 1$.
+Thus
+\[
+    \tvnorm{\mu\Ppi}
+    \leq
+    \sup_{\abs{g}\leq 1}\abs{\int g(x)\,\mu(\dd x)}
+    =
+    \tvnorm{\mu}
+    =
+    \LoneNu{\omega-\omega'}.
+\]
+The contraction follows.
+
+By Lemma~\ref{lem:ac-propagation}, $d_{\pi,\gamma}\ll\nu$.
+The measure $d_{\pi,\gamma}$ satisfies the discounted occupancy recursion
+\[
+\begin{aligned}
+    (1-\gamma)\dinit+\gamma d_{\pi,\gamma}\Ppi
+    &=
+    (1-\gamma)\dinit
+    +
+    \gamma(1-\gamma)\sum_{t=0}^\infty \gamma^t\dinit\Ppi^{t+1}\\
+    &=
+    (1-\gamma)\sum_{t=0}^\infty \gamma^t\dinit\Ppi^t
+    =
+    d_{\pi,\gamma}.
+\end{aligned}
+\]
+Therefore $\omegastar=\dd d_{\pi,\gamma}/\dd\nu$ is a fixed point of $\Bpig$.
+
+To prove uniqueness, let $u,v\in L^1(\nu)$ be fixed points.
+Then
+\[
+    \LoneNu{u-v}
+    =
+    \LoneNu{\Bpig u-\Bpig v}
+    \leq
+    \gamma\LoneNu{u-v}.
+\]
+Since $\gamma<1$, $\LoneNu{u-v}=0$, so $u=v$ in $L^1(\nu)$.
+The convergence bound follows by applying the contraction recursively:
+\[
+    \LoneNu{(\Bpig)^K\omega-\omegastar}
+    =
+    \LoneNu{(\Bpig)^K\omega-(\Bpig)^K\omegastar}
+    \leq
+    \gamma^K\LoneNu{\omega-\omegastar}.
+\]
+\end{proof}
+
+\subsection{Deterministic Fitted Perturbation Bound}
+
+\begin{proof}[Proof of Theorem~\ref{thm:oracle}]
+Work on the event $\mathcal E$ from the theorem statement.
+For iteration $k$,
+\[
+    \omegatilde^{(k+1)}
+    =
+    (1-\gamma)\omegahatzero+\gamma\chat\,\mhat_k,
+    \qquad
+    \Bpig\omegahat^{(k)}
+    =
+    (1-\gamma)\omegazero+\gamma\cpi\,\Mpi\omegahat^{(k)}.
+\]
+Subtracting gives
+\[
+\begin{aligned}
+    \omegatilde^{(k+1)}-\Bpig\omegahat^{(k)}
+    &=
+    (1-\gamma)(\omegahatzero-\omegazero)\\
+    &\quad+
+    \gamma(\chat-\cpi)\mhat_k\\
+    &\quad+
+    \gamma\cpi(\mhat_k-\Mpi\omegahat^{(k)}).
+\end{aligned}
+\]
+The component bounds and $\abs{\mhat_k}\le B$ imply
+\[
+\begin{aligned}
+    \LoneNu{\omegatilde^{(k+1)}-\Bpig\omegahat^{(k)}}
+    &\le
+    (1-\gamma)\varepsilon_{\mathrm{init}}
+    +\gamma B\varepsilon_{\mathrm{step}}
+    +\gamma\LoneNu{\cpi(\mhat_k-\Mpi\omegahat^{(k)})}\\
+    &=
+    (1-\gamma)\varepsilon_{\mathrm{init}}
+    +\gamma B\varepsilon_{\mathrm{step}}
+    +\gamma\LoneNuPlus{\mhat_k-\Mpi\omegahat^{(k)}}\\
+    &\le
+    (1-\gamma)\varepsilon_{\mathrm{init}}
+    +\gamma B\varepsilon_{\mathrm{step}}
+    +\gamma\varepsilon_{\mathrm{reg},k},
+\end{aligned}
+\]
+where the equality uses $\nup(\dd x)=\cpi(x)\nu(\dd x)$.
+Combining this bound with Assumption~\ref{ass:projection-error} and the
+population contraction in Theorem~\ref{thm:population-contraction} yields
+\[
+\begin{aligned}
+    \LoneNu{\omegahat^{(k+1)}-\omegastar}
+    &\le
+    \LoneNu{\omegatilde^{(k+1)}-\omegastar}
+    +\varepsilon_{\mathrm{proj},k}\\
+    &\le
+    \LoneNu{\Bpig\omegahat^{(k)}-\omegastar}
+    +(1-\gamma)\varepsilon_{\mathrm{init}}
+    +\gamma B\varepsilon_{\mathrm{step}}
+    +\gamma\varepsilon_{\mathrm{reg},k}
+    +\varepsilon_{\mathrm{proj},k}\\
+    &\le
+    \gamma\LoneNu{\omegahat^{(k)}-\omegastar}
+    +(1-\gamma)\varepsilon_{\mathrm{init}}
+    +\gamma B\varepsilon_{\mathrm{step}}
+    +\gamma\varepsilon_{\mathrm{reg},k}
+    +\varepsilon_{\mathrm{proj},k}.
+\end{aligned}
+\]
+The additive term is at most $\varepsilon_{\mathrm{fit}}$ by definition.
+Unrolling the recursion gives
+\[
+\begin{aligned}
+    \LoneNu{\omegahat^{(K)}-\omegastar}
+    &\le
+    \gamma^K\LoneNu{\omegahat^{(0)}-\omegastar}
+    +
+    \sum_{k=0}^{K-1}\gamma^{K-1-k}\varepsilon_{\mathrm{fit}}\\
+    &=
+    \gamma^K\LoneNu{\omegahat^{(0)}-\omegastar}
+    +
+    \frac{1-\gamma^K}{1-\gamma}\varepsilon_{\mathrm{fit}}.
+\end{aligned}
+\]
+This proves the deterministic bound on $\mathcal E$. Since this event has
+probability at least $1-\delta$ by hypothesis, the displayed bound
+holds with the same probability.
+\end{proof}
+
+\subsection{Value Error}
+
+\begin{proof}[Proof of Corollary~\ref{cor:value-error}]
+Since $d_{\pi,\gamma}=\omegastar\nu$,
+\[
+    V^{\mathrm{norm}}(\widehat\omega;r)-V_\gamma^{\mathrm{norm}}(\pi;r)
+    =
+    \int r(x)(\widehat\omega(x)-\omegastar(x))\,\nu(\dd x).
+\]
+Taking absolute values gives
+\[
+    \abs{V^{\mathrm{norm}}(\widehat\omega;r)-V_\gamma^{\mathrm{norm}}(\pi;r)}
+    \leq
+    \Linfty{r}\LoneNu{\widehat\omega-\omegastar}.
+\]
+The standard-value inequality follows by dividing both sides by $1-\gamma$.
+\end{proof}
+
+
+\section{Least-Squares Instantiation Proofs}
+\label{app:least-squares}
+
+\subsection{Least-Squares Risk Setup}
+
+Let $\Clip_B(t)=\max\{0,\min\{t,B\}\}$ and apply it pointwise to functions.
+Write $\Emp_n^\mu h$ for the empirical average of $h$ over $n$ independent observations from a law $\mu$.
+For the initial-law correction, the population LSIF risk is
+\begin{equation}
+\label{eq:initial-lsif-risk}
+    \Risk_0(f)
+    =
+    \frac12\E_\nu[f(X)^2]-\E_{\dinit}[f(X)].
+\end{equation}
+Its empirical analogue uses independent blocks from $\nu$ and $\dinit$:
+\[
+    \widehat\Risk_0(f)
+    =
+    \frac12\Emp_{n_0^\nu}^{\nu} f^2
+    -
+    \Emp_{n_0^0}^{0} f .
+\]
+For the one-step density ratio, the population LSIF risk \citep{kanamoriEtAl2009LSIF} is
+\begin{equation}
+\label{eq:lsif-risk}
+    \Risk_c(f)
+    =
+    \frac12\E_\nu[f(X)^2]-\E_{\nup}[f(X)].
+\end{equation}
+Its empirical analogue uses one block sampled from $\nu$ and one pushed block sampled from $\nup$:
+\[
+    \widehat\Risk_c(f)
+    =
+    \frac12\Emp_{n_c^\nu}^{\nu} f^2
+    -
+    \Emp_{n_c^+}^{+} f .
+\]
+For iteration $k$, condition on the previous fitted ratio $\omegahat^{(k)}$ and define the regression risk
+\begin{equation}
+\label{eq:regression-risk}
+    \Risk_k(m)
+    =
+    \E\left[
+        \left(m(X^+)-\omegahat^{(k)}(X)\right)^2
+        \given \omegahat^{(k)}
+    \right],
+    \qquad
+    X\sim\nu,\quad X^+\mid X\sim\Ppi(\cdot\mid X).
+\end{equation}
+The population minimizer is $\Mpi\omegahat^{(k)}$.
+The empirical risk on an independent block $\{(X_{k,i},X^+_{k,i})\}_{i=1}^{n_k}$ is
+\[
+    \widehat\Risk_k(m)
+    =
+    \Emp_{n_k}\left[
+        \left(m(X_{k,i}^+)-\omegahat^{(k)}(X_{k,i})\right)^2
+    \right].
+\]
+The fitted implementation may use clipped least-squares fits:
+\[
+    \chat=\Clip_{B_c}\bar c,
+    \qquad
+    \omegahatzero=\Clip_{B_0}\bar\omega_0,
+    \qquad
+    \mhat_k=\Clip_{B_M}\bar m_k.
+\]
+The clipping levels make the constants in Theorem~\ref{thm:ls-finite-sample} explicit.
+When the true functions are unbounded, the price is a tail bias term.
+
+\begin{definition}[Least-squares oracle errors]
+\label{def:ls-errors}
+For clipping levels $B_0,B_c,B_M>0$, define
+\[
+    \tau_0(B_0)=\LoneNu{\Clip_{B_0}\omegazero-\omegazero},
+    \qquad
+    \tau_c(B_c)=\LoneNu{\Clip_{B_c}\cpi-\cpi},
+\]
+and, conditionally on $\omegahat^{(k)}$,
+\[
+    \tau_{M,k}(B_M)
+    =
+    \LoneNuPlus{\Clip_{B_M}(\Mpi\omegahat^{(k)})-\Mpi\omegahat^{(k)}}.
+\]
+Let $e_0,e_c,e_{M,k}$ be quantities satisfying
+\[
+\begin{aligned}
+    \LtwoNu{\bar\omega_0-\omegazero}&\le e_0,\\
+    \LtwoNu{\bar c-\cpi}&\le e_c,\\
+    \LtwoNuPlus{\bar m_k-\Mpi\omegahat^{(k)}}&\le e_{M,k}.
+\end{aligned}
+\]
+\end{definition}
+
+\subsection{Empirical Least-Squares Oracle Events}
+
+The next proposition converts empirical least-squares control into the oracle
+errors in Definition~\ref{def:ls-errors}. It is deterministic once the displayed
+uniform-deviation bounds hold.
+
+\begin{proposition}[Empirical minimizers on uniform-deviation events]
+\label{prop:uniform-ls-oracle}
+Assume $\omegazero,\cpi\in L^2(\nu)$ and, conditionally on $\omegahat^{(k)}$, $\Mpi\omegahat^{(k)}\in L^2(\nup)$.
+Let $\sF_0,\sF_c,\sM_k$ be classes of measurable functions and let $\bar\omega_0$, $\bar c$, and $\bar m_k$ minimize the empirical initial LSIF, one-step LSIF, and $k$th squared regression objectives over these classes.
+Define approximation errors
+\[
+\begin{aligned}
+    b_0&=\inf_{f\in\sF_0}\LtwoNu{f-\omegazero},
+    &
+    b_c&=\inf_{f\in\sF_c}\LtwoNu{f-\cpi},\\
+    b_{M,k}&=\inf_{m\in\sM_k}\LtwoNuPlus{m-\Mpi\omegahat^{(k)}}.
+\end{aligned}
+\]
+Let $\xi_0,\xi_c,\xi_{M,k}$ satisfy the uniform-deviation bounds
+\[
+    \sup_{f\in\sF_0}\abs{(\widehat\Risk_0-\Risk_0)(f)}\le\xi_0,
+    \qquad
+    \sup_{f\in\sF_c}\abs{(\widehat\Risk_c-\Risk_c)(f)}\le\xi_c,
+\]
+and, conditionally on $\omegahat^{(k)}$,
+\[
+    \sup_{m\in\sM_k}\abs{(\widehat\Risk_k-\Risk_k)(m)}\le\xi_{M,k}.
+\]
+Then the oracle errors in Definition~\ref{def:ls-errors} hold with
+\[
+    e_0=\sqrt{b_0^2+4\xi_0},
+    \qquad
+    e_c=\sqrt{b_c^2+4\xi_c},
+    \qquad
+    e_{M,k}=\sqrt{b_{M,k}^2+2\xi_{M,k}}.
+\]
+\end{proposition}
+
+\subsection{Localized Critical-Radius Bounds}
+
+The previous proposition is deterministic once uniform-deviation events are supplied.
+For least-squares learners, sharper events are obtained by localizing the empirical process around the target function, following the critical-radius approach of \citet{bartlettEtAl2005LocalRademacher,wainwright2019HighDimensionalStatistics}.
+Let
+\[
+    (q_0,\mu_0,n_0^\mu,B_0)=(\omegazero,\dinit,n_0^0,B_0),
+    \qquad
+    (q_c,\mu_c,n_c^\mu,B_c)=(\cpi,\nup,n_c^+,B_c),
+\]
+and write $q_j=\dd\mu_j/\dd\nu$, $C_j=\|q_j\|_{\infty,\nu}$, and $n_j^\mu$ for the numerator sample size of the $j$th LSIF problem.
+
+\begin{definition}[Admissible localized radii]
+\label{def:critical-radii}
+For $j\in\{0,c\}$, let $\crit_j$ be any radius for which the localized LSIF concentration event in Lemma~\ref{lem:localized-lsif} holds for $\sF_j$, sample sizes $(n_j^\nu,n_j^\mu)$, bound $B_j$, and ratio bound $C_j$.
+For iteration $k$, let $\crit_{M,k}$ be any radius for which the localized regression concentration event in Lemma~\ref{lem:localized-regression} holds for $\sM_k$, sample size $n_k$, and envelope $B_\omega+B_M$.
+\end{definition}
+
+\begin{theorem}[Localized least-squares oracle bound]
+\label{thm:localized-ls-oracle}
+Assume the sample-split least-squares setup above.
+For $j\in\{0,c\}$, assume $C_j<\infty$, $\sF_j\subseteq[0,B_j]$, and $\bar q_j$ is an empirical LSIF minimizer over $\sF_j$, with $\bar q_0=\bar\omega_0$ and $\bar q_c=\bar c$.
+Let
+\[
+    b_j=\inf_{f\in\sF_j}\LtwoNu{f-q_j}.
+\]
+For each $k$, assume $\sM_k\subseteq[0,B_M]$, $0\le \omegahat^{(k)}\le B_\omega$, and $\bar m_k$ is an empirical squared-regression minimizer over $\sM_k$ on an independent block.
+Let
+\[
+    b_{M,k}
+    =
+    \inf_{m\in\sM_k}
+    \LtwoNuPlus{m-\Mpi\omegahat^{(k)}}.
+\]
+Set $t=\log((K+2)/\delta)$.
+There is a universal constant $A<\infty$ such that, with probability at least $1-\delta$, the oracle errors in Definition~\ref{def:ls-errors} hold with
+\[
+    e_j
+    \le
+    A\left[
+        b_j+\crit_j
+        +B_j\sqrt{\frac{t}{n_j^\nu}}
+        +B_j\frac{t}{n_j^\nu}
+        +\sqrt{\frac{C_jt}{n_j^\mu}}
+        +B_j\frac{t}{n_j^\mu}
+    \right],
+    \qquad j\in\{0,c\},
+\]
+and
+\[
+    e_{M,k}
+    \le
+    A\left[
+        b_{M,k}+\crit_{M,k}
+        +(B_\omega+B_M)\sqrt{\frac{t}{n_k}}
+        +(B_\omega+B_M)\frac{t}{n_k}
+    \right],
+    \qquad k=0,\ldots,K-1.
+\]
+Substituting these errors into Theorem~\ref{thm:ls-finite-sample} gives the corresponding finite-sample data-distribution $L^1(\nu)$ error bound.
+\end{theorem}
+
+\begin{corollary}[Bounded finite-dimensional sieve rate]
+\label{cor:finite-dimensional-ls}
+Assume the setting of Theorem~\ref{thm:localized-ls-oracle}.
+For $j\in\{0,c\}$, let $\sF_j$ be a bounded $D_j$-dimensional linear sieve, or its pointwise clipped version, with envelope $B_j$ and finite critical radius satisfying
+\[
+    \crit_j
+    \le
+    A B_j\sqrt{\frac{D_j}{n_j^\nu}}
+    +
+    A\sqrt{\frac{C_jD_j}{n_j^\mu}}.
+\]
+Let $\sM_k=\sM$ be a bounded $D_M$-dimensional linear sieve, or its pointwise clipped version, with envelope $B_M$ and
+\[
+    \crit_{M,k}
+    \le
+    A(B_\omega+B_M)\sqrt{\frac{D_M}{n_k}}.
+\]
+Then, increasing $A$ if necessary, with probability at least $1-\delta$,
+\[
+    e_j
+    \le
+    A\left[
+        b_j
+        +B_j\sqrt{\frac{D_j+t}{n_j^\nu}}
+        +\sqrt{\frac{C_j(D_j+t)}{n_j^\mu}}
+        +B_j\frac{D_j+t}{n_j^\nu}
+        +B_j\frac{D_j+t}{n_j^\mu}
+    \right],
+    \qquad j\in\{0,c\},
+\]
+and
+\[
+    e_{M,k}
+    \le
+    A\left[
+        b_{M,k}
+        +(B_\omega+B_M)\sqrt{\frac{D_M+t}{n_k}}
+        +(B_\omega+B_M)\frac{D_M+t}{n_k}
+    \right].
+\]
+These are nuisance $L^2$ rates; they are converted to the data-distribution $L^1(\nu)$ occupancy-ratio bound only through Theorem~\ref{thm:ls-finite-sample}.
+\end{corollary}
+
+\subsection{Scope of the Least-Squares Bound}
+\label{sec:ls-scope}
+
+The finite-sample theorem covers exact empirical minimization over fixed bounded classes on independent sample blocks.
+Ridge-regularized fits can be analyzed through a radius-restricted sieve on an event containing the ridge solution, or by folding the penalty effect into the approximation term.
+Cross-validation and adaptive model selection can be handled by applying the same bound to a fixed candidate grid and union-bounding over grid points.
+
+The bounded-density-ratio case is recovered by $C_c=\|\cpi\|_{\infty,\nu}<\infty$ and a clipping level $B_c\ge C_c$, which makes $\tau_c(B_c)=0$.
+When $C_c=\infty$, the same perturbation theorem remains informative through the explicit tail term $\tau_c(B_c)$.
+The analogous convention applies to $\omegazero$ and to the one-step adjoint-regression targets.
+
+Robust regressions, logistic or Bregman ratio losses, boosted learners, and repeated data reuse can be analyzed through the same interface once their excess risk, dependence, and clipping effects are expressed as component errors for Theorem~\ref{thm:oracle}.
+
+\subsection{LSIF Population Identity}
+
+\begin{lemma}[LSIF identity]
+\label{lem:lsif-identity}
+Assume $\nup\ll\nu$ and $\cpi=\dd\nup/\dd\nu\in L^2(\nu)$.
+For every $f\in L^2(\nu)$,
+\[
+    \Risk_c(f)
+    =
+    \frac12\LtwoNu{f-\cpi}^2-\frac12\LtwoNu{\cpi}^2.
+\]
+The same identity holds for $\omegazero$ after replacing $\nup$ by $\dinit$ and $\cpi$ by $\omegazero$.
+\end{lemma}
+
+\begin{proof}[Proof of Lemma~\ref{lem:lsif-identity}]
+Since $\nup(\dd x)=\cpi(x)\nu(\dd x)$,
+\[
+\begin{aligned}
+    \Risk_c(f)
+    &=
+    \frac12\int f(x)^2\,\nu(\dd x)
+    -
+    \int f(x)\,\nup(\dd x)\\
+    &=
+    \frac12\int f(x)^2\,\nu(\dd x)
+    -
+    \int f(x)\cpi(x)\,\nu(\dd x)\\
+    &=
+    \frac12\int (f(x)-\cpi(x))^2\,\nu(\dd x)
+    -
+    \frac12\int \cpi(x)^2\,\nu(\dd x).
+\end{aligned}
+\]
+The initial density-ratio statement is identical with $\dinit(\dd x)=\omegazero(x)\nu(\dd x)$.
+\end{proof}
+
+\subsection{One-Step Regression Excess Risk}
+
+\begin{lemma}[Regression identity]
+\label{lem:regression-identity}
+Fix an iteration $k$ and condition on $\omegahat^{(k)}\in L^2(\nu)$.
+For every $m\in L^2(\nup)$,
+\[
+    \Risk_k(m)-\Risk_k(\Mpi\omegahat^{(k)})
+    =
+    \LtwoNuPlus{m-\Mpi\omegahat^{(k)}}^2.
+\]
+\end{lemma}
+
+\begin{proof}[Proof of Lemma~\ref{lem:regression-identity}]
+Let $Y=\omegahat^{(k)}(X)$ and $Z=X^+$.
+Then $\Mpi\omegahat^{(k)}(Z)=\E[Y\mid Z]$.
+For any $m$,
+\[
+    m(Z)-Y
+    =
+    \left(m(Z)-\E[Y\mid Z]\right)
+    +
+    \left(\E[Y\mid Z]-Y\right).
+\]
+Squaring and taking expectations, the cross term is
+\[
+    2\E\left[
+        \left(m(Z)-\E[Y\mid Z]\right)
+        \left(\E[Y\mid Z]-Y\right)
+    \right]
+    =
+    2\E\left[
+        \left(m(Z)-\E[Y\mid Z]\right)
+        \E[\E[Y\mid Z]-Y\mid Z]
+    \right]
+    =
+    0.
+\]
+Thus
+\[
+    \Risk_k(m)
+    =
+    \LtwoNuPlus{m-\Mpi\omegahat^{(k)}}^2
+    +
+    \Risk_k(\Mpi\omegahat^{(k)}),
+\]
+which proves the identity.
+\end{proof}
+
+\subsection{From Squared Loss to TV Perturbations}
+
+\begin{lemma}[Clipped $L^2$ errors imply fitted-perturbation errors]
+\label{lem:l2-to-tv}
+Under Definition~\ref{def:ls-errors},
+\[
+    \LoneNu{\omegahatzero-\omegazero}\le e_0+\tau_0(B_0),
+    \qquad
+    \LoneNu{\chat-\cpi}\le e_c+\tau_c(B_c),
+\]
+and
+\[
+    \LoneNuPlus{\mhat_k-\Mpi\omegahat^{(k)}}\le e_{M,k}+\tau_{M,k}(B_M).
+\]
+Moreover, $\abs{\mhat_k}\le B_M$.
+\end{lemma}
+
+\begin{proof}[Proof of Lemma~\ref{lem:l2-to-tv}]
+The map $\Clip_B:\R\to[0,B]$ is $1$-Lipschitz.
+Therefore
+\[
+    \LtwoNu{\Clip_{B_0}\bar\omega_0-\Clip_{B_0}\omegazero}
+    \le
+    \LtwoNu{\bar\omega_0-\omegazero}
+    \le e_0.
+\]
+By Cauchy-Schwarz, $\LoneNu{h}\le \LtwoNu{h}$ for every $h\in L^2(\nu)$, since $\nu$ is a probability measure.
+The triangle inequality gives
+\[
+\begin{aligned}
+    \LoneNu{\omegahatzero-\omegazero}
+    &=
+    \LoneNu{\Clip_{B_0}\bar\omega_0-\omegazero}\\
+    &\le
+    \LoneNu{\Clip_{B_0}\bar\omega_0-\Clip_{B_0}\omegazero}
+    +
+    \LoneNu{\Clip_{B_0}\omegazero-\omegazero}\\
+    &\le
+    e_0+\tau_0(B_0).
+\end{aligned}
+\]
+The proof for $\chat$ is identical with $\nu$ and $B_c$.
+For the regression term, the same argument is applied under the probability measure $\nup$:
+\[
+    \LoneNuPlus{\mhat_k-\Mpi\omegahat^{(k)}}
+    \le
+    e_{M,k}+\tau_{M,k}(B_M).
+\]
+Finally, $\mhat_k=\Clip_{B_M}\bar m_k$ takes values in $[0,B_M]$ by definition.
+\end{proof}
+
+\subsection{Proof of the Finite-Sample Perturbation Bound}
+
+\begin{proof}[Proof of Theorem~\ref{thm:ls-finite-sample}]
+Apply Corollary~\ref{cor:finite-dimensional-ls} twice: first with
+$(j,n_j^\mu,D_j,C_j)=(0,n_0^0,D_0,C_0)$, and then with
+$(j,n_j^\mu,D_j,C_j)=(c,n_c^+,D_c,C_c)$. Here $C_0=\|\omegazero\|_{\infty,\nu}$ and
+$C_c=\|\cpi\|_{\infty,\nu}$.
+By the definitions of $b_{\mathrm{ratio}}$, $b_{\mathrm{adj}}$, $D_{\mathrm{ratio}}$,
+$C_{\mathrm{ratio}}$, $n_{\mathrm{ratio}}$, and $n_{\mathrm{reg}}$ in
+Section~\ref{sec:finite-sample-ls}, and by absorbing the envelope constants
+$B_0,B_c,B_M,B_\omega$ into $A_B$, with probability at least $1-\delta$
+the oracle errors in Definition~\ref{def:ls-errors} hold with
+\[
+    e_0\le r_{\mathrm{ratio}},
+    \qquad
+    e_c\le r_{\mathrm{ratio}},
+    \qquad
+    e_{M,k}\le r_{\mathrm{reg}}
+    \quad\text{for all }k=0,\ldots,K-1 .
+\]
+Here
+\[
+\begin{aligned}
+    r_{\mathrm{ratio}}
+    &=
+    A_B\left[
+        b_{\mathrm{ratio}}
+        +\sqrt{\frac{C_{\mathrm{ratio}}(D_{\mathrm{ratio}}+t)}{n_{\mathrm{ratio}}}}
+        +\frac{D_{\mathrm{ratio}}+t}{n_{\mathrm{ratio}}}
+    \right],\\
+    r_{\mathrm{reg}}
+    &=
+    A_B\left[
+        b_{\mathrm{adj}}
+        +\sqrt{\frac{D_M+t}{n_{\mathrm{reg}}}}
+        +\frac{D_M+t}{n_{\mathrm{reg}}}
+    \right].
+\end{aligned}
+\]
+On this event, define
+\[
+\begin{aligned}
+    \varepsilon_{\mathrm{init}}^{\mathrm{LS}}
+    &=
+    e_0+\tau_0(B_0),\\
+    \varepsilon_{\mathrm{step}}^{\mathrm{LS}}
+    &=
+    e_c+\tau_c(B_c),\\
+    \varepsilon_{\mathrm{reg},k}^{\mathrm{LS}}
+    &=
+    e_{M,k}+\tau_{M,k}(B_M),
+    \qquad
+    \varepsilon_{\mathrm{reg}}^{\mathrm{LS}}
+    &=
+    \max_{0\le k<K}\varepsilon_{\mathrm{reg},k}^{\mathrm{LS}}.
+\end{aligned}
+\]
+By Lemma~\ref{lem:l2-to-tv} and the definition of $\tau_{\mathrm{clip}}$,
+\[
+    \varepsilon_{\mathrm{init}}^{\mathrm{LS}}
+    \le r_{\mathrm{ratio}}+\tau_{\mathrm{clip}},
+    \qquad
+    \varepsilon_{\mathrm{step}}^{\mathrm{LS}}
+    \le r_{\mathrm{ratio}}+\tau_{\mathrm{clip}},
+    \qquad
+    \varepsilon_{\mathrm{reg}}^{\mathrm{LS}}
+    \le r_{\mathrm{reg}}+\tau_{\mathrm{clip}}.
+\]
+Together with $\abs{\mhat_k}\le B_M$, these are the component-error hypotheses
+of Theorem~\ref{thm:oracle} with $B=B_M$ and
+\[
+\begin{aligned}
+    \varepsilon_{\mathrm{fit}}
+    &\le
+    A_B\Bigg[
+        b_{\mathrm{ratio}}
+        +\gamma b_{\mathrm{adj}}
+        +\sqrt{\frac{C_{\mathrm{ratio}}(D_{\mathrm{ratio}}+t)}{n_{\mathrm{ratio}}}}
+        +\gamma\sqrt{\frac{D_M+t}{n_{\mathrm{reg}}}}\\
+    &\qquad\qquad
+        +\frac{D_{\mathrm{ratio}}+t}{n_{\mathrm{ratio}}}
+        +\gamma\frac{D_M+t}{n_{\mathrm{reg}}}
+        +\tau_{\mathrm{clip}}
+    \Bigg]
+    +\varepsilon_{\mathrm{proj}}
+    =
+    \varepsilon_{\mathrm{LS}},
+\end{aligned}
+\]
+where $A_B$ is increased once more if necessary.
+Applying Theorem~\ref{thm:oracle} gives
+\[
+    \LoneNu{\omegahat^{(K)}-\omegastar}
+    \le
+    \gamma^K\LoneNu{\omegahat^{(0)}-\omegastar}
+    +
+    \frac{1-\gamma^K}{1-\gamma}\varepsilon_{\mathrm{LS}}.
+\]
+The second displayed inequality in the theorem follows from
+$1-\gamma^K\le1$.
+If the true targets lie inside their clipping intervals, the definitions of
+$\tau_{\mathrm{clip}}$ show that the corresponding tail terms are zero.
+\end{proof}
+
+\subsection{Uniform-Deviation and Localized Rates}
+
+\begin{proof}[Proof of Proposition~\ref{prop:uniform-ls-oracle}]
+We prove the one-step density-ratio statement. The initial LSIF statement is
+identical after replacing $(\nup,\cpi,\sF_c,\bar c)$ by
+$(\dinit,\omegazero,\sF_0,\bar\omega_0)$. The regression statement follows
+from the same empirical-minimization argument and Lemma~\ref{lem:regression-identity}.
+Let $f_c^\star\in\sF_c$ be arbitrary.
+Since $\bar c$ minimizes the empirical LSIF risk over $\sF_c$,
+\[
+    \widehat\Risk_c(\bar c)\le \widehat\Risk_c(f_c^\star).
+\]
+On the event $\sup_{f\in\sF_c}\abs{(\widehat\Risk_c-\Risk_c)(f)}\le\xi_c$,
+\[
+\begin{aligned}
+    \Risk_c(\bar c)
+    &\le
+    \widehat\Risk_c(\bar c)+\xi_c\\
+    &\le
+    \widehat\Risk_c(f_c^\star)+\xi_c\\
+    &\le
+    \Risk_c(f_c^\star)+2\xi_c.
+\end{aligned}
+\]
+Subtracting $\Risk_c(\cpi)$ and using Lemma~\ref{lem:lsif-identity} gives
+\[
+    \LtwoNu{\bar c-\cpi}^2
+    \le
+    \LtwoNu{f_c^\star-\cpi}^2+4\xi_c.
+\]
+Taking the infimum over $f_c^\star\in\sF_c$ proves the claimed bound for $e_c$.
+The initial density-ratio proof is the same with $\omegazero$.
+For the $k$th regression, let $m_k^\star\in\sM_k$.
+The empirical minimizer satisfies $\widehat\Risk_k(\bar m_k)\le\widehat\Risk_k(m_k^\star)$.
+On the stated conditional uniform-deviation event,
+\[
+    \Risk_k(\bar m_k)
+    \le
+    \Risk_k(m_k^\star)+2\xi_{M,k}.
+\]
+Subtracting $\Risk_k(\Mpi\omegahat^{(k)})$ and using Lemma~\ref{lem:regression-identity} yields
+\[
+    \LtwoNuPlus{\bar m_k-\Mpi\omegahat^{(k)}}^2
+    \le
+    \LtwoNuPlus{m_k^\star-\Mpi\omegahat^{(k)}}^2+2\xi_{M,k}.
+\]
+Taking the infimum over $m_k^\star\in\sM_k$ completes the proof.
+\end{proof}
+
+\paragraph{Localized concentration notation.}
+For a class $\sH$ of functions on a probability space $(\sZ,P)$, define the local Rademacher average
+\[
+    \Rad_{n,P}(\sH,r)
+    =
+    \E\left[
+        \sup_{\substack{h\in\sH\\ \|h\|_{L^2(P)}\le r}}
+        \left|
+            \frac{1}{n}\sum_{i=1}^n\sigma_i h(Z_i)
+        \right|
+    \right],
+\]
+where $Z_i\stackrel{\mathrm{i.i.d.}}{\sim}P$ and $\sigma_i$ are independent Rademacher signs.
+
+\begin{theorem}[Generic localized Lipschitz ERM theorem]
+\label{thm:generic-local-erm}
+Let $Z_1,\ldots,Z_n\stackrel{\mathrm{i.i.d.}}{\sim}P$, and write $P_n$ for their empirical measure.
+Let $\sF$ be a class of measurable prediction functions, let $f^\star$ be a target function, and define the star hull
+\[
+    \sH
+    =
+    \{\alpha(f-f^\star):f\in\sF,\ 0\le\alpha\le1\}.
+\]
+Assume the loss class $\ell_f(z)$ satisfies the following conditions for constants $0<\kappa_-\le\kappa_+<\infty$ and $L,U>0$:
+\begin{enumerate}
+\item[(i)] Quadratic risk equivalence:
+\[
+    \kappa_-\|f-f^\star\|_{L^2(P)}^2
+    \le
+    P(\ell_f-\ell_{f^\star})
+    \le
+    \kappa_+\|f-f^\star\|_{L^2(P)}^2
+    \qquad\text{for all }f\in\sF.
+\]
+\item[(ii)] Local Lipschitz envelope:
+for all $f,g\in\sF\cup\{f^\star\}$,
+\[
+    |\ell_f(z)-\ell_g(z)|
+    \le
+    L|f(z)-g(z)|,
+    \qquad
+    |\ell_f(z)-\ell_g(z)|\le U .
+\]
+\item[(iii)] Critical radius:
+for all $r\ge\crit$,
+\[
+    L\,\Rad_{n,P}(\sH,r)
+    \le
+    \frac{\kappa_- r^2}{64}.
+\]
+\end{enumerate}
+Let $\widehat f\in\argmin_{f\in\sF}\Emp_n\ell_f$ and
+\[
+    b=\inf_{f\in\sF}\|f-f^\star\|_{L^2(P)}.
+\]
+There is a universal constant $A<\infty$ such that, for every $u\ge1$, with probability at least $1-e^{-u}$,
+\[
+    \|\widehat f-f^\star\|_{L^2(P)}
+    \le
+    A\left[
+        \sqrt{\frac{\kappa_+}{\kappa_-}}\,b+\crit
+        +\sqrt{\frac{Uu}{\kappa_- n}}
+        +\frac{Lu}{\kappa_- n}
+    \right].
+\]
+\end{theorem}
+
+\begin{proof}[Proof of Theorem~\ref{thm:generic-local-erm}]
+This is the standard localized ERM theorem for bounded Lipschitz losses.
+In the notation above it is obtained from the localized uniform-law theorem in \citet[Chapter~14]{wainwright2019HighDimensionalStatistics}, with the local Rademacher fixed point as the critical radius, together with the original local Rademacher complexity argument of \citet{bartlettEtAl2005LocalRademacher}.
+For completeness, we recall the reduction.
+Let $f^\dagger\in\sF$ be an $\epsilon$-optimal comparator with $\|f^\dagger-f^\star\|_{L^2(P)}\le b+\epsilon$.
+Empirical minimality gives
+\[
+    P(\ell_{\widehat f}-\ell_{f^\star})
+    \le
+    P(\ell_{f^\dagger}-\ell_{f^\star})
+    +
+    |(P_n-P)(\ell_{\widehat f}-\ell_{f^\dagger})|.
+\]
+The local uniform law for bounded Lipschitz losses states that, on an event of probability at least $1-e^{-u}$, the right-hand side is at most
+\[
+    \frac{\kappa_-}{4}
+    \left(
+        \|\widehat f-f^\star\|_{L^2(P)}^2
+        +
+        \|f^\dagger-f^\star\|_{L^2(P)}^2
+    \right)
+    +
+    A\left[
+        \kappa_-\crit^2
+        +
+        \frac{Uu}{n}
+        +
+        \frac{L^2u^2}{\kappa_- n^2}
+    \right].
+\]
+Combining this inequality with the quadratic lower bound for $\widehat f$, the quadratic upper bound for $f^\dagger$, and moving the leading term to the left yields
+\[
+    \|\widehat f-f^\star\|_{L^2(P)}^2
+    \le
+    A\left[
+        \frac{\kappa_+}{\kappa_-}(b+\epsilon)^2
+        +\crit^2+\frac{Uu}{\kappa_- n}
+        +\frac{L^2u^2}{\kappa_-^2 n^2}
+    \right].
+\]
+Taking square roots and letting $\epsilon\downarrow0$ proves the claim.
+\end{proof}
+
+The next two lemmas reduce the LSIF and one-step adjoint-regression objectives to Theorem~\ref{thm:generic-local-erm}.
+
+\begin{lemma}[Localized LSIF oracle inequality]
+\label{lem:localized-lsif}
+Let $\mu\ll\nu$, $q=\dd\mu/\dd\nu$, and $C=\|q\|_{\infty,\nu}<\infty$.
+Let $\sF\subseteq[0,B]$, let $\bar f$ minimize
+\[
+    \frac12\Emp_{n^\nu}^{\nu} f^2-\Emp_{n^\mu}^{\mu} f
+\]
+over $\sF$, and set $b=\inf_{f\in\sF}\|f-q\|_{L^2(\nu)}$.
+Write $\Risk(f)=\frac12\nu f^2-\mu f$ for the corresponding population risk.
+Let
+\[
+    \sH
+    =
+    \{\alpha(f-q): f\in\sF,\ 0\le\alpha\le1\}.
+\]
+Suppose $\crit$ satisfies, for all $r\ge\crit$,
+\[
+    B\,\Rad_{n^\nu,\nu}(\sH,r)\le \frac{r^2}{128},
+    \qquad
+    \Rad_{n^\mu,\mu}(\sH,\sqrt C\,r)\le \frac{r^2}{128}.
+\]
+Then there is a universal constant $A<\infty$ such that, for all $u\ge1$, with probability at least $1-2e^{-u}$,
+\[
+    \|\bar f-q\|_{L^2(\nu)}
+    \le
+    A\left[
+        b+\crit
+        +B\sqrt{\frac{u}{n^\nu}}
+        +B\frac{u}{n^\nu}
+        +\sqrt{\frac{Cu}{n^\mu}}
+        +B\frac{u}{n^\mu}
+    \right].
+\]
+\end{lemma}
+
+\begin{proof}[Proof of Lemma~\ref{lem:localized-lsif}]
+Let $f^\dagger$ be an $\epsilon$-optimal comparator in $\sF$ with $\|f^\dagger-q\|_{L^2(\nu)}\le b+\epsilon$.
+The LSIF identity gives
+\[
+    \Risk(f)-\Risk(f^\dagger)
+    =
+    \frac12\|f-q\|_{L^2(\nu)}^2-\frac12\|f^\dagger-q\|_{L^2(\nu)}^2.
+\]
+After multiplying by two, empirical minimality of $\bar f$ implies the basic inequality
+\[
+    \|\bar f-q\|_{L^2(\nu)}^2-\|f^\dagger-q\|_{L^2(\nu)}^2
+    \le
+    \left|(\Emp_{n^\nu}^{\nu}-\nu)(\bar f^2-(f^\dagger)^2)\right|
+    +
+    2\left|(\Emp_{n^\mu}^{\mu}-\mu)(\bar f-f^\dagger)\right|.
+\]
+On the annulus $\|f-q\|_{L^2(\nu)}\le r$ and $\|f^\dagger-q\|_{L^2(\nu)}\le b+\epsilon$, the reference-sample quadratic difference is $2B$-Lipschitz in $f-f^\dagger$ and the numerator-sample difference is linear.
+The star hull $\sH$ localizes both $f-q$ and $f^\dagger-q$; boundedness gives envelopes of order $B$ for linear terms and $B^2$ for quadratic terms.
+Symmetrization and contraction reduce the expected suprema on the annulus to
+\[
+    B\Rad_{n^\nu,\nu}(\sH,r+b+\epsilon)
+    +
+    \Rad_{n^\mu,\mu}(\sH,\sqrt C(r+b+\epsilon)).
+\]
+Apply the localized uniform-law step in the proof of Theorem~\ref{thm:generic-local-erm} to the quadratic process under $\nu$ with Lipschitz constant of order $B$, and to the linear process under $\mu$.
+The comparison $\|h\|_{L^2(\mu)}\le \sqrt C\|h\|_{L^2(\nu)}$ explains the argument $\sqrt C(r+b+\epsilon)$ in the numerator radius.
+These two applications make the empirical-process term at most a small multiple of $(r+b+\epsilon)^2$ once $r$ dominates $\crit$.
+The corresponding Bernstein-peeling tail terms are
+$B\sqrt{u/n^\nu}+B u/n^\nu+\sqrt{Cu/n^\mu}+B u/n^\mu$.
+Peeling over $r=2^\ell r_0$, with
+\[
+    r_0
+    =
+    A\left[
+        b+\epsilon+\crit
+        +B\sqrt{\frac{u}{n^\nu}}
+        +B\frac{u}{n^\nu}
+        +\sqrt{\frac{Cu}{n^\mu}}
+        +B\frac{u}{n^\mu}
+    \right],
+\]
+shows that the event $\|\bar f-q\|_{L^2(\nu)}>r_0$ has probability at most $2e^{-u}$ for a sufficiently large universal $A$.
+Letting $\epsilon\downarrow0$ proves the result.
+\end{proof}
+
+\begin{lemma}[Localized squared-regression oracle inequality]
+\label{lem:localized-regression}
+Fix an iteration $k$ and condition on previous sample blocks.
+Let $m^\star=\Mpi\omegahat^{(k)}$, assume $0\le\omegahat^{(k)}\le B_\omega$, and let $\sM_k\subseteq[0,B_M]$.
+Let $\bar m_k$ minimize $\widehat\Risk_k$ over $\sM_k$ and set
+\[
+    b_{M,k}=\inf_{m\in\sM_k}\|m-m^\star\|_{L^2(\nup)}.
+\]
+Let
+\[
+    \sH_{M,k}
+    =
+    \{\alpha(m-m^\star):m\in\sM_k,\ 0\le\alpha\le1\}.
+\]
+Suppose $\crit_{M,k}$ satisfies, for all $r\ge\crit_{M,k}$,
+\[
+    (B_\omega+B_M)\Rad_{n_k,\nup}(\sH_{M,k},r)
+    \le
+    \frac{r^2}{128}.
+\]
+Then there is a universal constant $A<\infty$ such that, for all $u\ge1$, with conditional probability at least $1-e^{-u}$,
+\[
+    \|\bar m_k-m^\star\|_{L^2(\nup)}
+    \le
+    A\left[
+        b_{M,k}+\crit_{M,k}
+        +(B_\omega+B_M)\sqrt{\frac{u}{n_k}}
+        +(B_\omega+B_M)\frac{u}{n_k}
+    \right].
+\]
+\end{lemma}
+
+\begin{proof}[Proof of Lemma~\ref{lem:localized-regression}]
+The regression identity gives exact quadratic risk equivalence with $\kappa_-=\kappa_+=1$:
+\[
+    \Risk_k(m)-\Risk_k(m^\star)
+    =
+    \|m-m^\star\|_{L^2(\nup)}^2.
+\]
+Since $Y=\omegahat^{(k)}(X)\in[0,B_\omega]$ and $m\in[0,B_M]$, the squared loss is $2(B_\omega+B_M)$-Lipschitz in the prediction and its loss differences are bounded by a universal multiple of $(B_\omega+B_M)^2$.
+Applying Theorem~\ref{thm:generic-local-erm} with $P=\nup$, $L$ of order $B_\omega+B_M$, $U$ of order $(B_\omega+B_M)^2$, and the displayed critical-radius condition yields the result after absorbing universal constants into $A$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:localized-ls-oracle}]
+Apply Lemma~\ref{lem:localized-lsif} to $j=0$ and $j=c$ with $u=t+\log 6$.
+Apply Lemma~\ref{lem:localized-regression} conditionally to each of the $K$ independent regression blocks with the same value of $u$.
+Averaging the conditional probabilities and union-bounding over the two LSIF stages and the $K$ regression stages gives simultaneous probability at least $1-\delta$ after increasing the universal constant $A$.
+\end{proof}
+
+\begin{lemma}[Finite-dimensional critical radii]
+\label{lem:finite-critical-radius}
+Let $\sF$ be a $D$-dimensional bounded linear sieve, or its pointwise clipped version, with envelope $B$.
+For the star-hull class $\sH=\{\alpha(f-g): f\in\sF,0\le\alpha\le1\}$ with fixed $g$, there is a universal constant $A<\infty$ such that
+\[
+    \Rad_{n,P}(\sH,r)
+    \le
+    A r\sqrt{\frac{D+1}{n}}.
+\]
+Consequently the admissible radii in Definition~\ref{def:critical-radii} may be chosen to satisfy
+\[
+    \crit_j
+    \le
+    A B_j\sqrt{\frac{D_j}{n_j^\nu}}
+    +
+    A\sqrt{\frac{C_jD_j}{n_j^\mu}},
+    \qquad
+    \crit_{M,k}
+    \le
+    A(B_\omega+B_M)\sqrt{\frac{D_M}{n_k}}.
+\]
+\end{lemma}
+
+\begin{proof}[Proof of Lemma~\ref{lem:finite-critical-radius}]
+For an unclipped $D$-dimensional linear sieve, condition on the sample.
+The evaluation vector of $h$ lies in an empirical $L^2$ ball of radius $r$ inside a subspace of dimension at most $D+1$.
+The extra dimension accounts for the fixed shift $g$ and the star-hull scalar.
+Therefore
+\[
+    \E_\sigma
+    \sup_{\left(n^{-1}\sum_i h(Z_i)^2\right)^{1/2}\le r}
+    \left|\frac1n\sum_{i=1}^n\sigma_i h(Z_i)\right|
+    \le
+    r\sqrt{\frac{D+1}{n}}.
+\]
+Taking expectation in the sample gives the displayed local Rademacher bound.
+Pointwise clipping is $1$-Lipschitz and preserves the envelope; the contraction principle gives the same bound up to a universal constant for clipped linear predictions.
+Solving the inequalities in Definition~\ref{def:critical-radii} gives the admissible radii.
+\end{proof}
+
+\begin{proof}[Proof of Corollary~\ref{cor:finite-dimensional-ls}]
+Substitute the critical radii from Lemma~\ref{lem:finite-critical-radius} into Theorem~\ref{thm:localized-ls-oracle} and absorb constants and the $\log((K+2)/\delta)$ tail terms into the displayed expressions.
+The approximation terms remain explicit, so no realizability condition is used.
+\end{proof}
+
+\subsection{Factored Ratio Implementations}
+\label{app:rltools-mapping}
+
+\begin{corollary}[Factored one-step density ratio]
+\label{cor:factored-ratio}
+Suppose the reference distribution factorizes as $\nu(\dd s,\dd a)=\nu_S(\dd s)\mu(\dd a\mid s)$ and the one-step pushed law factorizes as
+\[
+    \nup(\dd s',\dd a')
+    =
+    \nu_S^+(\dd s')\pi(\dd a'\mid s').
+\]
+Let
+\[
+    g_\pi(s)=\frac{\dd\nu_S^+}{\dd\nu_S}(s),
+    \qquad
+    \iota_\pi(s,a)=\frac{\pi(a\mid s)}{\mu(a\mid s)}.
+\]
+Then $\cpi(s,a)=g_\pi(s)\iota_\pi(s,a)$ whenever the displayed densities exist.
+If $\widehat c=\widehat g\,\widehat\iota$, $\|\widehat\iota\|_\infty\le B_\iota$, and $\|g_\pi\|_\infty\le B_g$, then
+\[
+    \LoneNu{\widehat c-\cpi}
+    \le
+    B_\iota\|\widehat g-g_\pi\|_{1,\nu_S}
+    +
+    B_g\|\widehat\iota-\iota_\pi\|_{1,\nu}.
+\]
+Consequently, $L^2$ bounds for the target-action density-ratio and one-step state-marginal density-ratio components imply a valid one-step density-ratio error $\varepsilon_{\mathrm{step}}$ for Theorem~\ref{thm:oracle}.
+\end{corollary}
+
+\begin{proof}[Proof of Corollary~\ref{cor:factored-ratio}]
+Under the stated factorization,
+\[
+    \frac{\dd\nup}{\dd\nu}(s,a)
+    =
+    \frac{\dd\nu_S^+}{\dd\nu_S}(s)
+    \frac{\pi(a\mid s)}{\mu(a\mid s)}
+    =
+    g_\pi(s)\iota_\pi(s,a).
+\]
+Then
+\[
+    \widehat g\widehat\iota-g_\pi\iota_\pi
+    =
+    \widehat\iota(\widehat g-g_\pi)
+    +
+    g_\pi(\widehat\iota-\iota_\pi).
+\]
+Taking $L^1(\nu)$ norms and using the boundedness assumptions gives the displayed inequality.
+Since $\nu$ and $\nu_S$ are probability measures, Cauchy-Schwarz converts the component $L^2$ errors to the required $L^1$ errors.
+\end{proof}
+
+\paragraph{Implementation note.}
+The direct LSIF theorem in Section~\ref{sec:finite-sample-ls} analyzes the unfactored one-step density ratio $\cpi$.
+Factored implementations estimate related target-action density-ratio and one-step state-marginal density-ratio components, possibly with Monte Carlo target construction, clipping, normalization, or robust regression losses.
+Corollary~\ref{cor:factored-ratio} shows how such component estimates feed the same $\varepsilon_{\mathrm{step}}$ term once their component and Monte Carlo errors are bounded.
+
+
+\section{Implementation Details}
+\label{app:implementation}
+
+\subsection{Practical Stabilization}
+\label{sec:practical-stabilization}
+
+The finite-sample analysis in Section~\ref{sec:finite-sample-ls} studies squared losses, sample splitting, clipping, and a fixed projection map.
+Implementations may use additional stabilizers when overlap is weak or intermediate ratios have heavy tails.
+These choices keep the population operator fixed while controlling the component errors in Theorem~\ref{thm:oracle} through regression error, tail bias, or projection excess.
+
+For the one-step adjoint regressions, squared loss directly targets the conditional mean when the pseudo-outcomes are bounded or lightly tailed.
+When the current weights have a long right tail, one may instead fit a robust regression, such as a Huber regression, or regress a clipped response $\min\{\omegahat^{(k)}(X_i),B_\omega\}$.
+The estimand for the population algorithm remains the conditional mean $\Mpi\omegahat^{(k)}$.
+Thus robust or clipped-response fits enter the theory through their deviation from that conditional mean, measured in the same $L^1(\nup)$ error term used for $\mhat_k$.
+
+For the preliminary density-ratio fits, LSIF is convenient because its population excess risk is exactly an $L^2(\nu)$ ratio error.
+Other proper density-ratio objectives can be used in the same algorithmic slot.
+For example, one can estimate $\cpi$ by discriminating pushed samples from reference samples with a logistic loss and converting class probabilities to odds, or by using a Bregman-divergence ratio objective.
+They are covered by the same perturbation theorem once their excess risk is converted into the $L^1(\nu)$ one-step density-ratio error required by Theorem~\ref{thm:oracle}; Section~\ref{sec:finite-sample-ls} gives this conversion for squared-loss LSIF.
+
+After each raw update, implementations commonly apply clipping, normalization, or averaging.
+Clipping truncates the product $\chat\,\mhat_k$ on low-support regions, and normalization enforces the intended mass scale of $\omegahat^{(k)}$.
+The analysis records these operations through the projection-excess term $\varepsilon_{\mathrm{proj},k}$ and, for bounded theoretical fits, through explicit tail terms.
+A damped update has the form
+\[
+    \omegahat^{(k+1)}
+    =
+    (1-\alpha_k)\omegahat^{(k)}
+    +
+    \alpha_k\Proj(\omegatilde^{(k+1)}),
+    \qquad \alpha_k\in(0,1].
+\]
+Damping can be treated as part of the projection-excess term, or analyzed separately through an averaged-operator argument.
+The diagnostics in Section~\ref{sec:evaluation} therefore include value error, effective sample size, mass after normalization, clipping frequency, and upper-tail summaries of $\chat$ and $\omegahat^{(k)}$.
+
+\subsection{Data Splitting and Reuse}
+\label{sec:data-splitting-reuse}
+
+For the finite-sample least-squares theorem, the proof uses independent blocks for the initial density-ratio estimate, the one-step density-ratio estimate, and each one-step adjoint regression.
+Equivalently, one may use cross-fitting so that each regression guarantee is valid conditionally on the previously constructed pseudo-outcomes.
+This split-sample version separates approximation and estimation events.
+Data reuse across iterations fits the same algorithmic template, but its statistical guarantee must account for the induced dependence between pseudo-outcomes and fitted regressions.
+
+
+\end{document}
