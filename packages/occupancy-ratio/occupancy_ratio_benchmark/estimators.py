@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from itertools import product
 import time
-from typing import Any
+from typing import Any, Sequence
 
 import numpy as np
 
@@ -10,6 +11,7 @@ from occupancy_ratio.calibration import calibrate_occupancy_bellman_binning
 from occupancy_ratio.fit_occupancy_ratio import (
     ActionRatioConfig,
     OccupancyRegressionConfig,
+    SourceStateRatioConfig,
     TransitionRatioConfig,
     fit_discounted_occupancy_ratio,
     tune_discounted_occupancy_ratio_cv,
@@ -17,9 +19,16 @@ from occupancy_ratio.fit_occupancy_ratio import (
 from occupancy_ratio.fit_occupancy_ratio_neural import (
     NeuralActionRatioConfig,
     NeuralOccupancyRegressionConfig,
+    NeuralSourceStateRatioConfig,
     NeuralTransitionRatioConfig,
     fit_discounted_occupancy_ratio_neural,
     tune_discounted_occupancy_ratio_neural_cv,
+)
+from occupancy_ratio.tuning import (
+    OccupancySearchSpace,
+    OccupancyTuningConfig,
+    OccupancyTuningResult,
+    tune_occupancy_ratio_auto,
 )
 from occupancy_ratio_benchmark.config import OccupancyRatioBenchmarkConfig
 from occupancy_ratio_benchmark.data import BenchmarkDataset
@@ -74,12 +83,40 @@ def estimate_oracle(dataset: BenchmarkDataset) -> EstimatorResult:
     )
 
 
+def _boosted_lgb_params(
+    config: OccupancyRatioBenchmarkConfig,
+    dataset: BenchmarkDataset,
+    *,
+    role: str,
+) -> dict[str, Any]:
+    """LightGBM defaults for off-the-shelf boosted OPE fits.
+
+    Modern-control benchmark cells often use 1k-5k rows. A fixed
+    ``min_data_in_leaf=100`` made the boosted ratios nearly uniform at 1k rows,
+    so scale the leaf floor with available data while keeping larger runs
+    regularized.
+    """
+    n_rows = max(1, int(dataset.states.shape[0]))
+    min_leaf = max(20, min(100, n_rows // 20))
+    params: dict[str, Any] = {
+        "num_leaves": 31 if config.stage == "smoke" else 63,
+        "min_data_in_leaf": int(min_leaf),
+        "verbose": -1,
+        "num_threads": 0,
+    }
+    if role == "occupancy":
+        params["learning_rate"] = 0.08
+    return params
+
+
 def estimate_boosted_tree(
     dataset: BenchmarkDataset,
     config: OccupancyRatioBenchmarkConfig,
     *,
     loss: str,
     preset: str | None = None,
+    initial_ratio_mode: str = "auto",
+    one_step_ratio_mode: str = "auto",
 ) -> EstimatorResult:
     start = time.perf_counter()
     preset = str(loss if preset is None else preset)
@@ -87,6 +124,8 @@ def estimate_boosted_tree(
     nuisance_crossfit_folds, nuisance_moment_calibration = _boosted_nuisance_options(config, preset)
     density_ratio_loss = _boosted_density_ratio_loss(config, preset)
     effective_loss = str(occupancy_options.pop("loss"))
+    occupancy_lgb_params = _boosted_lgb_params(config, dataset, role="occupancy")
+    nuisance_lgb_params = _boosted_lgb_params(config, dataset, role="nuisance")
     occupancy_config = OccupancyRegressionConfig(
         num_iterations=int(config.boosted_num_iterations),
         trees_per_iteration=int(config.boosted_trees_per_iteration),
@@ -100,13 +139,7 @@ def estimate_boosted_tree(
         patience=8 if config.stage == "smoke" else 12,
         seed=int(dataset.seed),
         show_progress=False,
-        lgb_params={
-            "learning_rate": 0.08,
-            "num_leaves": 31 if config.stage == "smoke" else 63,
-            "min_data_in_leaf": 20 if config.stage == "smoke" else 100,
-            "verbose": -1,
-            "num_threads": 0,
-        },
+        lgb_params=occupancy_lgb_params,
         **occupancy_options,
     )
     action_config = ActionRatioConfig(
@@ -115,12 +148,20 @@ def estimate_boosted_tree(
         validation_fraction=0.20,
         show_progress=False,
         refit_on_all_data=True,
-        lgb_params={
-            "num_leaves": 31,
-            "min_data_in_leaf": 20 if config.stage == "smoke" else 100,
-            "verbose": -1,
-            "num_threads": 0,
-        },
+        lgb_params=nuisance_lgb_params,
+        prediction_max=nuisance_prediction_max,
+        crossfit_folds=int(nuisance_crossfit_folds),
+        moment_calibration=str(nuisance_moment_calibration),
+        density_ratio_loss=str(density_ratio_loss),
+        logistic_logit_clip=config.boosted_logistic_logit_clip,
+    )
+    source_config = SourceStateRatioConfig(
+        num_boost_round=30 if config.stage == "smoke" else 120,
+        early_stopping_rounds=5,
+        validation_fraction=0.20,
+        show_progress=False,
+        refit_on_all_data=True,
+        lgb_params=nuisance_lgb_params,
         prediction_max=nuisance_prediction_max,
         crossfit_folds=int(nuisance_crossfit_folds),
         moment_calibration=str(nuisance_moment_calibration),
@@ -134,40 +175,48 @@ def estimate_boosted_tree(
         validation_fraction=0.20,
         show_progress=False,
         refit_on_all_data=True,
-        lgb_params={
-            "num_leaves": 31,
-            "min_data_in_leaf": 20 if config.stage == "smoke" else 100,
-            "verbose": -1,
-            "num_threads": 0,
-        },
+        lgb_params=nuisance_lgb_params,
         prediction_max=nuisance_prediction_max,
         crossfit_folds=int(nuisance_crossfit_folds),
         moment_calibration=str(nuisance_moment_calibration),
         density_ratio_loss=str(density_ratio_loss),
         logistic_logit_clip=config.boosted_logistic_logit_clip,
     )
+    initial_states, initial_actions, initial_weights, source_applied = _initial_ratio_inputs(dataset, config)
+    target_next_actions = _target_next_actions_input(dataset)
     tuning_rows: list[dict[str, Any]] = []
     if bool(config.tune_cv):
-        tuned = tune_discounted_occupancy_ratio_cv(
+        tuned = tune_occupancy_ratio_auto(
             states=dataset.states,
             actions=dataset.actions,
             next_states=dataset.next_states,
             target_actions=dataset.target_actions,
             gamma=float(dataset.gamma),
-            occupancy=occupancy_config,
-            action_ratio=action_config,
-            transition_ratio=transition_config,
-            occupancy_grid=_boosted_occupancy_cv_grid(config, preset),
-            action_ratio_grid=_nuisance_cv_grid(config),
-            transition_ratio_grid=_nuisance_cv_grid(config),
-            cv_folds=int(config.cv_folds),
-            scoring=str(config.cv_scoring),
-            lambda_norm=float(config.cv_lambda_norm),
-            lambda_tail=float(config.cv_lambda_tail),
-            seed=int(dataset.seed + 60_001),
-            fit_final=True,
+            initial_states=initial_states,
+            initial_actions=initial_actions,
+            initial_weights=initial_weights,
+            target_next_actions=target_next_actions,
+            rewards=dataset.rewards,
+            search_space=_boosted_tuning_search_space(
+                config,
+                preset,
+                occupancy_config=occupancy_config,
+                action_config=action_config,
+                source_config=source_config,
+                transition_config=transition_config,
+                automl=bool(str(config.automl_tuning) in {"fast", "balanced"}),
+                include_source=initial_states is not None,
+            ),
+            config=_benchmark_tuning_config(
+                config,
+                families=("boosted",),
+                seed=int(dataset.seed + 60_001),
+                candidate_count=_benchmark_candidate_count(config, family="boosted", preset=preset, include_source=initial_states is not None),
+            ),
+            initial_ratio_mode=initial_ratio_mode,
+            one_step_ratio_mode=one_step_ratio_mode,
         )
-        model = tuned["model"]
+        model = tuned.model
         tuning_rows = _flatten_boosted_tuning_rows(tuned, estimator=f"boosted_tree_{preset}", dataset=dataset)
     else:
         model = fit_discounted_occupancy_ratio(
@@ -176,9 +225,16 @@ def estimate_boosted_tree(
             next_states=dataset.next_states,
             target_actions=dataset.target_actions,
             gamma=float(dataset.gamma),
+            initial_states=initial_states,
+            initial_actions=initial_actions,
+            initial_weights=initial_weights,
+            target_next_actions=target_next_actions,
             occupancy=occupancy_config,
             action_ratio=action_config,
+            source_state_ratio=source_config,
             transition_ratio=transition_config,
+            initial_ratio_mode=initial_ratio_mode,
+            one_step_ratio_mode=one_step_ratio_mode,
         )
     raw = model.predict_state_action_ratio(dataset.states, dataset.actions, clip=False)
     weights = model.predict_state_action_ratio(dataset.states, dataset.actions, clip=True)
@@ -215,6 +271,84 @@ def estimate_boosted_tree(
             "logistic_logit_clip": _finite_or_blank(config.boosted_logistic_logit_clip),
             "action_prior_correction": float(model.diagnostics.get("action_prior_correction") or 1.0),
             "transition_prior_correction": float(model.diagnostics.get("transition_prior_correction") or 1.0),
+            "source_state_correction_mode": str(config.source_state_correction_mode),
+            "source_state_correction_applied": float(source_applied),
+            "source_state_initial_rows": float(0 if initial_states is None else np.asarray(initial_states).shape[0]),
+            "source_state_ratio_enabled": float(bool(model.diagnostics.get("source_state_ratio_enabled", False))),
+            "source_state_ratio_mean": _finite_or_blank(model.diagnostics.get("source_state_ratio_mean")),
+            "source_state_ratio_max": _finite_or_blank(model.diagnostics.get("source_state_ratio_max")),
+            "source_state_ratio_ess_fraction": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_ess_fraction")
+            ),
+            "source_state_ratio_loss": _finite_or_blank(model.diagnostics.get("source_state_ratio_loss")),
+            "source_state_ratio_updates": _finite_or_blank(model.diagnostics.get("source_state_ratio_updates")),
+            "source_state_ratio_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_clipped_fraction")
+            ),
+            "source_state_ratio_query_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_query_clipped_fraction")
+            ),
+            "source_state_ratio_prediction_max": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_prediction_max")
+            ),
+            "source_state_ratio_prediction_scale": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_prediction_scale")
+            ),
+            "source_state_ratio_density_ratio_loss": str(
+                model.diagnostics.get("source_state_ratio_density_ratio_loss", "none")
+            ),
+            "initial_ratio_mode": str(model.diagnostics.get("initial_ratio_mode", "")),
+            "one_step_ratio_mode": str(model.diagnostics.get("one_step_ratio_mode", "")),
+            "initial_joint_ratio_enabled": float(bool(model.diagnostics.get("initial_joint_ratio_enabled", False))),
+            "initial_joint_ratio_mean": _finite_or_blank(model.diagnostics.get("initial_joint_ratio_mean")),
+            "initial_joint_ratio_max": _finite_or_blank(model.diagnostics.get("initial_joint_ratio_max")),
+            "initial_joint_ratio_ess_fraction": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_ess_fraction")
+            ),
+            "initial_joint_ratio_loss": _finite_or_blank(model.diagnostics.get("initial_joint_ratio_loss")),
+            "initial_joint_ratio_updates": _finite_or_blank(model.diagnostics.get("initial_joint_ratio_updates")),
+            "initial_joint_ratio_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_clipped_fraction")
+            ),
+            "initial_joint_ratio_query_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_query_clipped_fraction")
+            ),
+            "initial_joint_ratio_prediction_max": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_prediction_max")
+            ),
+            "initial_joint_ratio_prediction_scale": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_prediction_scale")
+            ),
+            "initial_joint_ratio_density_ratio_loss": str(
+                model.diagnostics.get("initial_joint_ratio_density_ratio_loss", "none")
+            ),
+            "one_step_direct_ratio_enabled": float(
+                bool(model.diagnostics.get("one_step_direct_ratio_enabled", False))
+            ),
+            "one_step_direct_ratio_mean": _finite_or_blank(model.diagnostics.get("one_step_direct_ratio_mean")),
+            "one_step_direct_ratio_max": _finite_or_blank(model.diagnostics.get("one_step_direct_ratio_max")),
+            "one_step_direct_ratio_ess_fraction": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_ess_fraction")
+            ),
+            "one_step_direct_ratio_loss": _finite_or_blank(model.diagnostics.get("one_step_direct_ratio_loss")),
+            "one_step_direct_ratio_updates": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_updates")
+            ),
+            "one_step_direct_ratio_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_clipped_fraction")
+            ),
+            "one_step_direct_ratio_query_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_query_clipped_fraction")
+            ),
+            "one_step_direct_ratio_prediction_max": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_prediction_max")
+            ),
+            "one_step_direct_ratio_prediction_scale": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_prediction_scale")
+            ),
+            "one_step_direct_ratio_density_ratio_loss": str(
+                model.diagnostics.get("one_step_direct_ratio_density_ratio_loss", "none")
+            ),
             "tuned_cv": float(bool(config.tune_cv)),
         }
     )
@@ -234,8 +368,25 @@ def estimate_boosted_tree_auto(
     dataset: BenchmarkDataset,
     config: OccupancyRatioBenchmarkConfig,
 ) -> EstimatorResult:
-    candidates = ("huber", "stable")
-    results = [estimate_boosted_tree(dataset, config, loss="huber", preset=preset) for preset in candidates]
+    candidates = (
+        "stable",
+        "stable_factored",
+        "relaxed_tail",
+        "transition_norm",
+        "calibrated",
+        "stable_logistic_nuisance",
+    )
+    results = [
+        estimate_boosted_tree(
+            dataset,
+            config,
+            loss="huber",
+            preset=preset,
+            initial_ratio_mode="factored" if preset == "stable_factored" else "auto",
+            one_step_ratio_mode="factored" if preset == "stable_factored" else "auto",
+        )
+        for preset in candidates
+    ]
     scored = [(_selection_score(result), result) for result in results]
     score, selected = min(scored, key=lambda item: item[0])
     diagnostics = dict(selected.diagnostics)
@@ -275,6 +426,8 @@ def estimate_neural_network(
     *,
     loss: str,
     preset: str | None = None,
+    initial_ratio_mode: str = "auto",
+    one_step_ratio_mode: str = "auto",
 ) -> EstimatorResult:
     start = time.perf_counter()
     _stabilize_torch_runtime()
@@ -283,7 +436,13 @@ def estimate_neural_network(
     nuisance_crossfit_folds, nuisance_moment_calibration, density_ratio_loss = _neural_nuisance_options(config, preset)
     effective_loss = str(occupancy_options.pop("loss"))
     hidden_dims = (256, 256) if preset == "google_parity" else tuple(int(width) for width in config.neural_hidden_dims)
+    action_hidden_dims = _neural_stage_hidden_dims(config.neural_action_hidden_dims, fallback=hidden_dims)
+    source_hidden_dims = _neural_stage_hidden_dims(config.neural_source_hidden_dims, fallback=hidden_dims)
+    transition_hidden_dims = _neural_stage_hidden_dims(config.neural_transition_hidden_dims, fallback=hidden_dims)
+    direct_one_step_hidden_dims = _neural_stage_hidden_dims(config.neural_direct_one_step_hidden_dims, fallback=source_hidden_dims)
     activation = "relu" if preset == "google_parity" else str(config.neural_activation)
+    source_steps = _neural_source_steps(config)
+    direct_one_step_steps = _neural_direct_one_step_steps(config)
     occupancy_config = NeuralOccupancyRegressionConfig(
         num_iterations=int(config.neural_num_iterations),
         gradient_steps_per_iteration=int(config.neural_gradient_steps_per_iteration),
@@ -303,10 +462,19 @@ def estimate_neural_network(
         grad_clip_norm=config.neural_grad_clip_norm,
         device=str(config.neural_device),
         show_progress=False,
+        direct_one_step_density_ratio_loss=str(density_ratio_loss),
+        direct_one_step_prediction_max=nuisance_prediction_max,
+        direct_one_step_logistic_logit_clip=config.neural_logistic_logit_clip,
+        direct_one_step_moment_calibration=str(nuisance_moment_calibration),
+        direct_one_step_max_steps=direct_one_step_steps,
+        direct_one_step_hidden_dims=direct_one_step_hidden_dims,
+        direct_adjoint_steps=config.neural_direct_adjoint_steps,
+        direct_adjoint_learning_rate=config.neural_direct_adjoint_learning_rate,
+        direct_adjoint_weight_decay=config.neural_direct_adjoint_weight_decay,
         **occupancy_options,
     )
     action_config = NeuralActionRatioConfig(
-        hidden_dims=hidden_dims,
+        hidden_dims=action_hidden_dims,
         activation=activation,
         learning_rate=float(config.neural_nuisance_learning_rate),
         weight_decay=float(config.neural_weight_decay),
@@ -324,8 +492,28 @@ def estimate_neural_network(
         logistic_logit_clip=config.neural_logistic_logit_clip,
         device=str(config.neural_device),
     )
+    source_prediction_max = nuisance_prediction_max
+    source_config = NeuralSourceStateRatioConfig(
+        hidden_dims=source_hidden_dims,
+        activation=activation,
+        learning_rate=float(config.neural_nuisance_learning_rate),
+        weight_decay=float(config.neural_weight_decay),
+        batch_size=int(config.neural_batch_size),
+        max_steps=source_steps,
+        validation_fraction=0.20,
+        patience=8 if config.stage == "smoke" else 20,
+        seed=int(dataset.seed + 9_001),
+        prediction_max=source_prediction_max,
+        grad_clip_norm=config.neural_grad_clip_norm,
+        moment_calibration=str(nuisance_moment_calibration),
+        crossfit_folds=int(nuisance_crossfit_folds),
+        crossfit_seed=int(dataset.seed + 19_001),
+        density_ratio_loss=str(density_ratio_loss),
+        logistic_logit_clip=config.neural_logistic_logit_clip,
+        device=str(config.neural_device),
+    )
     transition_config = NeuralTransitionRatioConfig(
-        hidden_dims=hidden_dims,
+        hidden_dims=transition_hidden_dims,
         activation=activation,
         learning_rate=float(config.neural_nuisance_learning_rate),
         weight_decay=float(config.neural_weight_decay),
@@ -344,25 +532,42 @@ def estimate_neural_network(
         logistic_logit_clip=config.neural_logistic_logit_clip,
         device=str(config.neural_device),
     )
+    initial_states, initial_actions, initial_weights, source_applied = _initial_ratio_inputs(dataset, config)
+    target_next_actions = _target_next_actions_input(dataset)
     tuning_rows: list[dict[str, Any]] = []
     if bool(config.tune_cv):
-        tuned = tune_discounted_occupancy_ratio_neural_cv(
+        tuned = tune_occupancy_ratio_auto(
             states=dataset.states,
             actions=dataset.actions,
             next_states=dataset.next_states,
             target_actions=dataset.target_actions,
             gamma=float(dataset.gamma),
-            occupancy=occupancy_config,
-            action_ratio=action_config,
-            transition_ratio=transition_config,
-            occupancy_grid=_neural_occupancy_cv_grid(config, preset),
-            action_grid=_nuisance_cv_grid(config),
-            transition_grid=_nuisance_cv_grid(config),
-            cv_folds=int(config.cv_folds),
-            seed=int(dataset.seed + 70_001),
-            fit_final=True,
+            initial_states=initial_states,
+            initial_actions=initial_actions,
+            initial_weights=initial_weights,
+            target_next_actions=target_next_actions,
+            rewards=dataset.rewards,
+            families=("neural",),
+            search_space=_neural_tuning_search_space(
+                config,
+                preset,
+                occupancy_config=occupancy_config,
+                action_config=action_config,
+                source_config=source_config,
+                transition_config=transition_config,
+                automl=bool(str(config.automl_tuning) in {"fast", "balanced"}),
+                include_source=initial_states is not None,
+            ),
+            config=_benchmark_tuning_config(
+                config,
+                families=("neural",),
+                seed=int(dataset.seed + 70_001),
+                candidate_count=_benchmark_candidate_count(config, family="neural", preset=preset, include_source=initial_states is not None),
+            ),
+            initial_ratio_mode=initial_ratio_mode,
+            one_step_ratio_mode=one_step_ratio_mode,
         )
-        model = tuned["model"]
+        model = tuned.model
         tuning_rows = _flatten_neural_tuning_rows(tuned, estimator=f"neural_network_{preset}", dataset=dataset)
     else:
         model = fit_discounted_occupancy_ratio_neural(
@@ -371,9 +576,16 @@ def estimate_neural_network(
             next_states=dataset.next_states,
             target_actions=dataset.target_actions,
             gamma=float(dataset.gamma),
+            initial_states=initial_states,
+            initial_actions=initial_actions,
+            initial_weights=initial_weights,
+            target_next_actions=target_next_actions,
             occupancy=occupancy_config,
             action_ratio=action_config,
+            source_state_ratio=source_config,
             transition_ratio=transition_config,
+            initial_ratio_mode=initial_ratio_mode,
+            one_step_ratio_mode=one_step_ratio_mode,
         )
     raw = model.predict_state_action_ratio(dataset.states, dataset.actions, clip=False)
     weights = model.predict_state_action_ratio(dataset.states, dataset.actions, clip=True)
@@ -401,6 +613,10 @@ def estimate_neural_network(
             "neural_stabilization_preset": preset,
             "neural_loss": effective_loss,
             "neural_hidden_dims": "x".join(str(int(width)) for width in hidden_dims),
+            "neural_action_hidden_dims": "x".join(str(int(width)) for width in action_hidden_dims),
+            "neural_source_hidden_dims": "x".join(str(int(width)) for width in source_hidden_dims),
+            "neural_transition_hidden_dims": "x".join(str(int(width)) for width in transition_hidden_dims),
+            "neural_direct_one_step_hidden_dims": "x".join(str(int(width)) for width in direct_one_step_hidden_dims),
             "neural_activation": activation,
             "neural_gradient_steps_used": float(model.diagnostics.get("gradient_steps_used") or 0),
             "neural_accepted_count": float(model.diagnostics.get("accepted_count") or 0),
@@ -408,8 +624,16 @@ def estimate_neural_network(
             "neural_validation_warmup_iterations": float(
                 model.diagnostics.get("validation_warmup_iterations") or 0
             ),
+            "neural_action_steps": float(config.neural_action_steps),
             "neural_action_updates": float(model.diagnostics.get("action_updates") or 0),
+            "neural_source_steps": float(source_steps),
+            "neural_transition_steps": float(config.neural_transition_steps),
             "neural_transition_updates": float(model.diagnostics.get("transition_updates") or 0),
+            "neural_direct_one_step_steps": float(direct_one_step_steps),
+            "neural_direct_adjoint_steps": _finite_or_blank(model.diagnostics.get("direct_adjoint_steps")),
+            "neural_direct_adjoint_learning_rate": _finite_or_blank(
+                model.diagnostics.get("direct_adjoint_learning_rate")
+            ),
             "neural_action_best_valid_loss": _finite_or_blank(model.diagnostics.get("action_best_valid_loss")),
             "neural_transition_best_valid_loss": _finite_or_blank(
                 model.diagnostics.get("transition_best_valid_loss")
@@ -434,6 +658,84 @@ def estimate_neural_network(
             "neural_normalize_transition_cache": float(
                 bool(getattr(occupancy_config, "normalize_transition_cache", False))
             ),
+            "source_state_correction_mode": str(config.source_state_correction_mode),
+            "source_state_correction_applied": float(source_applied),
+            "source_state_initial_rows": float(0 if initial_states is None else np.asarray(initial_states).shape[0]),
+            "source_state_ratio_enabled": float(bool(model.diagnostics.get("source_state_ratio_enabled", False))),
+            "source_state_ratio_mean": _finite_or_blank(model.diagnostics.get("source_state_ratio_mean")),
+            "source_state_ratio_max": _finite_or_blank(model.diagnostics.get("source_state_ratio_max")),
+            "source_state_ratio_ess_fraction": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_ess_fraction")
+            ),
+            "source_state_ratio_loss": _finite_or_blank(model.diagnostics.get("source_state_ratio_loss")),
+            "source_state_ratio_updates": _finite_or_blank(model.diagnostics.get("source_state_ratio_updates")),
+            "source_state_ratio_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_clipped_fraction")
+            ),
+            "source_state_ratio_query_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_query_clipped_fraction")
+            ),
+            "source_state_ratio_prediction_max": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_prediction_max")
+            ),
+            "source_state_ratio_prediction_scale": _finite_or_blank(
+                model.diagnostics.get("source_state_ratio_prediction_scale")
+            ),
+            "source_state_ratio_density_ratio_loss": str(
+                model.diagnostics.get("source_state_ratio_density_ratio_loss", "none")
+            ),
+            "initial_ratio_mode": str(model.diagnostics.get("initial_ratio_mode", "")),
+            "one_step_ratio_mode": str(model.diagnostics.get("one_step_ratio_mode", "")),
+            "initial_joint_ratio_enabled": float(bool(model.diagnostics.get("initial_joint_ratio_enabled", False))),
+            "initial_joint_ratio_mean": _finite_or_blank(model.diagnostics.get("initial_joint_ratio_mean")),
+            "initial_joint_ratio_max": _finite_or_blank(model.diagnostics.get("initial_joint_ratio_max")),
+            "initial_joint_ratio_ess_fraction": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_ess_fraction")
+            ),
+            "initial_joint_ratio_loss": _finite_or_blank(model.diagnostics.get("initial_joint_ratio_loss")),
+            "initial_joint_ratio_updates": _finite_or_blank(model.diagnostics.get("initial_joint_ratio_updates")),
+            "initial_joint_ratio_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_clipped_fraction")
+            ),
+            "initial_joint_ratio_query_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_query_clipped_fraction")
+            ),
+            "initial_joint_ratio_prediction_max": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_prediction_max")
+            ),
+            "initial_joint_ratio_prediction_scale": _finite_or_blank(
+                model.diagnostics.get("initial_joint_ratio_prediction_scale")
+            ),
+            "initial_joint_ratio_density_ratio_loss": str(
+                model.diagnostics.get("initial_joint_ratio_density_ratio_loss", "none")
+            ),
+            "one_step_direct_ratio_enabled": float(
+                bool(model.diagnostics.get("one_step_direct_ratio_enabled", False))
+            ),
+            "one_step_direct_ratio_mean": _finite_or_blank(model.diagnostics.get("one_step_direct_ratio_mean")),
+            "one_step_direct_ratio_max": _finite_or_blank(model.diagnostics.get("one_step_direct_ratio_max")),
+            "one_step_direct_ratio_ess_fraction": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_ess_fraction")
+            ),
+            "one_step_direct_ratio_loss": _finite_or_blank(model.diagnostics.get("one_step_direct_ratio_loss")),
+            "one_step_direct_ratio_updates": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_updates")
+            ),
+            "one_step_direct_ratio_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_clipped_fraction")
+            ),
+            "one_step_direct_ratio_query_clipped_fraction": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_query_clipped_fraction")
+            ),
+            "one_step_direct_ratio_prediction_max": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_prediction_max")
+            ),
+            "one_step_direct_ratio_prediction_scale": _finite_or_blank(
+                model.diagnostics.get("one_step_direct_ratio_prediction_scale")
+            ),
+            "one_step_direct_ratio_density_ratio_loss": str(
+                model.diagnostics.get("one_step_direct_ratio_density_ratio_loss", "none")
+            ),
             "stopped_early": float(bool(model.diagnostics.get("stopped_early"))),
             "refresh_count": float(model.diagnostics.get("refresh_count") or 0),
             "history_json_friendly": float(_history_json_friendly(model.history)),
@@ -456,8 +758,18 @@ def estimate_neural_network_auto(
     dataset: BenchmarkDataset,
     config: OccupancyRatioBenchmarkConfig,
 ) -> EstimatorResult:
-    candidates = ("stable", "calibrated", "stable_logistic_nuisance")
-    results = [estimate_neural_network(dataset, config, loss="huber", preset=preset) for preset in candidates]
+    candidates = ("stable", "stable_factored", "relaxed_tail", "calibrated", "stable_logistic_nuisance")
+    results = [
+        estimate_neural_network(
+            dataset,
+            config,
+            loss="huber",
+            preset=preset,
+            initial_ratio_mode="factored" if preset == "stable_factored" else "auto",
+            one_step_ratio_mode="factored" if preset == "stable_factored" else "auto",
+        )
+        for preset in candidates
+    ]
     scored = [(_selection_score(result), result) for result in results]
     score, selected = min(scored, key=lambda item: item[0])
     diagnostics = dict(selected.diagnostics)
@@ -575,8 +887,24 @@ def _boosted_stabilization_options(
             ),
             config.boosted_nuisance_prediction_max,
         )
+    if preset == "relaxed_tail":
+        return (
+            dict(
+                loss="huber",
+                fixed_point_damping=0.75,
+                normalize_occupancy=True,
+                occupancy_ratio_max=100.0,
+                clip_pseudo_outcomes=True,
+                pseudo_outcome_upper_quantile=0.999,
+                occupancy_sample_weight_mode="uniform",
+                occupancy_sample_weight_max=config.boosted_sample_weight_max,
+                normalize_transition_cache=False,
+            ),
+            100.0,
+        )
     if preset in {
         "stable",
+        "stable_factored",
         "transition_norm",
         "crossfit2",
         "calibrated",
@@ -651,8 +979,24 @@ def _neural_stabilization_options(
             ),
             config.neural_nuisance_prediction_max,
         )
+    if preset == "relaxed_tail":
+        return (
+            dict(
+                loss="huber",
+                fixed_point_damping=0.75,
+                normalize_occupancy=True,
+                occupancy_ratio_max=100.0,
+                clip_pseudo_outcomes=True,
+                pseudo_outcome_upper_quantile=0.999,
+                occupancy_sample_weight_mode="uniform",
+                occupancy_sample_weight_max=config.neural_sample_weight_max,
+                normalize_transition_cache=False,
+            ),
+            100.0,
+        )
     if preset in {
         "stable",
+        "stable_factored",
         "transition_norm",
         "crossfit2",
         "calibrated",
@@ -715,6 +1059,20 @@ def _neural_nuisance_options(config: OccupancyRatioBenchmarkConfig, preset: str)
     return folds, calibration, density_ratio_loss
 
 
+def _neural_source_steps(config: OccupancyRatioBenchmarkConfig) -> int:
+    value = config.neural_source_steps
+    return int(config.neural_action_steps if value is None else value)
+
+
+def _neural_direct_one_step_steps(config: OccupancyRatioBenchmarkConfig) -> int:
+    value = config.neural_direct_one_step_steps
+    return int(config.neural_transition_steps if value is None else value)
+
+
+def _neural_stage_hidden_dims(value: Sequence[int] | None, *, fallback: Sequence[int]) -> tuple[int, ...]:
+    return tuple(int(width) for width in (fallback if value is None else value))
+
+
 def _nuisance_cv_grid(config: OccupancyRatioBenchmarkConfig) -> tuple[dict[str, Any], ...]:
     grid = []
     for cap in config.cv_nuisance_prediction_max_values:
@@ -754,12 +1112,117 @@ def _neural_occupancy_cv_grid(
     return _boosted_occupancy_cv_grid(config, preset)
 
 
+def _benchmark_tuning_config(
+    config: OccupancyRatioBenchmarkConfig,
+    *,
+    families: tuple[str, ...],
+    seed: int,
+    candidate_count: int,
+) -> OccupancyTuningConfig:
+    budget = str(config.automl_tuning)
+    automl = budget in {"fast", "balanced"}
+    max_candidates = (8 if budget == "fast" else 16) if automl else max(1, int(candidate_count))
+    promotion_candidates = (2 if budget == "fast" else 4) if automl else max(1, min(int(candidate_count), 4))
+    return OccupancyTuningConfig(
+        families=families,
+        cv_folds=int(config.cv_folds),
+        seed=int(seed),
+        budget=budget if automl else "balanced",
+        max_candidates=max_candidates,
+        promotion_candidates=promotion_candidates,
+        refit=True,
+        moment_extra_blocks=tuple(str(block) for block in config.cv_moment_extra_blocks),
+        moment_multiscale_rff_scales=tuple(float(scale) for scale in config.cv_moment_multiscale_rff_scales),
+        moment_strata_quantiles=tuple(float(quantile) for quantile in config.cv_moment_strata_quantiles),
+    )
+
+
+def _boosted_tuning_search_space(
+    config: OccupancyRatioBenchmarkConfig,
+    preset: str,
+    *,
+    occupancy_config: OccupancyRegressionConfig,
+    action_config: ActionRatioConfig,
+    source_config: SourceStateRatioConfig,
+    transition_config: TransitionRatioConfig,
+    automl: bool,
+    include_source: bool,
+) -> OccupancySearchSpace:
+    return OccupancySearchSpace(
+        boosted_occupancy=occupancy_config,
+        boosted_action_ratio=action_config,
+        boosted_source_state_ratio=source_config,
+        boosted_transition_ratio=transition_config,
+        boosted_candidates=None if automl else _benchmark_candidate_grid(config, preset, include_source=include_source),
+    )
+
+
+def _neural_tuning_search_space(
+    config: OccupancyRatioBenchmarkConfig,
+    preset: str,
+    *,
+    occupancy_config: NeuralOccupancyRegressionConfig,
+    action_config: NeuralActionRatioConfig,
+    source_config: NeuralSourceStateRatioConfig,
+    transition_config: NeuralTransitionRatioConfig,
+    automl: bool,
+    include_source: bool,
+) -> OccupancySearchSpace:
+    return OccupancySearchSpace(
+        neural_occupancy=occupancy_config,
+        neural_action_ratio=action_config,
+        neural_source_state_ratio=source_config,
+        neural_transition_ratio=transition_config,
+        neural_candidates=None if automl else _benchmark_candidate_grid(config, preset, include_source=include_source),
+    )
+
+
+def _benchmark_candidate_count(
+    config: OccupancyRatioBenchmarkConfig,
+    *,
+    family: str,
+    preset: str,
+    include_source: bool,
+) -> int:
+    if str(config.automl_tuning) == "fast":
+        return 8
+    if str(config.automl_tuning) == "balanced":
+        return 16
+    return len(_benchmark_candidate_grid(config, preset, include_source=include_source))
+
+
+def _benchmark_candidate_grid(
+    config: OccupancyRatioBenchmarkConfig,
+    preset: str,
+    *,
+    include_source: bool,
+) -> tuple[dict[str, dict[str, Any]], ...]:
+    rows = []
+    nuisance_grid = _nuisance_cv_grid(config)
+    for occ_over, action_over, transition_over in product(
+        _boosted_occupancy_cv_grid(config, preset),
+        nuisance_grid,
+        nuisance_grid,
+    ):
+        candidate = {
+            "occupancy": dict(occ_over),
+            "action_ratio": dict(action_over),
+            "transition_ratio": dict(transition_over),
+        }
+        if include_source:
+            candidate["source_state_ratio"] = dict(action_over)
+        rows.append(candidate)
+    return tuple(rows)
+
+
 def _flatten_boosted_tuning_rows(
     tuned: dict[str, Any],
     *,
     estimator: str,
     dataset: BenchmarkDataset,
 ) -> list[dict[str, Any]]:
+    if isinstance(tuned, OccupancyTuningResult):
+        return _flatten_product_tuning_rows(tuned, estimator=estimator, dataset=dataset)
     rows: list[dict[str, Any]] = []
     selected = tuned.get("selected_indices", {})
     for stage_name, scores_key in (
@@ -787,6 +1250,8 @@ def _flatten_neural_tuning_rows(
     estimator: str,
     dataset: BenchmarkDataset,
 ) -> list[dict[str, Any]]:
+    if isinstance(tuned, OccupancyTuningResult):
+        return _flatten_product_tuning_rows(tuned, estimator=estimator, dataset=dataset)
     rows: list[dict[str, Any]] = []
     for idx, row in enumerate(tuned.get("cv_rows", [])):
         rows.append(
@@ -801,6 +1266,65 @@ def _flatten_neural_tuning_rows(
             }
         )
     return rows
+
+
+def _flatten_product_tuning_rows(
+    tuned: OccupancyTuningResult,
+    *,
+    estimator: str,
+    dataset: BenchmarkDataset,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    selected_id = str(tuned.selected_candidate_id)
+    for row in tuned.candidate_rows():
+        rows.append(
+            {
+                **_tuning_context(estimator, dataset),
+                "tuning_stage": "automl_candidate",
+                "candidate_id": row.get("candidate_id", ""),
+                "family": row.get("family", ""),
+                "budget_stage": row.get("budget_stage", ""),
+                "candidate_index": _candidate_index(row.get("candidate_id", "")),
+                "score": row.get("score", float("nan")),
+                "selected": float(str(row.get("candidate_id", "")) == selected_id and row.get("budget_stage") == "full"),
+                "promoted": row.get("promoted", ""),
+                "runtime_sec": row.get("runtime_sec", ""),
+                "scoring": "proxy_rank_balanced",
+                **{key: value for key, value in row.items() if str(key).startswith("metric_")},
+            }
+        )
+    for row in tuned.fold_rows():
+        rows.append(
+            {
+                **_tuning_context(estimator, dataset),
+                "tuning_stage": "automl_fold",
+                "candidate_id": row.get("candidate_id", ""),
+                "family": row.get("family", ""),
+                "budget_stage": row.get("budget_stage", ""),
+                "candidate_index": _candidate_index(row.get("candidate_id", "")),
+                "fold": row.get("fold", ""),
+                "score": "",
+                "selected": float(str(row.get("candidate_id", "")) == selected_id and row.get("budget_stage") == "full"),
+                "promoted": "",
+                "runtime_sec": row.get("runtime_sec", ""),
+                "scoring": "proxy_rank_balanced",
+                "metric_validation_loss": row.get("validation_loss", ""),
+                "metric_norm_error": row.get("norm_error", ""),
+                "metric_ess_fraction": row.get("ess_fraction", ""),
+                "metric_p99": row.get("p99", ""),
+                "metric_max_weight": row.get("max_weight", ""),
+                "metric_clipped_fraction": row.get("clipped_fraction", ""),
+                "metric_reward_value": row.get("reward_value", ""),
+            }
+        )
+    return rows
+
+
+def _candidate_index(candidate_id: Any) -> int:
+    try:
+        return int(str(candidate_id).rsplit("_", 1)[-1])
+    except (TypeError, ValueError):
+        return -1
 
 
 def _tuning_context(estimator: str, dataset: BenchmarkDataset) -> dict[str, Any]:
@@ -833,6 +1357,17 @@ def run_estimator(
         return estimate_boosted_tree(dataset, config, loss="huber")
     if estimator == "boosted_tree_stable":
         return estimate_boosted_tree(dataset, config, loss="huber", preset="stable")
+    if estimator == "boosted_tree_stable_factored":
+        return estimate_boosted_tree(
+            dataset,
+            config,
+            loss="huber",
+            preset="stable_factored",
+            initial_ratio_mode="factored",
+            one_step_ratio_mode="factored",
+        )
+    if estimator == "boosted_tree_relaxed_tail":
+        return estimate_boosted_tree(dataset, config, loss="huber", preset="relaxed_tail")
     if estimator == "boosted_tree_logistic_nuisance":
         return estimate_boosted_tree(dataset, config, loss="huber", preset="logistic_nuisance")
     if estimator == "boosted_tree_stable_logistic_nuisance":
@@ -870,6 +1405,17 @@ def run_estimator(
         return estimate_neural_network(dataset, config, loss="huber")
     if estimator == "neural_network_stable":
         return estimate_neural_network(dataset, config, loss="huber", preset="stable")
+    if estimator == "neural_network_stable_factored":
+        return estimate_neural_network(
+            dataset,
+            config,
+            loss="huber",
+            preset="stable_factored",
+            initial_ratio_mode="factored",
+            one_step_ratio_mode="factored",
+        )
+    if estimator == "neural_network_relaxed_tail":
+        return estimate_neural_network(dataset, config, loss="huber", preset="relaxed_tail")
     if estimator == "neural_network_transition_norm":
         return estimate_neural_network(dataset, config, loss="huber", preset="transition_norm")
     if estimator == "neural_network_crossfit2":
@@ -975,6 +1521,64 @@ def _value_diagnostics(dataset: BenchmarkDataset, weights: Array) -> dict[str, f
     }
 
 
+def _initial_ratio_inputs(
+    dataset: BenchmarkDataset,
+    config: OccupancyRatioBenchmarkConfig,
+) -> tuple[Array | None, Array | None, Array | None, bool]:
+    mode = str(config.source_state_correction_mode)
+    if mode == "never":
+        return None, None, None, False
+    if mode == "auto" and not _source_state_correction_auto_applies(dataset):
+        return None, None, None, False
+    initial_states = getattr(dataset, "initial_states", None)
+    if initial_states is None:
+        if mode == "always":
+            raise ValueError("source_state_correction_mode='always' requires dataset.initial_states.")
+        return None, None, None, False
+    initial_states_arr = np.asarray(initial_states, dtype=np.float64)
+    if initial_states_arr.ndim == 0 or initial_states_arr.shape[0] == 0:
+        if mode == "always":
+            raise ValueError("source_state_correction_mode='always' requires nonempty initial_states.")
+        return None, None, None, False
+    initial_actions = getattr(dataset, "initial_actions", None)
+    initial_actions_arr = None if initial_actions is None else np.asarray(initial_actions, dtype=np.float64)
+    initial_weights = getattr(dataset, "initial_weights", None)
+    return (
+        initial_states_arr,
+        initial_actions_arr,
+        None if initial_weights is None else np.asarray(initial_weights, dtype=np.float64),
+        True,
+    )
+
+
+def _target_next_actions_input(dataset: BenchmarkDataset) -> Array | None:
+    target_next_actions = getattr(dataset, "next_target_actions", None)
+    if target_next_actions is None:
+        return None
+    target_next_actions_arr = np.asarray(target_next_actions, dtype=np.float64)
+    if target_next_actions_arr.ndim == 0 or target_next_actions_arr.shape[0] == 0:
+        return None
+    return target_next_actions_arr
+
+
+def _source_state_correction_auto_applies(dataset: BenchmarkDataset) -> bool:
+    initial_states = getattr(dataset, "initial_states", None)
+    if initial_states is not None:
+        initial_states_arr = np.asarray(initial_states)
+        if initial_states_arr.ndim > 0 and initial_states_arr.shape[0] > 0:
+            return True
+    setting = str(getattr(dataset, "setting", ""))
+    if setting.startswith("gym_") or setting in {
+        "openml_finite_mdp",
+        "obp_logged_bandit",
+        "minari_pointmaze",
+        "minari_minigrid",
+    }:
+        return True
+    reference = str(getattr(dataset, "metadata", {}).get("reference_distribution", "")).lower()
+    return "behavior_discounted" in reference or "logged" in reference
+
+
 def _finite_or_blank(value: Any) -> float | str:
     if value is None:
         return ""
@@ -1025,8 +1629,34 @@ def _stability_penalty(diagnostics: dict[str, Any]) -> float:
     except (TypeError, ValueError):
         ess = 1.0
     if np.isfinite(ess):
-        penalty += max(0.0, 0.05 - ess) * 10.0
+        penalty += _near_uniform_collapse_penalty(diagnostics, ess)
     return float(penalty)
+
+
+def _near_uniform_collapse_penalty(diagnostics: dict[str, Any], ess: float) -> float:
+    """Discourage selecting a nearly constant ratio when nuisance fits see policy shift."""
+    try:
+        cv = abs(float(diagnostics.get("weight_cv", 0.0)))
+    except (TypeError, ValueError):
+        cv = 0.0
+    shift_signal = 0.0
+    for name in (
+        "action_ratio_mae",
+        "transition_ratio_mae",
+        "action_ratio_log_rmse",
+        "transition_ratio_log_rmse",
+    ):
+        try:
+            value = abs(float(diagnostics.get(name, 0.0)))
+        except (TypeError, ValueError):
+            value = 0.0
+        if np.isfinite(value):
+            shift_signal = max(shift_signal, value)
+    if not np.isfinite(ess) or ess < 0.995 or cv > 0.05 or shift_signal < 0.05:
+        return 0.0
+    collapse = min(1.0, max(0.0, (ess - 0.995) / 0.005))
+    shift = min(1.0, shift_signal)
+    return float(0.25 * collapse * shift)
 
 
 def _occupancy_history_diagnostics(history: list[dict[str, Any]]) -> dict[str, float]:
@@ -1063,6 +1693,9 @@ def _occupancy_history_diagnostics(history: list[dict[str, Any]]) -> dict[str, f
         ("weight_p99", "weight_p99_final"),
         ("weight_max", "weight_max_final"),
         ("projection_clipped_fraction", "projection_clipped_fraction_final"),
+        ("projection_post_normalization_clipped_fraction", "projection_post_normalization_clipped_fraction_final"),
+        ("projection_negative_fraction", "projection_negative_fraction_final"),
+        ("projection_nonfinite_fraction", "projection_nonfinite_fraction_final"),
         ("pseudo_outcome_clipped_fraction", "pseudo_outcome_clipped_fraction_final"),
     ):
         vals = [float(row[source]) for row in history if source in row and np.isfinite(float(row[source]))]

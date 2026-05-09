@@ -1,0 +1,54 @@
+{
+  "profile": "medium",
+  "settings": [
+    "discrete_chain",
+    "linear_gaussian",
+    "nonlinear_monte_carlo"
+  ],
+  "estimators": [
+    "oracle",
+    "boosted_tree_stable",
+    "boosted_tree_stable_logistic_nuisance",
+    "boosted_tree_auto",
+    "neural_network_stable",
+    "neural_network_stable_logistic_nuisance",
+    "neural_network_auto"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "sample_sizes": [
+    500,
+    2000
+  ],
+  "gammas": [
+    0.5,
+    0.9,
+    0.95,
+    0.99
+  ],
+  "linear_gaussian_policy_shifts": [
+    0.5,
+    1.0,
+    2.0
+  ],
+  "include_google_dual_dice": false,
+  "boosted_num_iterations": 80,
+  "boosted_mcmc_samples": 48,
+  "boosted_density_ratio_loss": "lsif",
+  "boosted_moment_calibration": "scalar",
+  "neural_num_iterations": 60,
+  "neural_gradient_steps_per_iteration": 5,
+  "neural_mcmc_samples": 32,
+  "neural_action_steps": 700,
+  "neural_transition_steps": 900,
+  "neural_density_ratio_loss": "lsif",
+  "neural_moment_calibration": "scalar",
+  "mc_truth_samples": 50000,
+  "source_state_correction_mode": "auto",
+  "estimator_timeout_sec": 600,
+  "resume": true,
+  "write_plots": true
+}

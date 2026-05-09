@@ -1,0 +1,33 @@
+{
+  "profile": "smoke",
+  "settings": ["discrete_chain"],
+  "estimators": [
+    "oracle",
+    "neural_network_stable",
+    "neural_network_google_parity",
+    "google_dualdice_neural",
+    "boosted_tree_stable",
+    "boosted_tree_stable_logistic_nuisance",
+    "boosted_tree_auto"
+  ],
+  "seeds": [0],
+  "sample_sizes": [100],
+  "gammas": [0.5],
+  "boosted_num_iterations": 3,
+  "boosted_mcmc_samples": 3,
+  "boosted_batch_size": 64,
+  "neural_num_iterations": 2,
+  "neural_gradient_steps_per_iteration": 1,
+  "neural_mcmc_samples": 2,
+  "neural_batch_size": 32,
+  "neural_hidden_dims": [16],
+  "neural_action_steps": 2,
+  "neural_transition_steps": 2,
+  "neural_transition_permutation_samples": 2,
+  "google_num_updates": 5,
+  "google_batch_size": 32,
+  "source_state_correction_mode": "auto",
+  "estimator_timeout_sec": 120,
+  "resume": true,
+  "write_plots": true
+}

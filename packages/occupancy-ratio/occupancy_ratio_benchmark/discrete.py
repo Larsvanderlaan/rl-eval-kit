@@ -139,8 +139,13 @@ def make_discrete_dataset(
     gamma: float,
     sample_size: int,
     seed: int,
+    policy_shift: float | None = None,
 ) -> BenchmarkDataset:
-    mdp = make_grid_mdp() if setting == "discrete_grid" else make_chain_mdp()
+    if policy_shift is None:
+        mdp = make_grid_mdp() if setting == "discrete_grid" else make_chain_mdp()
+    else:
+        shift = float(policy_shift)
+        mdp = make_grid_mdp(policy_shift=shift) if setting == "discrete_grid" else make_chain_mdp(policy_shift=shift)
     rng = np.random.default_rng(seed)
     states_i = rng.choice(mdp.n_states, size=int(sample_size), p=mdp.reference_state_dist)
     actions_i = sample_policy_actions(mdp.behavior_policy, states_i, rng)
@@ -162,6 +167,15 @@ def make_discrete_dataset(
     )
 
     rewards = mdp.rewards[states_i, actions_i]
+    metadata = {
+        "truth_source": "tabular_linear_solve",
+        "reference_distribution": "fixed_reference_state_distribution",
+        "n_states": mdp.n_states,
+        "n_actions": mdp.n_actions,
+    }
+    if policy_shift is not None:
+        metadata["policy_shift"] = float(policy_shift)
+
     return BenchmarkDataset(
         setting=setting,
         states=one_hot(states_i, mdp.n_states),
@@ -180,10 +194,5 @@ def make_discrete_dataset(
         gamma=float(gamma),
         seed=int(seed),
         sample_size=int(sample_size),
-        metadata={
-            "truth_source": "tabular_linear_solve",
-            "reference_distribution": "fixed_reference_state_distribution",
-            "n_states": mdp.n_states,
-            "n_actions": mdp.n_actions,
-        },
+        metadata=metadata,
     )

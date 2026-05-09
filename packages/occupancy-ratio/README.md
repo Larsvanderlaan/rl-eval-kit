@@ -1,15 +1,33 @@
 # occupancy-ratio
 
-Discounted occupancy-ratio estimation tools for off-policy RL evaluation.
+Discounted occupancy-ratio estimators for off-policy reinforcement-learning
+evaluation.
 
-The importable Python package is `occupancy_ratio`; install it from this
-directory:
+The importable Python package is `occupancy_ratio`. It provides boosted and
+neural fitted occupancy-ratio iteration (FORI), conservative product AutoML
+tuning, diagnostics/calibration helpers, benchmark tooling, and an optional
+Google DualDICE comparator.
+
+## Install
+
+```bash
+python -m pip install -e "packages/occupancy-ratio"
+```
+
+Common extras:
 
 ```bash
 python -m pip install -e "packages/occupancy-ratio[neural,benchmark]"
+python -m pip install -e "packages/occupancy-ratio[docs]"
 ```
 
-## Boosted Occupancy Ratio
+Build the documentation site:
+
+```bash
+python -m mkdocs build --strict -f packages/occupancy-ratio/mkdocs.yml
+```
+
+## Quickstart
 
 ```python
 from occupancy_ratio import (
@@ -23,50 +41,55 @@ model = fit_discounted_occupancy_ratio(
     states=states,
     actions=actions,
     next_states=next_states,
-    target_actions=actions_under_target_policy,
-    gamma=0.9,
+    target_actions=target_actions_under_pi,
+    gamma=0.99,
     occupancy=OccupancyRegressionConfig.stable_defaults(seed=123),
-    action_ratio=ActionRatioConfig(density_ratio_loss="lsif"),
-    transition_ratio=TransitionRatioConfig(density_ratio_loss="lsif"),
+    action_ratio=ActionRatioConfig.stable_defaults(show_progress=False),
+    transition_ratio=TransitionRatioConfig.stable_defaults(show_progress=False),
 )
 
 weights = model.predict_state_action_ratio(states, actions)
 state_ratios = model.predict_state_ratio(states, actions)
 ```
 
-LSIF is the default density-ratio nuisance loss. Logistic action and transition
-nuisances are available with `density_ratio_loss="logistic"` and remain opt-in.
-
-## Neural Occupancy Ratio
+For production use, start with the boosted stable defaults for a single fit or
+the neural-default AutoML entrypoint for candidate tuning:
 
 ```python
-from occupancy_ratio import (
-    NeuralActionRatioConfig,
-    NeuralOccupancyRegressionConfig,
-    NeuralTransitionRatioConfig,
-    fit_discounted_occupancy_ratio_neural,
-)
+from occupancy_ratio import OccupancyTuningConfig, tune_occupancy_ratio_auto
 
-model = fit_discounted_occupancy_ratio_neural(
+tuned = tune_occupancy_ratio_auto(
     states=states,
     actions=actions,
     next_states=next_states,
-    target_actions=actions_under_target_policy,
-    gamma=0.9,
-    occupancy=NeuralOccupancyRegressionConfig(seed=123),
-    action_ratio=NeuralActionRatioConfig(density_ratio_loss="lsif"),
-    transition_ratio=NeuralTransitionRatioConfig(density_ratio_loss="lsif"),
+    target_actions=target_actions_under_pi,
+    gamma=0.99,
+    rewards=rewards,
+    config=OccupancyTuningConfig(budget="balanced"),
 )
+
+model = tuned.model
+candidate_rows = tuned.candidate_rows()
+fold_rows = tuned.fold_rows()
 ```
 
-The neural estimator uses mini-batch gradient updates for action, transition,
-and occupancy components. Cross-fitting uses held-out nuisance predictors in
-the fixed-point target builder while retaining full-data predictors for public
-prediction helpers.
+AutoML selection uses proxy diagnostics only; it never selects using oracle
+ratios, benchmark truth, or target-policy Monte Carlo values.
+
+## Documentation Map
+
+The MkDocs site under `docs/` contains:
+
+- installation and optional extras;
+- package architecture and stable import paths;
+- boosted and neural quickstarts;
+- data-shape contracts;
+- initial-source correction semantics;
+- AutoML tuning behavior and telemetry;
+- diagnostics, calibration, and benchmark usage;
+- generated API reference pages for public functions, configs, and models.
 
 ## Benchmarks
-
-Install the benchmark extra and run:
 
 ```bash
 occupancy-ratio-benchmark \
@@ -78,6 +101,4 @@ occupancy-ratio-benchmark \
 
 The module entrypoints are `python -m occupancy_ratio_benchmark.run`,
 `python -m occupancy_ratio_benchmark.dualdice_grid`, and
-`python -m occupancy_ratio_benchmark.defaults_report`. Use
-`--profile overnight` for the hybrid controlled plus Gymnasium/MuJoCo defaults
-sweep against official Google DualDICE.
+`python -m occupancy_ratio_benchmark.defaults_report`.

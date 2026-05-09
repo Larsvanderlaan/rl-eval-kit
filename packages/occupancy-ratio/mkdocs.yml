@@ -1,0 +1,62 @@
+site_name: occupancy-ratio
+site_description: Discounted occupancy-ratio estimators for off-policy RL evaluation
+repo_url: https://github.com/larsvanderlaan/RLtools
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - content.code.copy
+    - content.tabs.link
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - .
+          options:
+            docstring_style: numpy
+            docstring_section_style: table
+            heading_level: 2
+            members_order: source
+            merge_init_into_class: true
+            separate_signature: true
+            show_bases: false
+            show_root_full_path: false
+            show_source: false
+            show_signature_annotations: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Overview: index.md
+  - Installation: installation.md
+  - Architecture: architecture.md
+  - Quickstart: quickstart.md
+  - Data Shapes: data-shapes.md
+  - Initial-Source Correction: initial-source.md
+  - AutoML Tuning: automl.md
+  - Neural Estimator: neural.md
+  - Diagnostics And Calibration: diagnostics.md
+  - Google DualDICE: google-dualdice.md
+  - Benchmarks: benchmarks.md
+  - API Reference:
+      - Fitters: api/fitters.md
+      - Configs: api/configs.md
+      - Models: api/models.md
+      - Tuning: api/tuning.md
+      - Diagnostics: api/diagnostics.md
+      - Google DualDICE: api/google.md
+      - Advanced Helpers: api/advanced.md

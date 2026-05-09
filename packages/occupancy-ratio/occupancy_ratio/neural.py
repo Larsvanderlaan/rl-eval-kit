@@ -1,25 +1,33 @@
 """Neural discounted occupancy-ratio public facade."""
 
-from occupancy_ratio.fit_occupancy_ratio_neural import (
+from occupancy_ratio.neural_configs import (
     NeuralActionRatioConfig,
-    NeuralDiscountedOccupancyRatioModel,
     NeuralOccupancyRegressionConfig,
+    NeuralSourceStateRatioConfig,
     NeuralTransitionRatioConfig,
-    fit_action_ratio_neural,
+)
+from occupancy_ratio.neural_fit import (
     fit_discounted_occupancy_ratio_neural,
-    fit_transition_ratio_neural,
     tune_discounted_occupancy_ratio_neural_cv,
+)
+from occupancy_ratio.neural_models import NeuralDiscountedOccupancyRatioModel
+from occupancy_ratio.neural_nuisance import (
+    fit_action_ratio_neural,
+    fit_source_state_ratio_neural,
+    fit_transition_ratio_neural,
 )
 
 DiscountedOccupancyRatioNeuralModel = NeuralDiscountedOccupancyRatioModel
 
 __all__ = [
     "NeuralActionRatioConfig",
+    "NeuralSourceStateRatioConfig",
     "NeuralTransitionRatioConfig",
     "NeuralOccupancyRegressionConfig",
     "NeuralDiscountedOccupancyRatioModel",
     "DiscountedOccupancyRatioNeuralModel",
     "fit_action_ratio_neural",
+    "fit_source_state_ratio_neural",
     "fit_transition_ratio_neural",
     "fit_discounted_occupancy_ratio_neural",
     "tune_discounted_occupancy_ratio_neural_cv",

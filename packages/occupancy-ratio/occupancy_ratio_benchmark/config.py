@@ -5,13 +5,15 @@ from pathlib import Path
 from typing import Literal, Sequence
 
 
-BenchmarkProfile = Literal["smoke", "medium", "full", "overnight", "dualdice-paper"]
+BenchmarkProfile = Literal["smoke", "medium", "full", "overnight", "high_stakes", "dualdice-paper"]
 BenchmarkStage = BenchmarkProfile
 
 BOOSTED_ESTIMATOR_PRESETS = (
     "squared",
     "huber",
     "stable",
+    "stable_factored",
+    "relaxed_tail",
     "logistic_nuisance",
     "stable_logistic_nuisance",
     "transition_norm",
@@ -25,6 +27,8 @@ NEURAL_ESTIMATOR_PRESETS = (
     "squared",
     "huber",
     "stable",
+    "stable_factored",
+    "relaxed_tail",
     "logistic_nuisance",
     "stable_logistic_nuisance",
     "google_parity",
@@ -66,6 +70,7 @@ class OccupancyRatioBenchmarkConfig:
     seeds: Sequence[int] = field(default_factory=lambda: (0, 1))
     sample_sizes: Sequence[int] = field(default_factory=lambda: (500,))
     gammas: Sequence[float] = field(default_factory=lambda: (0.5, 0.9))
+    discrete_policy_shifts: Sequence[float] = field(default_factory=tuple)
     linear_gaussian_policy_shifts: Sequence[float] = field(default_factory=lambda: (1.0,))
     settings: Sequence[str] = field(
         default_factory=lambda: ("discrete_chain", "linear_gaussian", "nonlinear_monte_carlo")
@@ -73,7 +78,7 @@ class OccupancyRatioBenchmarkConfig:
     estimators: Sequence[str] = field(
         default_factory=lambda: ("oracle", "boosted_tree", "neural_network", "google_dualdice_neural")
     )
-    boosted_estimator_presets: Sequence[str] = field(default_factory=lambda: ("squared", "huber", "stable"))
+    boosted_estimator_presets: Sequence[str] = field(default_factory=lambda: ("stable",))
     neural_estimator_presets: Sequence[str] = field(default_factory=lambda: ("stable",))
     include_google_dual_dice: bool = True
     include_dualdice_gridwalk: bool = False
@@ -81,7 +86,7 @@ class OccupancyRatioBenchmarkConfig:
     external_repo_path: Path = Path("/tmp/google-research")
     n_jobs: int = 1
 
-    boosted_num_iterations: int = 30
+    boosted_num_iterations: int = 60
     boosted_trees_per_iteration: int = 1
     boosted_mcmc_samples: int = 24
     boosted_batch_size: int = 512
@@ -106,24 +111,33 @@ class OccupancyRatioBenchmarkConfig:
     neural_mcmc_samples: int = 24
     neural_batch_size: int = 512
     neural_hidden_dims: Sequence[int] = field(default_factory=lambda: (64, 64))
+    neural_action_hidden_dims: Sequence[int] | None = None
+    neural_source_hidden_dims: Sequence[int] | None = None
+    neural_transition_hidden_dims: Sequence[int] | None = None
+    neural_direct_one_step_hidden_dims: Sequence[int] | None = None
     neural_activation: str = "silu"
     neural_learning_rate: float = 5e-4
     neural_nuisance_learning_rate: float = 1e-3
-    neural_weight_decay: float = 1e-4
+    neural_weight_decay: float = 1e-5
     neural_action_steps: int = 800
+    neural_source_steps: int | None = None
     neural_transition_steps: int = 1_000
+    neural_direct_one_step_steps: int | None = None
     neural_transition_permutation_samples: int = 4
     neural_density_ratio_loss: str = "lsif"
     neural_logistic_logit_clip: float | None = 20.0
     neural_losses: Sequence[str] = field(default_factory=lambda: ("squared", "huber"))
     neural_stabilization_presets: Sequence[str] = field(default_factory=tuple)
-    neural_fixed_point_damping: float = 0.75
+    neural_fixed_point_damping: float = 0.5
     neural_validation_warmup_iterations: int = 1
     neural_occupancy_ratio_max: float | None = 50.0
     neural_pseudo_outcome_upper_quantile: float = 0.995
     neural_sample_weight_mode: str = "uniform"
     neural_sample_weight_max: float | None = 20.0
     neural_nuisance_prediction_max: float | None = 50.0
+    neural_direct_adjoint_steps: int | None = 128
+    neural_direct_adjoint_learning_rate: float | None = None
+    neural_direct_adjoint_weight_decay: float | None = None
     neural_grad_clip_norm: float | None = 5.0
     neural_crossfit_folds: int = 1
     neural_moment_calibration: str = "scalar"
@@ -135,6 +149,7 @@ class OccupancyRatioBenchmarkConfig:
     google_hidden_dims: Sequence[int] = field(default_factory=lambda: (64, 128))
     google_update_grid: Sequence[int] = field(default_factory=lambda: (250, 1_000, 5_000))
     tune_cv: bool = False
+    automl_tuning: str = "off"
     cv_folds: int = 3
     cv_scoring: str = "composite"
     cv_lambda_norm: float = 0.1
@@ -143,6 +158,9 @@ class OccupancyRatioBenchmarkConfig:
     cv_occupancy_ratio_max_values: Sequence[float | None] = field(default_factory=lambda: (25.0, 50.0, None))
     cv_nuisance_prediction_max_values: Sequence[float | None] = field(default_factory=lambda: (25.0, 50.0, None))
     cv_moment_calibrations: Sequence[str] = field(default_factory=lambda: ("none", "scalar"))
+    cv_moment_extra_blocks: Sequence[str] = field(default_factory=tuple)
+    cv_moment_multiscale_rff_scales: Sequence[float] = field(default_factory=lambda: (0.5, 2.0))
+    cv_moment_strata_quantiles: Sequence[float] = field(default_factory=lambda: (0.25, 0.50, 0.75))
     mc_truth_samples: int = 8_000
     gym_target_value_rollouts: int = 24
     openml_task_ids: Sequence[int] = field(default_factory=lambda: (31, 37, 54, 1464))
@@ -157,21 +175,34 @@ class OccupancyRatioBenchmarkConfig:
             "D4RL/minigrid/fourrooms-v0",
         )
     )
+    source_state_correction_mode: str = "auto"
     estimator_timeout_sec: float | None = None
     resume: bool = True
     write_plots: bool = True
+    config_path: Path | None = None
+    config_sha256: str = ""
 
     def __post_init__(self) -> None:
         profile = self.stage if self.profile is None else self.profile
-        if profile not in {"smoke", "medium", "full", "overnight", "dualdice-paper"}:
-            raise ValueError("profile must be 'smoke', 'medium', 'full', 'overnight', or 'dualdice-paper'.")
+        profiles = {"smoke", "medium", "full", "overnight", "high_stakes", "dualdice-paper"}
+        if profile not in profiles:
+            raise ValueError(
+                "profile must be 'smoke', 'medium', 'full', 'overnight', 'high_stakes', or 'dualdice-paper'."
+            )
         object.__setattr__(self, "profile", profile)
         object.__setattr__(self, "stage", profile)
+        object.__setattr__(self, "output_root", Path(self.output_root))
+        object.__setattr__(self, "external_repo_path", Path(self.external_repo_path))
+        if self.config_path is not None:
+            object.__setattr__(self, "config_path", Path(self.config_path))
         if self.n_jobs <= 0:
             raise ValueError("n_jobs must be positive.")
         for gamma in self.gammas:
             if not (0.0 <= float(gamma) < 1.0):
                 raise ValueError("all gammas must be in [0, 1).")
+        for shift in self.discrete_policy_shifts:
+            if float(shift) < 0.0:
+                raise ValueError("discrete_policy_shifts must be nonnegative.")
         for shift in self.linear_gaussian_policy_shifts:
             if float(shift) < 0.0:
                 raise ValueError("linear_gaussian_policy_shifts must be nonnegative.")
@@ -204,6 +235,8 @@ class OccupancyRatioBenchmarkConfig:
             "squared",
             "huber",
             "stable",
+            "stable_factored",
+            "relaxed_tail",
             "logistic_nuisance",
             "stable_logistic_nuisance",
             "transition_norm",
@@ -234,6 +267,12 @@ class OccupancyRatioBenchmarkConfig:
             raise ValueError("boosted_occupancy_ratio_max must be positive when supplied.")
         if self.neural_occupancy_ratio_max is not None and self.neural_occupancy_ratio_max <= 0.0:
             raise ValueError("neural_occupancy_ratio_max must be positive when supplied.")
+        if self.neural_direct_adjoint_steps is not None and int(self.neural_direct_adjoint_steps) <= 0:
+            raise ValueError("neural_direct_adjoint_steps must be positive when supplied.")
+        if self.neural_direct_adjoint_learning_rate is not None and float(self.neural_direct_adjoint_learning_rate) <= 0.0:
+            raise ValueError("neural_direct_adjoint_learning_rate must be positive when supplied.")
+        if self.neural_direct_adjoint_weight_decay is not None and float(self.neural_direct_adjoint_weight_decay) < 0.0:
+            raise ValueError("neural_direct_adjoint_weight_decay must be nonnegative when supplied.")
         if not (0.0 < self.boosted_pseudo_outcome_upper_quantile < 1.0):
             raise ValueError("boosted_pseudo_outcome_upper_quantile must be in (0, 1).")
         if int(self.boosted_crossfit_folds) < 1:
@@ -256,6 +295,15 @@ class OccupancyRatioBenchmarkConfig:
             raise ValueError("neural_batch_size must be positive.")
         if not tuple(self.neural_hidden_dims) or any(int(width) <= 0 for width in self.neural_hidden_dims):
             raise ValueError("neural_hidden_dims must contain positive widths.")
+        for name in (
+            "neural_action_hidden_dims",
+            "neural_source_hidden_dims",
+            "neural_transition_hidden_dims",
+            "neural_direct_one_step_hidden_dims",
+        ):
+            dims = getattr(self, name)
+            if dims is not None and (not tuple(dims) or any(int(width) <= 0 for width in dims)):
+                raise ValueError(f"{name} must contain positive widths when supplied.")
         if int(self.neural_validation_warmup_iterations) < 0:
             raise ValueError("neural_validation_warmup_iterations must be nonnegative.")
         if self.neural_learning_rate <= 0.0 or self.neural_nuisance_learning_rate <= 0.0:
@@ -264,6 +312,10 @@ class OccupancyRatioBenchmarkConfig:
             raise ValueError("neural_weight_decay must be nonnegative.")
         if self.neural_action_steps <= 0 or self.neural_transition_steps <= 0:
             raise ValueError("neural nuisance step counts must be positive.")
+        if self.neural_source_steps is not None and int(self.neural_source_steps) <= 0:
+            raise ValueError("neural_source_steps must be positive when supplied.")
+        if self.neural_direct_one_step_steps is not None and int(self.neural_direct_one_step_steps) <= 0:
+            raise ValueError("neural_direct_one_step_steps must be positive when supplied.")
         if self.neural_transition_permutation_samples <= 0:
             raise ValueError("neural_transition_permutation_samples must be positive.")
         if str(self.neural_density_ratio_loss) not in {"lsif", "logistic"}:
@@ -278,6 +330,8 @@ class OccupancyRatioBenchmarkConfig:
             raise ValueError("neural_moment_calibration must be 'none' or 'scalar'.")
         if int(self.cv_folds) < 2:
             raise ValueError("cv_folds must be >= 2.")
+        if str(self.automl_tuning) not in {"off", "fast", "balanced"}:
+            raise ValueError("automl_tuning must be 'off', 'fast', or 'balanced'.")
         if str(self.cv_scoring) not in {"composite", "loss"}:
             raise ValueError("cv_scoring must be 'composite' or 'loss'.")
         if self.cv_lambda_norm < 0.0 or self.cv_lambda_tail < 0.0:
@@ -294,6 +348,16 @@ class OccupancyRatioBenchmarkConfig:
         for method in self.cv_moment_calibrations:
             if str(method) not in {"none", "scalar"}:
                 raise ValueError("cv_moment_calibrations entries must be 'none' or 'scalar'.")
+        allowed_blocks = {"second_order", "multiscale_rff", "support", "policy_shift"}
+        unknown_blocks = sorted(str(block) for block in self.cv_moment_extra_blocks if str(block) not in allowed_blocks)
+        if unknown_blocks:
+            raise ValueError(f"cv_moment_extra_blocks entries must be one of {sorted(allowed_blocks)}.")
+        for scale in self.cv_moment_multiscale_rff_scales:
+            if float(scale) <= 0.0:
+                raise ValueError("cv_moment_multiscale_rff_scales entries must be positive.")
+        for quantile in self.cv_moment_strata_quantiles:
+            if not (0.0 < float(quantile) < 1.0):
+                raise ValueError("cv_moment_strata_quantiles entries must be in (0, 1).")
         for value in self.google_learning_rates:
             if float(value) <= 0.0:
                 raise ValueError("google_learning_rates must be positive.")
@@ -321,6 +385,8 @@ class OccupancyRatioBenchmarkConfig:
         for dataset_id in self.minari_dataset_ids:
             if not str(dataset_id):
                 raise ValueError("minari_dataset_ids entries must be nonempty.")
+        if str(self.source_state_correction_mode) not in {"auto", "always", "never"}:
+            raise ValueError("source_state_correction_mode must be 'auto', 'always', or 'never'.")
         if self.huber_delta is not None and self.huber_delta <= 0.0:
             raise ValueError("huber_delta must be positive when supplied.")
         if self.huber_delta_scale <= 0.0:
@@ -328,7 +394,9 @@ class OccupancyRatioBenchmarkConfig:
         if self.huber_hessian_floor < 0.0:
             raise ValueError("huber_hessian_floor must be nonnegative.")
         if self.estimator_timeout_sec is None:
-            if profile != "overnight":
+            if profile == "high_stakes":
+                object.__setattr__(self, "estimator_timeout_sec", 900.0)
+            elif profile != "overnight":
                 default_timeout = 120.0 if profile == "smoke" else 600.0
                 object.__setattr__(self, "estimator_timeout_sec", default_timeout)
         elif float(self.estimator_timeout_sec) <= 0.0:
@@ -346,7 +414,8 @@ class OccupancyRatioBenchmarkConfig:
         """Construct the recommended benchmark configuration.
 
         ``for_stage`` is retained for compatibility; profiles now include
-        ``medium`` and ``dualdice-paper`` in addition to smoke/full.
+        ``medium``, ``overnight``, ``high_stakes``, and ``dualdice-paper``
+        in addition to smoke/full.
         """
         if stage == "smoke":
             return cls(
@@ -489,11 +558,69 @@ class OccupancyRatioBenchmarkConfig:
                 neural_mcmc_samples=24,
                 neural_action_steps=1_000,
                 neural_transition_steps=1_400,
-                neural_fixed_point_damping=0.75,
+                neural_fixed_point_damping=0.5,
                 google_num_updates=1_000,
                 mc_truth_samples=50_000,
                 gym_target_value_rollouts=32,
                 estimator_timeout_sec=None,
+            )
+        if stage == "high_stakes":
+            return cls(
+                stage="high_stakes",
+                profile="high_stakes",
+                output_root=Path(output_root),
+                seeds=tuple(range(5)),
+                sample_sizes=(1_000, 5_000),
+                gammas=(0.9, 0.95, 0.99),
+                linear_gaussian_policy_shifts=(0.5, 1.0, 2.0),
+                settings=(
+                    "discrete_chain",
+                    "discrete_grid",
+                    "linear_gaussian",
+                    "nonlinear_monte_carlo",
+                    "gym_pendulum",
+                    "gym_mountain_car_continuous",
+                    "gym_halfcheetah",
+                    "gym_hopper",
+                    "openml_finite_mdp",
+                    "obp_logged_bandit",
+                    "minari_pointmaze",
+                    "minari_minigrid",
+                ),
+                estimators=(
+                    "oracle",
+                    "boosted_tree_stable",
+                    "neural_network_stable",
+                    "google_dualdice_neural",
+                    "boosted_tree_auto",
+                    "neural_network_auto",
+                    "neural_network_stable_logistic_nuisance",
+                ),
+                boosted_estimator_presets=("stable", "auto"),
+                neural_estimator_presets=("stable", "auto", "stable_logistic_nuisance"),
+                include_google_dual_dice=include_google_dual_dice,
+                include_dualdice_gridwalk=False,
+                external_repo_path=Path(external_repo_path),
+                boosted_num_iterations=80,
+                boosted_mcmc_samples=48,
+                boosted_density_ratio_loss="lsif",
+                boosted_fixed_point_damping=0.5,
+                boosted_moment_calibration="scalar",
+                huber_delta=None,
+                huber_delta_scale=1.345,
+                neural_num_iterations=80,
+                neural_gradient_steps_per_iteration=8,
+                neural_mcmc_samples=24,
+                neural_action_steps=1_000,
+                neural_transition_steps=1_400,
+                neural_density_ratio_loss="lsif",
+                neural_fixed_point_damping=0.5,
+                neural_moment_calibration="scalar",
+                source_state_correction_mode="auto",
+                google_num_updates=1_000,
+                mc_truth_samples=50_000,
+                gym_target_value_rollouts=32,
+                estimator_timeout_sec=900.0,
             )
         if stage == "dualdice-paper":
             return cls(
@@ -519,7 +646,7 @@ class OccupancyRatioBenchmarkConfig:
                 neural_gradient_steps_per_iteration=4,
                 google_num_updates=1_000,
             )
-        raise ValueError("profile must be 'smoke', 'medium', 'full', 'overnight', or 'dualdice-paper'.")
+        raise ValueError("profile must be 'smoke', 'medium', 'full', 'overnight', 'high_stakes', or 'dualdice-paper'.")
 
     @classmethod
     def for_profile(
