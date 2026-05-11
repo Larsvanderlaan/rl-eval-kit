@@ -1,0 +1,23 @@
+---
+import type { PaperInfo } from '../data/papers';
+
+interface Props {
+  paper: PaperInfo;
+}
+
+const { paper } = Astro.props;
+---
+
+<article class="rl-card paper-card">
+  <div class="paper-card__meta">
+    <span>{paper.package}</span>
+    <span>{paper.status}</span>
+  </div>
+  <h3>{paper.title}</h3>
+  <p class="paper-card__venue">Draft context: {paper.venue}</p>
+  <p>{paper.summary}</p>
+  <div class="paper-card__links">
+    <a href={paper.sourceHref}>Source</a>
+    {paper.pdfHref && <a href={paper.pdfHref}>PDF</a>}
+  </div>
+</article>

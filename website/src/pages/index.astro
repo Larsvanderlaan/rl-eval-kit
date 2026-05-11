@@ -1,0 +1,168 @@
+---
+import CodeWindow from '../components/CodeWindow.astro';
+import PackageCard from '../components/PackageCard.astro';
+import PaperCard from '../components/PaperCard.astro';
+import WorkflowRail from '../components/WorkflowRail.astro';
+import { packages } from '../data/packages';
+import { papers } from '../data/papers';
+import '../styles/global.css';
+
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+const withBase = (path = '') => `${base}${path.replace(/^\/+/, '')}`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Offline RL evaluation and normalized reward estimation for researchers and practitioners."
+    />
+    <title>RLEvalKit</title>
+    <link rel="icon" href={withBase('/favicon.svg')} />
+  </head>
+  <body class="landing-page">
+    <header class="landing-nav">
+      <a class="landing-brand" href={withBase()}>RLEvalKit</a>
+      <nav aria-label="Primary">
+        <a href={withBase('/start/')}>Start</a>
+        <a href={withBase('/fqe/')}>FQE</a>
+        <a href={withBase('/occupancy-ratio/')}>Ratios</a>
+        <a href={withBase('/genpqr/')}>genPQR</a>
+        <a href={withBase('/papers/')}>Papers</a>
+        <a href="https://github.com/Larsvanderlaan/rl-eval-kit">GitHub</a>
+      </nav>
+    </header>
+    <main class="hero-shell">
+    <section class="hero-grid" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <span class="eyebrow">Offline RL evaluation ecosystem</span>
+        <h1 id="hero-title">Offline RL estimates for values, ratios, and normalized rewards.</h1>
+        <p class="lead">
+          RLEvalKit provides fitted Q evaluation, discounted occupancy ratios,
+          and inverse-RL reward estimation for logged-data workflows.
+        </p>
+        <div class="hero-actions">
+          <a class="rl-button primary" href={withBase('/start/')}>Start building</a>
+          <a class="rl-button" href={withBase('/papers/')}>Read the methods</a>
+          <a class="rl-button" href="https://github.com/Larsvanderlaan/rl-eval-kit">GitHub</a>
+        </div>
+      </div>
+      <CodeWindow title="One workflow, three estimands">
+{`from fqe import tune_fqe_auto
+from occupancy_ratio import (
+    tune_occupancy_ratio_auto,
+)
+from genpqr import GenPQRConfig, fit_genpqr
+
+q_result = tune_fqe_auto(
+    ..., budget="balanced"
+)
+ratio_result = tune_occupancy_ratio_auto(
+    ..., budget="balanced"
+)
+
+reward_result = fit_genpqr(
+    dataset=dataset,
+    gamma=0.99,
+    config=GenPQRConfig.from_preset("bc_boosted_fast"),
+)`}
+      </CodeWindow>
+    </section>
+
+    <section class="rl-section" aria-labelledby="packages-title">
+      <h2 id="packages-title">Choose the object you need to estimate.</h2>
+      <p class="section-intro">
+        Package scope follows the estimand: value functions, density ratios,
+        and rewards. Each path exposes practical defaults, explicit diagnostics,
+        and method pages linked to draft manuscripts.
+      </p>
+      <div class="card-grid">
+        {packages.map((pkg) => <PackageCard pkg={pkg} />)}
+      </div>
+    </section>
+
+    <section class="rl-section" aria-labelledby="workflow-title">
+      <h2 id="workflow-title">Built around offline RL workflows.</h2>
+      <p class="section-intro">
+        RLEvalKit is not an RL training framework. It is the evaluation,
+        weighting, validation, and normalized reward-estimation layer around
+        logged data.
+      </p>
+      <WorkflowRail />
+    </section>
+
+    <section class="rl-section" aria-labelledby="diagnostics-title">
+      <h2 id="diagnostics-title">Model selection and diagnostics.</h2>
+      <div class="card-grid two">
+        <div class="rl-card">
+          <h3>Transparent tuning reports</h3>
+          <p>
+            Tuning results show the losses, stability metrics, runtime, and
+            diagnostics used to compare candidate estimators. Target-validation
+            workflows use validation data supplied by the user.
+          </p>
+        </div>
+        <div class="rl-card">
+          <h3>Diagnostics for common failure modes</h3>
+          <p>
+            Near-uniform ratio collapse, weak anchor support, tail blowups,
+            clipping, optional dependency failures, and truncation tail mass are
+            reported as explicit diagnostics rather than hidden warning text.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="rl-section" aria-labelledby="benchmarks-title">
+      <h2 id="benchmarks-title">Reports and validation artifacts.</h2>
+      <p class="section-intro">
+        Benchmark CLIs emit tables, manifests, diagnostic JSON, plots, and
+        resumable partial results so researchers can audit exactly what ran.
+      </p>
+      <table class="diagnostic-table">
+        <thead>
+          <tr>
+            <th>Surface</th>
+            <th>Example command</th>
+            <th>Primary artifacts</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>FQE</td>
+            <td><code>fqe-benchmark --stage smoke --no-plots</code></td>
+            <td><code>results.csv</code>, <code>summary.csv</code>, <code>diagnostics.json</code></td>
+          </tr>
+          <tr>
+            <td>occupancy-ratio</td>
+            <td><code>occupancy-ratio-benchmark --profile smoke --no-plots</code></td>
+            <td><code>results.partial.csv</code>, tuning telemetry, defaults reports</td>
+          </tr>
+          <tr>
+            <td>genPQR</td>
+            <td><code>result.diagnostics</code></td>
+            <td>reward diagnostics, serialization manifests, adapter status</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="rl-section" aria-labelledby="papers-title">
+      <h2 id="papers-title">Methods and assumptions.</h2>
+      <p class="section-intro">
+        The docs connect practical APIs to the manuscripts that define their
+        estimands, assumptions, and error decompositions.
+      </p>
+      <div class="card-grid">
+        {papers.slice(0, 3).map((paper) => <PaperCard paper={paper} />)}
+      </div>
+      <p class="button-row"><a class="rl-button" href={withBase('/papers/')}>Open the paper library</a></p>
+    </section>
+    </main>
+  </body>
+</html>
