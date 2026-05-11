@@ -1,0 +1,15 @@
+---
+interface Props {
+  title?: string;
+}
+
+const { title = 'Python' } = Astro.props;
+---
+
+<figure class="code-window">
+  <figcaption>
+    <span></span>
+    <strong>{title}</strong>
+  </figcaption>
+  <pre><slot /></pre>
+</figure>
