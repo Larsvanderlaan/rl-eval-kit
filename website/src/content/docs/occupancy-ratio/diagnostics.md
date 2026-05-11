@@ -5,23 +5,37 @@ description: Reading ratio, source, tuning, and benchmark diagnostics.
 
 ## Ratio quality signals
 
-| Diagnostic | Meaning | Red flag |
-| --- | --- | --- |
-| `source_state_ratio_enabled` | Factored source correction path used | Enabled with poor initial-state support |
-| `initial_joint_ratio_enabled` | Joint initial ratio path used | Enabled without credible initial actions |
-| `*_ess_fraction` | Effective sample size fraction | High ESS plus near-zero CV under real policy shift |
-| `*_clipped_fraction` | How much ratio mass was clipped | Large clipping fraction or unstable tails |
-| `source_state_ratio_loss` | Source ratio nuisance fit loss | Degenerate nuisance fit or fallback |
-| `initial_joint_ratio_loss` | Joint initial ratio nuisance fit loss | Poor numerator/denominator separation |
+These checks are user-facing because they determine whether the fitted weights
+are plausible for OPE, weighted FQE, or downstream reporting.
 
-## Collapse and tail risk
+| Signal | Meaning | What to review |
+| --- | --- | --- |
+| Source-correction path | Whether the fit used no source, factored state-source correction, or joint initial state-action correction | Whether the supplied initial states/actions have credible support |
+| Effective sample size and weight variation | How concentrated or uniform the fitted weights are | High ESS plus near-zero variation under real policy shift |
+| Clipping and tail summaries | Whether a few rows dominate the weighted estimate | Large clipped fraction or very large max weights |
+| Source-ratio fit quality | Whether the initial-source nuisance fit looks stable | Large source losses, extreme source ratios, or fallback status |
+| Fold-level OPE stability | Whether weighted value estimates agree across folds | Strong swings across folds or candidate families |
+
+## Uniform weights and tail risk
 
 Near-uniform weights are not automatically good. If behavior and target
 policies are meaningfully different, a near-one ESS with near-zero weight CV can
-mean the estimator collapsed toward a constant ratio.
+mean the estimator learned a nearly constant ratio.
 
-Investigate collapse, over-regularization, underfitting, or tabular tuning
-failure before calling the run successful.
+Review candidate complexity, regularization, fit quality, and fold-level ratio
+variation before treating the run as successful.
+
+## Exported fields for audits
+
+The exported JSON keeps implementation-level names so reports can be traced back
+to code. The most useful fields to surface in product summaries are:
+
+| Field family | User-facing interpretation |
+| --- | --- |
+| `source_state_ratio_enabled`, `initial_joint_ratio_enabled` | Which source-correction path was used |
+| `*_ess_fraction` | Effective sample size fraction for fitted weights |
+| `*_clipped_fraction` | Fraction of mass affected by clipping |
+| `source_state_ratio_loss`, `initial_joint_ratio_loss` | Nuisance source-ratio fit quality |
 
 ## What to check next
 

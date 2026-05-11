@@ -11,6 +11,15 @@ const base = import.meta.env.BASE_URL.endsWith('/')
   ? import.meta.env.BASE_URL
   : `${import.meta.env.BASE_URL}/`;
 const withBase = (path = '') => `${base}${path.replace(/^\/+/, '')}`;
+
+const navItems = [
+  { label: 'Overview', href: withBase(), active: true },
+  { label: 'Start', href: withBase('/start/') },
+  { label: 'FQE', href: withBase('/fqe/') },
+  { label: 'Ratios', href: withBase('/occupancy-ratio/') },
+  { label: 'genPQR', href: withBase('/genpqr/') },
+  { label: 'Papers', href: withBase('/papers/') },
+];
 ---
 
 <!doctype html>
@@ -26,143 +35,251 @@ const withBase = (path = '') => `${base}${path.replace(/^\/+/, '')}`;
     <link rel="icon" href={withBase('/favicon.svg')} />
   </head>
   <body class="landing-page">
-    <header class="landing-nav">
-      <a class="landing-brand" href={withBase()}>RLEvalKit</a>
-      <nav aria-label="Primary">
-        <a href={withBase('/start/')}>Start</a>
-        <a href={withBase('/fqe/')}>FQE</a>
-        <a href={withBase('/occupancy-ratio/')}>Ratios</a>
-        <a href={withBase('/genpqr/')}>genPQR</a>
-        <a href={withBase('/papers/')}>Papers</a>
-        <a href="https://github.com/Larsvanderlaan/rl-eval-kit">GitHub</a>
-      </nav>
-    </header>
-    <main class="hero-shell">
-    <section class="hero-grid" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <span class="eyebrow">Offline RL evaluation ecosystem</span>
-        <h1 id="hero-title">Offline RL estimates for values, ratios, and normalized rewards.</h1>
-        <p class="lead">
-          RLEvalKit provides fitted Q evaluation, discounted occupancy ratios,
-          and inverse-RL reward estimation for logged-data workflows.
-        </p>
-        <div class="hero-actions">
-          <a class="rl-button primary" href={withBase('/start/')}>Start building</a>
-          <a class="rl-button" href={withBase('/papers/')}>Read the methods</a>
-          <a class="rl-button" href="https://github.com/Larsvanderlaan/rl-eval-kit">GitHub</a>
-        </div>
+    <header class="site-header">
+      <div class="site-nav">
+        <a class="brand-lockup" href={withBase()}>
+          <span class="brand-mark">RL</span>
+          <span class="brand-text">
+            <strong>RLEvalKit</strong>
+            <small>offline RL evaluation</small>
+          </span>
+        </a>
+        <nav class="page-tabs" aria-label="Primary">
+          {
+            navItems.map((item) => (
+              <a
+                class:list={['page-tab', item.active && 'is-active']}
+                href={item.href}
+                aria-current={item.active ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+        <a class="nav-action" href="https://github.com/Larsvanderlaan/rl-eval-kit">GitHub</a>
       </div>
-      <CodeWindow title="One workflow, three estimands">
+    </header>
+
+    <main class="landing-main">
+      <section class="landing-hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="eyebrow">Research software for logged-data evaluation</span>
+          <h1 id="hero-title">RLEvalKit</h1>
+          <p class="hero-kicker">
+            Offline RL evaluation, density-ratio estimation, and normalized
+            reward modeling in one auditable toolkit.
+          </p>
+          <p class="lead">
+            Move from logged transitions to fitted values, reweighting ratios,
+            reward estimates, and diagnostics without stitching together a new
+            experiment stack for every paper.
+          </p>
+          <div class="hero-actions">
+            <a class="rl-button primary" href={withBase('/start/')}>Start building</a>
+            <a class="rl-button" href={withBase('/papers/')}>Read the methods</a>
+          </div>
+          <dl class="hero-proof-row">
+            <div>
+              <dt>3</dt>
+              <dd>estimation packages</dd>
+            </div>
+            <div>
+              <dt>CV</dt>
+              <dd>proxy-only tuning</dd>
+            </div>
+            <div>
+              <dt>JSON</dt>
+              <dd>diagnostic manifests</dd>
+            </div>
+          </dl>
+        </div>
+
+        <aside class="hero-visual" aria-label="Example diagnostics dashboard">
+          <div class="visual-head">
+            <span>Evaluation run</span>
+            <strong>balanced budget</strong>
+          </div>
+          <div class="metric-strip">
+            <div>
+              <span>Policy value</span>
+              <strong>0.428</strong>
+            </div>
+            <div>
+              <span>Ratio ESS</span>
+              <strong>0.63</strong>
+            </div>
+            <div>
+              <span>Reward scale</span>
+              <strong>stable</strong>
+            </div>
+          </div>
+          <div class="visual-grid" aria-hidden="true">
+            <div class="trace trace-fqe"></div>
+            <div class="trace trace-ratio"></div>
+            <div class="trace trace-reward"></div>
+          </div>
+          <ol class="run-lanes">
+            <li>
+              <span>fqe</span>
+              <strong>Bellman calibration passed</strong>
+            </li>
+            <li>
+              <span>ratio</span>
+              <strong>weight variation checked</strong>
+            </li>
+            <li>
+              <span>genpqr</span>
+              <strong>reward diagnostics exported</strong>
+            </li>
+          </ol>
+        </aside>
+      </section>
+
+      <section class="package-tabs-section" aria-label="Package shortcuts">
+        <div class="package-tabs">
+          {
+            packages.map((pkg) => (
+              <a class="package-tab" href={withBase(pkg.href)}>
+                <span>{pkg.importName}</span>
+                <strong>{pkg.name}</strong>
+              </a>
+            ))
+          }
+        </div>
+      </section>
+
+      <section class="rl-section split-section" aria-labelledby="workflow-code-title">
+        <div class="section-copy">
+          <span class="eyebrow">One experiment surface</span>
+          <h2 id="workflow-code-title">Fit values, ratios, and rewards from the same logged-data workflow.</h2>
+          <p class="section-intro">
+            Package scope follows the estimand, while the product feel stays
+            consistent: practical defaults, explicit diagnostics, and tuning
+            telemetry you can inspect after a run.
+          </p>
+        </div>
+        <CodeWindow title="One workflow, three estimands">
 {`from fqe import tune_fqe_auto
-from occupancy_ratio import (
-    tune_occupancy_ratio_auto,
-)
+from occupancy_ratio import tune_occupancy_ratio_auto
 from genpqr import GenPQRConfig, fit_genpqr
 
-q_result = tune_fqe_auto(
-    ..., budget="balanced"
-)
-ratio_result = tune_occupancy_ratio_auto(
-    ..., budget="balanced"
-)
+q_result = tune_fqe_auto(..., budget="balanced")
+ratio_result = tune_occupancy_ratio_auto(..., budget="balanced")
 
 reward_result = fit_genpqr(
     dataset=dataset,
     gamma=0.99,
     config=GenPQRConfig.from_preset("bc_boosted_fast"),
 )`}
-      </CodeWindow>
-    </section>
+        </CodeWindow>
+      </section>
 
-    <section class="rl-section" aria-labelledby="packages-title">
-      <h2 id="packages-title">Choose the object you need to estimate.</h2>
-      <p class="section-intro">
-        Package scope follows the estimand: value functions, density ratios,
-        and rewards. Each path exposes practical defaults, explicit diagnostics,
-        and method pages linked to draft manuscripts.
-      </p>
-      <div class="card-grid">
-        {packages.map((pkg) => <PackageCard pkg={pkg} />)}
-      </div>
-    </section>
-
-    <section class="rl-section" aria-labelledby="workflow-title">
-      <h2 id="workflow-title">Built around offline RL workflows.</h2>
-      <p class="section-intro">
-        RLEvalKit is not an RL training framework. It is the evaluation,
-        weighting, validation, and normalized reward-estimation layer around
-        logged data.
-      </p>
-      <WorkflowRail />
-    </section>
-
-    <section class="rl-section" aria-labelledby="diagnostics-title">
-      <h2 id="diagnostics-title">Model selection and diagnostics.</h2>
-      <div class="card-grid two">
-        <div class="rl-card">
-          <h3>Transparent tuning reports</h3>
-          <p>
-            Tuning results show the losses, stability metrics, runtime, and
-            diagnostics used to compare candidate estimators. Target-validation
-            workflows use validation data supplied by the user.
+      <section class="rl-section" aria-labelledby="packages-title">
+        <div class="section-heading">
+          <span class="eyebrow">Package map</span>
+          <h2 id="packages-title">Choose the object you need to estimate.</h2>
+          <p class="section-intro">
+            Each package has a focused API surface and a documentation path that
+            connects practical usage to the manuscript-level assumptions.
           </p>
         </div>
-        <div class="rl-card">
-          <h3>Diagnostics for common failure modes</h3>
-          <p>
-            Near-uniform ratio collapse, weak anchor support, tail blowups,
-            clipping, optional dependency failures, and truncation tail mass are
-            reported as explicit diagnostics rather than hidden warning text.
+        <div class="card-grid">
+          {packages.map((pkg) => <PackageCard pkg={pkg} />)}
+        </div>
+      </section>
+
+      <section class="rl-section workflow-section" aria-labelledby="workflow-title">
+        <div class="section-heading">
+          <span class="eyebrow">Workflow</span>
+          <h2 id="workflow-title">Built around offline RL evidence trails.</h2>
+          <p class="section-intro">
+            RLEvalKit is the evaluation, weighting, validation, and normalized
+            reward-estimation layer around logged data.
           </p>
         </div>
-      </div>
-    </section>
+        <WorkflowRail />
+      </section>
 
-    <section class="rl-section" aria-labelledby="benchmarks-title">
-      <h2 id="benchmarks-title">Reports and validation artifacts.</h2>
-      <p class="section-intro">
-        Benchmark CLIs emit tables, manifests, diagnostic JSON, plots, and
-        resumable partial results so researchers can audit exactly what ran.
-      </p>
-      <table class="diagnostic-table">
-        <thead>
-          <tr>
-            <th>Surface</th>
-            <th>Example command</th>
-            <th>Primary artifacts</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>FQE</td>
-            <td><code>fqe-benchmark --stage smoke --no-plots</code></td>
-            <td><code>results.csv</code>, <code>summary.csv</code>, <code>diagnostics.json</code></td>
-          </tr>
-          <tr>
-            <td>occupancy-ratio</td>
-            <td><code>occupancy-ratio-benchmark --profile smoke --no-plots</code></td>
-            <td><code>results.partial.csv</code>, tuning telemetry, defaults reports</td>
-          </tr>
-          <tr>
-            <td>genPQR</td>
-            <td><code>result.diagnostics</code></td>
-            <td>reward diagnostics, serialization manifests, adapter status</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+      <section class="rl-section" aria-labelledby="diagnostics-title">
+        <div class="section-heading compact">
+          <span class="eyebrow">Diagnostics</span>
+          <h2 id="diagnostics-title">Model selection that leaves receipts.</h2>
+        </div>
+        <div class="card-grid two">
+          <div class="rl-card">
+            <h3>Transparent tuning reports</h3>
+            <p>
+              Tuning results show the losses, stability metrics, runtime, and
+              decision signals used to compare candidate estimators:
+              selected method, score components, runtime, and validation data
+              supplied by the user.
+            </p>
+          </div>
+          <div class="rl-card">
+            <h3>Signals users can act on</h3>
+            <p>
+              Reports focus on coverage, stability, tail risk, calibration,
+              source-correction status, and adapter status so users can decide
+              whether an estimate is ready for downstream analysis.
+            </p>
+          </div>
+        </div>
+      </section>
 
-    <section class="rl-section" aria-labelledby="papers-title">
-      <h2 id="papers-title">Methods and assumptions.</h2>
-      <p class="section-intro">
-        The docs connect practical APIs to the manuscripts that define their
-        estimands, assumptions, and error decompositions.
-      </p>
-      <div class="card-grid">
-        {papers.slice(0, 3).map((paper) => <PaperCard paper={paper} />)}
-      </div>
-      <p class="button-row"><a class="rl-button" href={withBase('/papers/')}>Open the paper library</a></p>
-    </section>
+      <section class="rl-section" aria-labelledby="benchmarks-title">
+        <div class="section-heading">
+          <span class="eyebrow">Artifacts</span>
+          <h2 id="benchmarks-title">Reports that make benchmark runs auditable.</h2>
+          <p class="section-intro">
+            Benchmark CLIs emit tables, manifests, diagnostic JSON, plots, and
+            resumable partial results so researchers can audit exactly what ran.
+          </p>
+        </div>
+        <div class="table-frame">
+          <table class="diagnostic-table">
+            <thead>
+              <tr>
+                <th>Surface</th>
+                <th>Example command</th>
+                <th>Primary artifacts</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>FQE</td>
+                <td><code>fqe-benchmark --stage smoke --no-plots</code></td>
+                <td><code>results.csv</code>, <code>summary.csv</code>, <code>diagnostics.json</code></td>
+              </tr>
+              <tr>
+                <td>occupancy-ratio</td>
+                <td><code>occupancy-ratio-benchmark --profile smoke --no-plots</code></td>
+                <td><code>results.partial.csv</code>, tuning telemetry, defaults reports</td>
+              </tr>
+              <tr>
+                <td>genPQR</td>
+                <td><code>result.diagnostics</code></td>
+                <td>reward diagnostics, serialization manifests, adapter status</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="rl-section papers-preview" aria-labelledby="papers-title">
+        <div class="section-heading">
+          <span class="eyebrow">Methods</span>
+          <h2 id="papers-title">Research assumptions stay close to the APIs.</h2>
+          <p class="section-intro">
+            The docs connect practical entry points to the manuscripts that
+            define their estimands, assumptions, and error decompositions.
+          </p>
+        </div>
+        <div class="card-grid">
+          {papers.slice(0, 3).map((paper) => <PaperCard paper={paper} />)}
+        </div>
+        <p class="button-row"><a class="rl-button" href={withBase('/papers/')}>Open the paper library</a></p>
+      </section>
     </main>
   </body>
 </html>

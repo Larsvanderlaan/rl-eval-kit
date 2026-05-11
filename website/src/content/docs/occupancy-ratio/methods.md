@@ -32,8 +32,9 @@ and exactly equal to one.
 ## Automatic tuning
 
 The tuning suite scores candidates by proxy risk, OPE/reward stability, ratio
-quality, and runtime. It penalizes catastrophic low ESS, tail blowups, clipping,
-and near-uniform collapse under meaningful behavior-target mismatch.
+quality, and runtime. It penalizes very low ESS, extreme tail concentration,
+heavy clipping, and nearly constant weights under meaningful behavior-target
+mismatch.
 
 It does not reward a candidate merely because ESS is closer to one.
 
@@ -42,7 +43,7 @@ It does not reward a candidate merely because ESS is closer to one.
 Google DualDICE is an optional dependency path:
 
 - TensorFlow and TensorFlow Addons load lazily.
-- The Google Research checkout is preflighted.
+- The Google Research checkout is checked before use.
 - `fit_google_dualdice_occupancy_ratio(...)` aligns with the public FORI
   signature where possible.
 - DualDICE is an optional external comparator or backend.

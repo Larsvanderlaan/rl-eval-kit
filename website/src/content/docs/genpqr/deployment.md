@@ -26,10 +26,10 @@ Prefer manifest-backed artifacts for portable results. Treat pickle-based
 fallbacks as unsafe for untrusted files and require an explicit `allow_pickle`
 opt-in when loading them.
 
-## Diagnostics to review before use
+## Report checks before use
 
 - Normalization policy and action-space contract.
-- Policy-estimation diagnostics and optional adapter preflight results.
+- Policy-estimation diagnostics and optional adapter status.
 - Q-estimation diagnostics from FQE or the selected custom estimator.
 - Anchor count, weighted anchor count, anchor fraction, and weak-support flags
   when using DeepPQR anchors.

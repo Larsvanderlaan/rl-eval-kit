@@ -1,27 +1,134 @@
 ---
 title: genPQR
 description: Modular generalized policy-to-Q-to-reward tools for inverse reinforcement learning.
+template: splash
+hero:
+  title: genPQR
+  tagline: A modular inverse-RL site for behavior-policy estimation, Q evaluation, and normalized rewards.
+  image:
+    html: |
+      <div class="package-hero-visual package-hero-visual--genpqr" aria-hidden="true">
+        <div class="package-hero-visual__top">
+          <span>Reward fit</span>
+          <strong>adapter ready</strong>
+        </div>
+        <div class="reward-map">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="package-visual-metrics">
+          <span>policy</span>
+          <span>Q</span>
+          <span>reward</span>
+        </div>
+      </div>
+  actions:
+    - text: Quickstart
+      link: ./quickstart/
+    - text: Workflows
+      link: ./workflows/
+      variant: secondary
+    - text: Deployment
+      link: ./deployment/
+      variant: minimal
 ---
 
-`genpqr` estimates a normalized reward representation from logged behavior by
-combining a fitted behavior policy, Q evaluation, and an explicit normalization
-policy or anchor.
+<div class="package-site-shell package-site--genpqr">
+  <nav class="package-site-tabs" aria-label="genPQR site sections">
+    <a aria-current="page" href="./">Overview</a>
+    <a href="./quickstart/">Quickstart</a>
+    <a href="./methods/">Methods</a>
+    <a href="./workflows/">Workflows</a>
+    <a href="./deployment/">Deployment</a>
+  </nav>
+  <section class="package-positioning">
+    <div>
+      <p class="eyebrow">Reward site</p>
+      <h2>Normalized reward estimation with modular learners.</h2>
+      <p>
+        <code>genpqr</code> estimates a normalized reward representation from
+        logged behavior by combining a fitted behavior policy, Q evaluation,
+        and an explicit normalization policy or anchor.
+      </p>
+    </div>
+    <dl class="package-metric-panel">
+      <div>
+        <dt>Primary object</dt>
+        <dd>Normalized reward functions</dd>
+      </div>
+      <div>
+        <dt>Default path</dt>
+        <dd>Native behavior cloning plus boosted FQE</dd>
+      </div>
+      <div>
+        <dt>Audit trail</dt>
+        <dd>Adapter status, anchors, serialization</dd>
+      </div>
+    </dl>
+  </section>
+  <section class="package-pillars" aria-label="genPQR package pillars">
+    <article>
+      <span>01</span>
+      <h3>Fit behavior</h3>
+      <p>Estimate policy probabilities or densities through native learners or optional adapters.</p>
+    </article>
+    <article>
+      <span>02</span>
+      <h3>Evaluate Q</h3>
+      <p>Use FQE-backed continuation values as the bridge from behavior to reward.</p>
+    </article>
+    <article>
+      <span>03</span>
+      <h3>Export rewards</h3>
+      <p>Return reward functions, report checks, and portable fitted artifacts.</p>
+    </article>
+  </section>
+</div>
 
 ## What is estimated?
 
-GenPQR estimates rewards under a maximum-entropy or Gumbel-shock style
-behavioral model. A reward is not identified without a normalization policy or
-anchor constraint, so the normalization choice is part of the estimand.
+GenPQR estimates a normalized reward representation under a maximum-entropy or
+Gumbel-shock style behavioral model. The normalization policy `mu` and
+anchor `g(s)` are part of the estimand: they say which reward scale and offset
+the package should report.
 
-```text
-Given a fitted behavior policy pi_hat, normalization policy mu, and anchor g(s),
-genPQR fits Q_u for u(s,a)=log pi_hat(a|s)-g(s), then reports
+<div class="estimand-card estimand-card--genpqr">
+  <p class="estimand-label">Utility signal implied by the fitted behavior policy</p>
+  <pre class="math-display"><code>u(s,a)
+= \log \hat\pi_0(a \mid s) - g(s)</code></pre>
+</div>
 
-r_{mu,g}(s,a)=Q_u(s,a)-E_{A~mu(.|s)}Q_u(s,A)+g(s).
-```
+GenPQR fits a continuation value for this utility signal:
 
-This does not identify a unique environment reward without identifying
-restrictions.
+<div class="estimand-card estimand-card--genpqr">
+  <p class="estimand-label">Q value used to construct the reward</p>
+  <pre class="math-display"><code>Q_u(s,a)
+= \mathbb{E}\!\left[
+    \sum_{t=0}^{\infty} \gamma^t u(S_t,A_t)
+    \mid S_0=s,\ A_0=a
+  \right]</code></pre>
+</div>
+
+The reported reward subtracts the normalization-policy continuation value and
+adds back the anchor:
+
+<div class="estimand-card estimand-card--genpqr">
+  <p class="estimand-label">Normalized reward estimand</p>
+  <pre class="math-display"><code>r_{\mu,g}(s,a)
+= Q_u(s,a)
+  - \mathbb{E}_{A \sim \mu(\cdot \mid s)}[Q_u(s,A)]
+  + g(s)</code></pre>
+</div>
+
+This is a normalized reward estimand. A unique environment reward requires
+additional identifying restrictions beyond logged behavior alone.
+
+`result.reward_function.predict_reward(...)` returns this normalized reward for
+queried state-action rows.
 
 ## Install
 
@@ -72,15 +179,17 @@ rewards = result.reward_function.predict_reward(states, actions)
   DeepPQR anchor workflows behind one public interface.
 - You want custom policy and Q estimators through public protocols.
 
-## Diagnostics and limitations
+## Reward-identification checks
 
-- The chosen reward normalization is not meaningful for the domain.
-- Anchor-action support is weak but the workflow requires anchor DeepPQR.
-- Continuous-action normalization uses too few Monte Carlo samples.
-- Behavior-policy log probabilities or densities are unreliable for observed,
-  queried, normalization, or anchor actions.
-- Optional adapters should fail during preflight or raise missing-dependency
-  errors. Treat any configured fallback as a separate method choice.
+- Confirm that the normalization policy or anchor is meaningful for the domain.
+- For anchor workflows, review anchor counts, weighted anchor counts, and support
+  flags before interpreting reward values.
+- For continuous actions, review Monte Carlo normalization standard errors when
+  normalization expectations are sampled.
+- Behavior-policy probabilities or densities should be credible for observed,
+  queried, normalization, and anchor actions.
+- Optional adapters should report clear adapter status. A configured fallback is
+  a different method choice, not an equivalent result.
 
 ## Method surface
 

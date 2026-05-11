@@ -1,34 +1,129 @@
 ---
 title: Discounted Occupancy Ratios
 description: Discounted occupancy-ratio estimation with FORI, diagnostics, tuning, and benchmarks.
+template: splash
+hero:
+  title: Discounted Occupancy Ratios
+  tagline: A dedicated site for target-policy reweighting, source correction, and ratio diagnostics.
+  image:
+    html: |
+      <div class="package-hero-visual package-hero-visual--ratio" aria-hidden="true">
+        <div class="package-hero-visual__top">
+          <span>FORI fit</span>
+          <strong>source aware</strong>
+        </div>
+        <div class="ratio-rings">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="package-visual-metrics">
+          <span>state-action ratio</span>
+          <span>ESS</span>
+          <span>tail checks</span>
+        </div>
+      </div>
+  actions:
+    - text: Quickstart
+      link: ./quickstart/
+    - text: Methods
+      link: ./methods/
+      variant: secondary
+    - text: Diagnostics
+      link: ./diagnostics/
+      variant: minimal
 ---
 
-The `occupancy-ratio` package estimates discounted occupancy ratios from logged
-reference transitions and target-policy action samples. The fitted model outputs
-state-action weights for target-policy reweighting, plus diagnostics for
-support, tails, clipping, ESS, and source correction. The importable package is
-`occupancy_ratio`.
+<div class="package-site-shell package-site--ratio">
+  <nav class="package-site-tabs" aria-label="Discounted occupancy-ratio site sections">
+    <a aria-current="page" href="./">Overview</a>
+    <a href="./quickstart/">Quickstart</a>
+    <a href="./methods/">Methods</a>
+    <a href="./diagnostics/">Diagnostics</a>
+    <a href="./benchmarks/">Benchmarks</a>
+  </nav>
+  <section class="package-positioning">
+    <div>
+      <p class="eyebrow">Ratio site</p>
+      <h2>Target-policy reweighting with source-aware diagnostics.</h2>
+      <p>
+        The <code>occupancy-ratio</code> package estimates discounted
+        occupancy ratios from logged reference transitions and target-policy
+        action samples. The importable package is <code>occupancy_ratio</code>.
+      </p>
+    </div>
+    <dl class="package-metric-panel">
+      <div>
+        <dt>Primary object</dt>
+        <dd>Discounted state-action weights</dd>
+      </div>
+      <div>
+        <dt>Default path</dt>
+        <dd>Stable FORI with LSIF nuisance ratios</dd>
+      </div>
+      <div>
+        <dt>Audit trail</dt>
+        <dd>ESS, tails, clipping, source correction</dd>
+      </div>
+    </dl>
+  </section>
+  <section class="package-pillars" aria-label="Occupancy-ratio package pillars">
+    <article>
+      <span>01</span>
+      <h3>Reweight rows</h3>
+      <p>Predict state-action weights that move reference rows toward the target policy.</p>
+    </article>
+    <article>
+      <span>02</span>
+      <h3>Anchor sources</h3>
+      <p>Use joint initial ratios when initial states and target-policy initial actions are available.</p>
+    </article>
+    <article>
+      <span>03</span>
+      <h3>Review weight quality</h3>
+      <p>Summarize ESS, variation, tail concentration, clipping, and source-correction status.</p>
+    </article>
+  </section>
+</div>
 
 ## What is estimated?
 
-The main fitted model predicts:
+The package estimates a discounted state-action density ratio. If the ratio is
+accurate, weighting logged reference rows by `w^pi_gamma(s,a)` makes them
+behave like rows drawn from the target policy's normalized discounted occupancy.
 
-```text
-rho_pi,gamma(s) * pi(a | s) / [rho_ref(s) * pi0(a | s)]
-```
+<div class="estimand-card estimand-card--ratio">
+  <p class="estimand-label">Discounted state-action density ratio</p>
+  <pre class="math-display"><code>w^\pi_\gamma(s,a)
+= \frac{d^\pi_\gamma(s,a)}{d^{\mathrm{ref}}(s,a)}
+= \frac{\rho^\pi_\gamma(s)\,\pi(a \mid s)}
+       {\rho^{\mathrm{ref}}(s)\,\pi_0(a \mid s)}</code></pre>
+</div>
 
-This ratio reweights reference rows toward the discounted state-action
-distribution induced by the target policy.
+The defining check is a reweighting identity: averages under the target
+policy's discounted occupancy should match weighted averages over the logged
+reference rows.
+
+<div class="estimand-card estimand-card--ratio">
+  <p class="estimand-label">How the weights are used</p>
+  <pre class="math-display"><code>\mathbb{E}_{(S,A)\sim d^\pi_\gamma}[f(S,A)]
+\approx
+\mathbb{E}_{(S,A)\sim d^{\mathrm{ref}}}
+  [w^\pi_\gamma(S,A)\,f(S,A)]</code></pre>
+</div>
+
+`model.predict_state_action_ratio(...)` returns this fitted weight for queried
+state-action rows.
 
 Notation:
 
 | Symbol | Meaning |
 | --- | --- |
-| `rho_pi,gamma(s)` | Target policy's normalized discounted state occupancy |
-| `rho_ref(s)` | Reference or behavior state distribution represented by the rows |
+| `rho^pi_gamma(s)` | Target policy's normalized discounted state occupancy |
+| `rho^ref(s)` | Reference or behavior state distribution represented by the rows |
 | `pi(a | s)` | Target policy action density or probability |
 | `pi0(a | s)` | Behavior/reference policy action density or probability |
-| Denominator rows | The logged state-action rows used as the reference distribution |
+| `d^ref(s,a)` | Logged state-action reference distribution |
 
 ## Install
 
@@ -96,15 +191,18 @@ state_ratios = model.predict_state_ratio(states, actions)
 - You need automatic tuning and detailed diagnostics.
 - You want Google DualDICE as an optional external comparator or backend.
 
-## Limitations
+## Ratio quality checks
 
-- ESS is near one and coefficient of variation is near zero under meaningful
-  behavior-target mismatch.
-- Clipping or tail diagnostics show that a few rows dominate the estimate.
-- Source correction is active but initial-state or initial-action support is
-  poor.
-- Optional Google DualDICE dependencies are missing and the run does not report
-  a clear skip or error.
+- ESS is a diagnostic, not a target. Under meaningful behavior-target mismatch,
+  near-one ESS with near-zero weight variation can indicate a nearly constant
+  ratio rather than a successful fit.
+- Clipping and tail summaries should show whether a few rows dominate the
+  reweighted estimate.
+- Source-correction diagnostics should make clear whether the fit used no
+  initial source, factored state-source correction, or joint initial
+  state-action correction.
+- Optional backends such as Google DualDICE should report clear adapter status
+  when dependencies or external checkouts are unavailable.
 
 ## Method surface
 

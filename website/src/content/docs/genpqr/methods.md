@@ -53,4 +53,5 @@ result = fit_deep_genpqr(dataset=dataset, gamma=0.99, env=env, config=config)
 
 Keep `anchor_fallback="error"` for analysis runs. Use
 `anchor_fallback="pooled_fqe"` only when you want the run to record a warning
-and refit pooled FQE instead of failing on weak anchor support.
+and refit pooled FQE when anchor support is too sparse for the configured
+anchor workflow.

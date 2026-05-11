@@ -5,13 +5,16 @@ description: How to read FQE tuning, validation, calibration, and stationary-wei
 
 ## Core signals
 
-| Signal | What it tells you | Suspicious pattern |
+These are user-facing checks: they help decide whether a fitted Q model is
+ready to use, not just whether a training run completed.
+
+| Signal | What it tells you | What to review |
 | --- | --- | --- |
-| Held-out weighted Bellman risk | Whether fitted Bellman consistency transfers to held-out rows | Low risk only on behavior-heavy regions |
-| Policy-value stability | Whether candidate value estimates agree across folds or seeds | Strong value swings under small config changes |
-| Calibration residuals | Whether Bellman target means match prediction bins | Local residual improvement without value improvement |
-| Target-validation tail mass | How much discounted rollout remains unobserved | Large tail mass with confident selection |
-| Stationary weight source | Which ratio fallback produced FQE row weights | Uniform-looking weights under strong policy shift |
+| Held-out weighted Bellman risk | Whether Bellman consistency transfers to held-out rows | Whether the held-out rows cover target-policy regions |
+| Policy-value stability | Whether value estimates agree across folds or seeds | Strong value swings under small config changes |
+| Calibration residuals | Whether Bellman target means match prediction bins | Whether calibration changes the value estimate in a useful direction |
+| Target-validation tail mass | How much discounted rollout remains unobserved | Large tail mass with otherwise confident selection |
+| Stationary weight source | Which ratio backend produced FQE row weights | Whether weights are plausible under the policy shift |
 
 ## Calibration example
 
@@ -44,13 +47,12 @@ diagnostics = bellman_calibration_diagnostics(
 plot_bellman_calibration_diagnostics(diagnostics, path="bellman_calibration.png")
 ```
 
-## Guardrails
+## What belongs in a report
 
 - `sample_weight` is the user row-weight interface and should propagate through
   fitting, validation, tuning folds, final refits, and calibration helpers.
 - `initial_weights` are only for policy-value averaging over initial rows.
 - Stationary weighted FQE separates `gamma` for value estimation from
   `gamma_ratio` for occupancy weighting.
-- Tuning rows should include candidate id, family, budget stage,
-  selected/promoted flags, score components, runtime, fold rows, errors, and
-  final-refit diagnostics.
+- Tuning reports should include the selected method family, score components,
+  runtime, fold-level scores, user-visible errors, and final-refit diagnostics.

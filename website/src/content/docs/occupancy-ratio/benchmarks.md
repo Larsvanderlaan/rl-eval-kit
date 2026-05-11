@@ -37,8 +37,8 @@ Occupancy runs write resumable partial outputs:
 - `defaults_report.md`
 - `benchmark_readout.md`
 - manifest files with git and config-hash metadata
-- plots for OPE error, ratio diagnostics, ESS, runtime, source-state
-  diagnostics, and failure or timeout rates
+- plots for OPE error, ratio quality, ESS, runtime, source-correction checks,
+  and skip or timeout rates
 
 ## Google DualDICE audit
 

@@ -94,18 +94,19 @@ Most workflows use NumPy-like arrays with explicit row alignment:
 Validate shape errors at the package boundary rather than debugging silent
 broadcasting after a long run.
 
-## Diagnostics and limitations
+## Reading diagnostics
 
-RLEvalKit reports the signals users need to decide whether an estimate is
-usable for their data:
+RLEvalKit reports decision signals users need to decide whether an estimate is
+usable for their data. The public report should answer three questions: why was
+this candidate selected, what data support does it rely on, and what should be
+reviewed before using the estimate downstream?
 
 - ESS is a diagnostic, not a target. Under meaningful policy shift, near-uniform
-  weights can be collapse rather than success.
+  weights can indicate a nearly constant ratio rather than a successful fit.
 - Target-validation rollouts are finite samples. Tail-mass diagnostics report
   how much discount mass remains after the observed prefix.
 - Optional integrations such as Google DualDICE, Torch, TensorFlow, Gymnasium,
-  MuJoCo, imitation, d3rlpy, and SCOPE-RL should report missing-dependency
-  errors clearly.
+  MuJoCo, imitation, d3rlpy, and SCOPE-RL should report adapter status clearly.
 
 ## Next steps
 

@@ -1,23 +1,136 @@
 ---
 title: FQE
 description: Fitted Q evaluation, tuning, stationary weighting, calibration, and validation.
+template: splash
+hero:
+  title: FQE
+  tagline: Fitted Q evaluation for target-policy values, calibration, and model selection under logged-data shift.
+  image:
+    html: |
+      <div class="package-hero-visual package-hero-visual--fqe" aria-hidden="true">
+        <div class="package-hero-visual__top">
+          <span>Bellman fit</span>
+          <strong>stable defaults</strong>
+        </div>
+        <div class="mini-chart mini-chart--fqe">
+          <span style="height: 38%"></span>
+          <span style="height: 58%"></span>
+          <span style="height: 44%"></span>
+          <span style="height: 72%"></span>
+          <span style="height: 64%"></span>
+        </div>
+        <div class="package-visual-metrics">
+          <span>Q model</span>
+          <span>policy value</span>
+          <span>calibration</span>
+        </div>
+      </div>
+  actions:
+    - text: Quickstart
+      link: ./quickstart/
+    - text: Methods
+      link: ./methods/
+      variant: secondary
+    - text: Diagnostics
+      link: ./diagnostics/
+      variant: minimal
 ---
 
-`fqe` estimates a fixed target policy's Q-function and initial-state policy
-value from logged transitions, target-policy next actions, rewards, and
-bootstrap masks. It returns fitted Q/value models, value estimates, and Bellman
-diagnostics.
+<div class="package-site-shell package-site--fqe">
+  <nav class="package-site-tabs" aria-label="FQE site sections">
+    <a aria-current="page" href="./">Overview</a>
+    <a href="./quickstart/">Quickstart</a>
+    <a href="./methods/">Methods</a>
+    <a href="./diagnostics/">Diagnostics</a>
+    <a href="./benchmarks/">Benchmarks</a>
+  </nav>
+  <section class="package-positioning">
+    <div>
+      <p class="eyebrow">Policy-value site</p>
+      <h2>Direct-method OPE with calibration hooks.</h2>
+      <p>
+        <code>fqe</code> estimates a fixed target policy's Q-function and
+        initial-state policy value from logged transitions, target-policy next
+        actions, rewards, and bootstrap masks.
+      </p>
+    </div>
+    <dl class="package-metric-panel">
+      <div>
+        <dt>Primary object</dt>
+        <dd>Q-functions and policy values</dd>
+      </div>
+      <div>
+        <dt>Default path</dt>
+        <dd>Boosted FQE, then neural when needed</dd>
+      </div>
+      <div>
+        <dt>Audit trail</dt>
+        <dd>Bellman losses, calibration, target validation</dd>
+      </div>
+    </dl>
+  </section>
+  <section class="package-pillars" aria-label="FQE package pillars">
+    <article>
+      <span>01</span>
+      <h3>Estimate values</h3>
+      <p>Fit reusable Q models and average initial target-policy actions for policy-value estimates.</p>
+    </article>
+    <article>
+      <span>02</span>
+      <h3>Select models</h3>
+      <p>Compare boosted, neural, value-only, and validation-assisted candidates without oracle leakage.</p>
+    </article>
+    <article>
+      <span>03</span>
+      <h3>Review evidence</h3>
+      <p>Summarize Bellman fit, calibration, target-validation coverage, and value stability.</p>
+    </article>
+  </section>
+</div>
 
 ## What is estimated?
 
-The main object is the target-policy Q-function:
+FQE estimates the action-value function for a fixed target policy `pi`. In
+plain terms, `Q^pi(s,a)` is the discounted reward you expect after taking
+action `a` in state `s`, then following `pi`.
 
-```text
-Q^pi(s, a) = E_pi[sum_t gamma^t R_t | S_0 = s, A_0 = a]
-```
+<div class="estimand-card estimand-card--fqe">
+  <p class="estimand-label">Target-policy Q-function</p>
+  <pre class="math-display"><code>Q^\pi(s,a)
+= \mathbb{E}_\pi\!\left[
+    \sum_{t=0}^{\infty} \gamma^t R_t
+    \mid S_0=s,\ A_0=a
+  \right]</code></pre>
+</div>
 
-The fitted model can predict row-level Q values and estimate an initial-state
-policy value by averaging `Q(initial_states, initial_actions)`.
+The fitted model is trained to satisfy the Bellman equation: today's reward
+plus the discounted value of the next target-policy action.
+
+<div class="estimand-card estimand-card--fqe">
+  <p class="estimand-label">Bellman equation fitted by regression</p>
+  <pre class="math-display"><code>Q^\pi(s,a)
+= r(s,a)
+  + \gamma\,
+    \mathbb{E}\!\left[
+      Q^\pi(S', A')
+      \mid S=s,\ A=a,\ A' \sim \pi(\cdot \mid S')
+    \right]</code></pre>
+</div>
+
+`model.predict_q(...)` returns fitted Q values for queried state-action rows.
+After fitting `Q_hat`, the initial-state policy value is the average
+target-policy Q value at the initial rows:
+
+<div class="estimand-card estimand-card--fqe">
+  <p class="estimand-label">Policy value reported by the estimator</p>
+  <pre class="math-display"><code>V_0^\pi
+= \mathbb{E}_{S_0 \sim \rho_0,\ A_0 \sim \pi(\cdot \mid S_0)}
+    [Q^\pi(S_0,A_0)]</code></pre>
+</div>
+
+Notation: `gamma` is the discount, `R_t` is reward, `S'` is the next
+state, `A'` is a target-policy next action, and `rho_0` is the initial-state
+distribution represented by `initial_states`.
 
 ## Install
 
@@ -77,14 +190,15 @@ action_dim)`. Multiple actions are averaged in the Bellman target.
 - You need target-validation assisted selection, Bellman calibration, or
   post-hoc model selection among many Q candidates.
 
-## Limitations
+## What to review before relying on an estimate
 
-- Evaluation-policy actions are unsupported in the logged state space.
-- Held-out Bellman risk is small only because the target distribution is poorly
-  represented.
-- Target-validation rollouts have large truncation tail mass.
-- Neural FQE was undertrained or selected using validation signals that do not
-  match the target-policy use case.
+- Evaluation-policy actions should be plausible in the logged state space.
+- Held-out Bellman risk is most useful when read alongside target-policy
+  coverage and value stability.
+- Target-validation reports should show how much discounted rollout mass remains
+  after the observed prefix.
+- Tuning reports should make the selected model, score components, and final
+  refit diagnostics easy to inspect.
 
 ## Method surface
 
