@@ -1180,7 +1180,6 @@ def _crossfit_reward_feature_block(
 
 class _RewardFeatureMLP:
     def __init__(self, *, input_dim: int, hidden_dims: Sequence[int]) -> None:
-        import torch
         from torch import nn
 
         self._nn = nn

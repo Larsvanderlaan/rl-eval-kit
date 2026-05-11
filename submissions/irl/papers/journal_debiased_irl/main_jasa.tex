@@ -1,0 +1,1836 @@
+
+\documentclass[12pt]{article}
+\pdfoutput=1
+
+% =====================
+% Packages and settings
+% =====================
+\usepackage{amsmath,amssymb,amsthm,amsfonts,bm,physics,mathrsfs,upgreek,bbm}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{afterpage}
+\usepackage{listings}
+\usepackage{subcaption}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{changepage}
+
+\newcommand{\INPUT}{\item[\textbf{Input:}]}
+
+\usepackage[hang,flushmargin]{footmisc}
+\usepackage{setspace}
+\usepackage{xcolor}
+\usepackage[hypertexnames=false]{hyperref}
+\usepackage{xr-hyper}
+\usepackage[capitalize,noabbrev]{cleveref}
+\usepackage[round]{natbib}
+\setlength{\bibsep}{0pt}
+\definecolor{Bleu}{RGB}{0,0,204}
+\hypersetup{
+  colorlinks,
+  citecolor=Bleu,
+  linkcolor=Bleu,
+  urlcolor=Bleu
+}
+\makeatletter
+\newcommand*{\addFileDependency}[1]{%
+  \typeout{(#1)}%
+  \@addtofilelist{#1}%
+  \IfFileExists{#1}{}{\typeout{No file #1.}}%
+}
+\makeatother
+
+\newcommand*{\myexternaldocument}[1]{%
+  \externaldocument{#1}%
+  \addFileDependency{#1.tex}%
+  \addFileDependency{#1.aux}%
+}
+
+\myexternaldocument{main_jasa_appendix}
+
+% =====================
+% Math and theorem defs
+% =====================
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\esssup}{ess\,sup}
+\DeclareMathOperator*{\essinf}{ess\,inf}
+\renewcommand{\P}{\mathbb{P}}
+
+\newcommand{\blue}[1]{{\color{blue}#1}}
+\newcommand{\addTK}{\widetilde T_{\mathcal K}}
+\newcommand{\adk}{\widetilde{\partial}_k}
+\newcommand\independent{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+
+\DeclareFontFamily{U}{jkpmia}{}
+\DeclareFontShape{U}{jkpmia}{m}{it}{<->s*jkpmia}{}
+\DeclareFontShape{U}{jkpmia}{bx}{it}{<->s*jkpbmia}{}
+\DeclareMathAlphabet{\mathfrak}{U}{jkpmia}{m}{it}
+\SetMathAlphabet{\mathfrak}{bold}{U}{jkpmia}{bx}{it}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{condition}{Condition}
+\newtheorem{example}{Example}
+
+% Spacing + blind toggle
+\def\spacingset#1{\renewcommand{\baselinestretch}{#1}\small\normalsize}
+\newcommand{\blind}{0}
+
+% JASA margin rules
+\addtolength{\oddsidemargin}{-.5in}
+\addtolength{\evensidemargin}{-1in}
+\addtolength{\textwidth}{1in}
+\addtolength{\textheight}{1.87in}
+\addtolength{\topmargin}{-1in}
+
+% Abstract keyword command
+\providecommand{\keywords}[1]{\small{\textbf{\textit{Keywords---}} #1}}
+
+% =====================
+% Document begins
+% =====================
+\usepackage[compact]{titlesec}
+ 
+
+\newcommand{\JASATitleText}{Efficient Inference for Inverse Reinforcement Learning and Dynamic Discrete Choice Models}
+\title{\bf \JASATitleText}
+\author{
+  Lars van der Laan\thanks{Corresponding author: lvdlaan@uw.edu} \\
+  University of Washington \\
+  \and
+  Aur\'elien Bibaut \\
+  Netflix Research \\
+  \and
+  Nathan Kallus \\
+  Cornell Tech, Cornell University
+}
+\spacingset{1}
+
+
+
+
+ 
+\begin{document}
+
+\if0\blind
+{
+  \maketitle
+} \fi
+
+\if1\blind
+{
+  \bigskip
+  \bigskip
+  \bigskip
+  \begin{center}
+    {\LARGE\bf \JASATitleText}
+  \end{center}
+  \medskip
+} \fi
+
+\bigskip
+\begin{abstract}
+Inverse reinforcement learning (IRL) and dynamic discrete choice (DDC) models
+explain sequential decision-making through latent reward functions. Existing
+flexible IRL methods allow rich reward representations but typically do not
+support valid inference, whereas classical DDC approaches provide inference only
+under restrictive parametric structure. We develop a semiparametric framework
+for \emph{debiased inverse reinforcement learning} in maximum-entropy IRL and
+Gumbel-shock DDC models. Our key identifying observation is that the
+log-behaviour policy can be treated as a pseudo-reward. It point-identifies
+policy value differences and, under a normalization constraint, the reward
+itself. This lets us express reward-dependent estimands as smooth functionals of
+the behaviour policy and transition kernel. We establish pathwise
+differentiability,
+derive efficient influence functions, and construct automatic debiased
+machine-learning estimators that permit flexible nuisance estimation while
+attaining \(\sqrt{n}\)-consistency, asymptotic normality, and semiparametric
+efficiency. The result is a computationally tractable framework connecting
+modern IRL with classical DDC inference.
+\end{abstract}
+
+\noindent
+\keywords{inverse reinforcement learning, dynamic discrete choice, semiparametric inference, debiased machine learning, policy evaluation}
+\newpage
+\spacingset{1.9}  % JASA spacing rule
+
+
+\section{Introduction}
+\label{sec:intro}
+Behavioural data arise in robotics, human--computer interaction, healthcare,
+and economics. Inverse reinforcement learning (IRL) seeks to recover the
+latent reward or utility function underlying observed sequential decisions. It
+has been used to model expert driving and robotic control
+\citep[e.g.][]{abbeel2004apprenticeship,wulfmeier2015deep},
+user behaviour in interactive systems
+\citep[e.g.][]{chandramohan2012user,hossain2023bayesian},
+and clinical decision-making in critical care
+\citep[e.g.][]{yu2019inverse,bovenzi2025identifying}. Because rewards summarize preferences or tradeoffs, they provide a basis for
+counterfactual analysis---for example, predicting how behaviour would change
+under new policies, constraints, or environments---that is not available from
+policy prediction alone.
+
+A central difficulty is that IRL is inherently ill posed: many rewards can
+rationalize the same behavior
+\citep{ng1999policy,ng2000algorithms,cao2021identifiability,
+skalse2023invariance,skalse2024partial}. To make the problem tractable, IRL and
+dynamic discrete choice (DDC) models impose an optimality model linking rewards
+to behavior. Exact optimality implies deterministic policies and is often too
+rigid for observed human behavior. A foundational stochastic alternative in DDC
+adds Type-I extreme-value utility shocks, yielding choice probabilities of
+softmax form and a corresponding soft Bellman equation
+\citep{rust1987optimal,hotz1993conditional,aguirregabiria2010dynamic}. The same
+softmax structure arises in modern maximum-entropy IRL by adding an entropy term
+to the agent's objective, so actions with higher long-run utility are chosen
+with higher probability rather than deterministically
+\citep{ziebart2008maximum,ziebart2010causal,haarnoja2017reinforcement}. Even
+under this structure, rewards remain identified only up to an equivalence
+class. Point identification therefore requires a normalization
+\citep{rust1987optimal,geng2020deep}, such as setting the reward of a reference
+action to zero.
+
+
+
+Uncertainty quantification for reward-dependent summaries is central
+to IRL applications. These summaries include normalized reward averages,
+structural coefficients, and values of counterfactual decision rules
+\citep{kalouptsidi2021identification,zielnicki2025value}. The problem is
+challenging because rewards are latent, identified only after normalization, and
+estimated through flexible nuisance components such as choice probabilities and
+transition laws. Existing methods largely split in two: classical DDC methods
+provide inference under restrictive parametric utility models
+\citep[e.g.][]{rust1987optimal,hotz1993conditional,aguirregabiria2010dynamic},
+whereas flexible machine-learning approaches to IRL generally focus on reward
+estimation without valid uncertainty quantification for downstream functionals
+\citep[e.g.][]{abbeel2004apprenticeship,ramachandran2007bayesian,ziebart2008maximum,
+levine2011nonlinear,ho2016gail,fu2018airl,wulfmeier2015deep,geng2020deep}.
+We close this gap by developing a semiparametric framework for
+\emph{debiased inverse reinforcement learning}.
+
+ 
+
+\subsection{Our contributions}
+We study reward identification and inference in maximum-entropy IRL and
+Gumbel-shock dynamic discrete choice models. Our main contributions are as follows:
+\begin{enumerate}
+\item We show that, in softmax IRL, the reward is recoverable from the
+log-behavior policy under an appropriate normalization. More generally, a broad
+class of reward-dependent estimands can be expressed as smooth functionals of
+the log-behavior policy and transition dynamics, reducing reward-based
+inference to inference on observable choice probabilities and the transition
+kernel.
+
+\item We establish pathwise differentiability and derive efficient influence
+functions, thereby characterizing the semiparametric efficiency bounds for
+these targets. Under general affine reward normalizations, we show that the
+efficient influence function can be obtained directly from the unnormalized
+case, yielding a general template for inference under normalization.
+
+\item We construct automatic debiased machine-learning estimators
+\citep{chernozhukov2022automatic, van2025automatic} that allow flexible
+nuisance estimation while achieving \(\sqrt{n}\)-consistency, asymptotic
+normality, and semiparametric efficiency.
+
+\item We specialize the general theory to derive efficiency bounds and
+efficient estimators for several key IRL/DDC targets, including fixed-policy
+values, counterfactual softmax policy values, normalized-reward policy values,
+and structural coefficients of a normalized reward.
+\end{enumerate}
+
+The paper proceeds as follows. Section~\ref{sec:ident} shows how policy-value
+differences, and under normalization the reward itself, can be identified from
+observed behavior. Sections~\ref{sec::EIFsub} and~\ref{sec::est} develop the
+semiparametric theory and automatic debiased machine-learning estimators for a
+broad class of smooth target functionals. Section~\ref{sec::applications}
+specializes these results to the main policy-value targets.
+
+\subsection{Related work}
+
+\noindent \textbf{Dynamic discrete choice models.}
+Classical DDC work studies identification and efficient estimation of
+finite-dimensional utility parameters using nested fixed-point, conditional
+choice probability, and simulation-based methods
+\citep{rust1987optimal,hotz1993conditional,hotz1994simulation,aguirregabiria2010dynamic}.
+In contrast, we fix the softmax/Gumbel-shock structure of
+\citet{rust1987optimal} and target reward-dependent functionals under
+nonparametric reward representations. To our knowledge, debiased estimation,
+efficient influence functions, and efficiency bounds for such functionals have
+not been developed in this literature. For identification, the closest
+connection is the conditional choice probability approach of
+\citet{hotz1993conditional}: under Gumbel shocks, log-odds of observed choices
+identify differences in choice-specific value functions. Rather than using
+log-odds for value-difference identification, we use the log behavior policy
+together with the transition law to identify normalized rewards and
+reward-dependent functionals. An expanded related work is provided in Appendix~\ref{app::relatedwork}.
+
+\noindent \textbf{Inverse reinforcement learning.}
+Classical IRL recovers parametric or linear rewards under hard optimality
+assumptions \citep[e.g.][]{ng2000algorithms,abbeel2004apprenticeship}, while
+more recent work uses maximum-entropy or adversarial formulations with flexible
+function approximators
+\citep[e.g.][]{ziebart2008maximum,ziebart2010modeling,levine2011nonlinear,ho2016gail,fu2018airl,geng2020deep}.
+Several papers formalize the resulting reward ambiguity, including
+\citet{fu2018airl}, Theorem~1 of \citet{cao2021identifiability}, and Lemma~2 of
+\citet{geng2020deep}. Deep PQR \citep{geng2020deep} identifies normalized
+rewards under anchor-action constraints using a construction tailored to that
+setting: the reward is represented through the log behavior policy, an
+anchor-specific Bellman fixed point, and a second-stage conditional-mean
+regression. In contrast, our identification results express normalized rewards
+in terms of standard primitive objects---the log behavior policy, transition
+law, and policy-specific \(Q\)-functions---and apply to a broader class of
+affine normalization constraints, with anchor-action constraints as a special
+case. These works focus on reward recovery; our goal is inference for
+reward-dependent functionals.
+functionals.
+
+\noindent \textbf{Off-policy evaluation and double reinforcement learning.}
+Debiased and doubly robust methods for off-policy evaluation estimate policy
+values when the reward is known
+\citep[e.g.][]{jiang2016doubly,thomas2016data,tang2019doubly,
+liu2018breaking,van2018online,kallus2020double,uehara2020minimax,shi2021deeply,
+kallus2022efficiently,mehrabi2024off}.
+Double Reinforcement Learning extends this perspective to more general
+functionals of the \(Q\)-function \citep{kallus2020double,kallus2022efficiently,van2025automaticDRL}.
+Our framework is complementary: it treats the reward as unknown, recovers it
+through the softmax behaviour model, and then performs semiparametric inference
+for the induced reward-dependent targets.  
+
+ 
+
+ 
+
+ 
+ 
+\section{Preliminaries}
+
+\subsection{Problem setup} 
+\label{sec::setup}
+
+We consider an infinite-horizon, time-homogeneous Markov decision process (MDP) with state space \(\mathcal S\), action space \(\mathcal A\), and reference measure \(\mu\) on \(\mathcal S\). The initial state \(S_0\in\mathcal S\) is drawn from density \(\rho_0\) with respect to \(\mu\). At each time \(t\geq 0\), the agent occupies state \(S_t\), selects action \(A_t\in\mathcal A\) according to the behaviour policy \(\pi_0(\cdot\mid S_t)\), receives latent reward \(r_0^\dagger(A_t,S_t)\), and transitions to a next state \(S_{t+1}\in\mathcal S\) with conditional density \(k_0(\cdot\mid A_t,S_t)\) with respect to \(\mu\). In the IRL setting, the analyst observes states and actions, but not rewards. We write \(P_0\) for the law of the one-step observation \((S_0,A_0,S_1)\), and \(\mathbb P_0\) for the induced law of the full trajectory.
+
+
+
+The inferential task is to learn reward-dependent summaries, such as policy
+values, from observed state--action transitions. We observe
+\(\mathcal{D}_n := \{(S_i, A_i, S_i')\}_{i=1}^n\), a collection of \(n\) i.i.d.\
+samples from \(P_0\). Our analysis also accommodates temporal dependence through Markov-chain arguments under mixing conditions \citep{bibaut2021sequential,mehrabi2024off}.
+  A fundamental challenge
+is that \(r_0^\dagger\) is not point identified from state--action data alone:
+many distinct rewards induce the same observable behaviour
+\citep{ng1999policy,ng2000algorithms}. IRL methods address this by imposing an
+optimality model linking the behaviour policy to the reward.
+
+ 
+ 
+
+\subsection{Soft optimality and the soft Bellman equation}
+
+We adopt the notion of \emph{soft optimality}, which arises in
+Gumbel–shock-to-reward formulations \citep{rust1987optimal,hotz1993conditional,aguirregabiria2010dynamic}
+and in maximum-entropy IRL \citep{ziebart2008maximum,ziebart2010modeling,haarnoja2017reinforcement}.
+Soft optimality replaces deterministic reward maximization with an
+entropy-regularized objective, yielding stochastic softmax decision rules. We
+first recall the classical (hard)
+value and $Q$-functions. For any policy $\pi:\mathcal{A}\times\mathcal{S}\to[0,1]$
+and transition kernel $k:\mathcal{S}\times\mathcal{A}\times\mathcal{S}\to\mathbb{R}$,
+let $\mathbb{E}_{k,\pi}$ denote expectation with respect to trajectories generated by
+the MDP with transition kernel $k$, policy $\pi$, and initial state density $\rho_0$.
+
+For any function $f:\mathcal{A}\times\mathcal{S}\to\mathbb{R}$, define the forward
+operators
+\[
+\mathcal{P}_k f(a,s)
+:= \int f(a,s')\,k(s'\mid a,s)\,\mu(ds'),
+\qquad 
+\pi f(s)
+:= \sum_{a\in\mathcal{A}} \pi(a\mid s)\, f(a,s).
+\]
+For a discount factor $\gamma\in[0,1)$ and reward function
+$r:\mathcal{A}\times\mathcal{S}\to\mathbb{R}$, the \emph{(hard) $Q$-function} is
+\[
+q_{r,k}^{\pi,\gamma}(a,s)
+= \mathbb{E}_{k,\pi}\!\left[\sum_{t=0}^\infty \gamma^t r(A_t,S_t)
+  \,\Big|\,A_0=a,\, S_0=s\right],
+\]
+the unique bounded solution to Bellman's fixed-point equation
+\begin{equation}
+q_{r,k}^{\pi,\gamma}(a,s)
+= r(a,s) + \gamma\,\mathcal{P}_k V_{r,k}^{\pi,\gamma}(a,s),
+\qquad 
+V_{r,k}^{\pi,\gamma}(s) = \pi q_{r,k}^{\pi,\gamma}(s),
+\label{eqn::hardQ}
+\end{equation}
+where $V_{r,k}^{\pi,\gamma}$ is the associated \emph{(hard) value function}
+\citep{bellman1954theory}. Equivalently, it solves the inverse problem
+\[
+\mathcal{T}_{k,\pi,\gamma}(q_{r,k}^{\pi,\gamma}) = r,
+\qquad  
+\mathcal{T}_{k,\pi,\gamma}(f) := f - \gamma\,\mathcal{P}_k \pi f,
+\]
+where \(\mathcal{T}_{k,\pi,\gamma}\) is the Bellman operator.  Since \(\gamma < 1\), the operator \(\mathcal{T}_{k_0,\pi,\gamma}\) is invertible
+on the Banach space of state–action functions equipped with the supremum norm
+\citep{bellman1954theory}, and we denote its inverse by
+\(\mathcal{T}_{k,\pi,\gamma}^{-1}\). Throughout, when the
+discount factor is $\gamma$, we omit explicit dependence on $\gamma$ in our notation.  
+
+Entropy regularization augments the reward $r_0(A_t,S_t)$ with an entropy bonus
+$\tau\,\mathcal{H}(\pi(\cdot\mid S_t))$, where
+$\mathcal{H}(\pi(\cdot\mid s)) := -\sum_{a} \pi(a\mid s)\log \pi(a\mid s)$ is the
+Shannon entropy of the policy and $\tau \in (0,\infty)$ is a regularization
+parameter. The value and $Q$-functions associated with this augmented reward are
+referred to as the \emph{soft} value and $Q$-functions \citep{haarnoja2017reinforcement}.
+Since rewards are identified only up to scale, we set $\tau=1$ without loss of
+generality, interpreting rewards on a relative scale.
+
+An agent is \emph{soft optimal} (with discount factor $\gamma$ and $\tau = 1$) if its policy
+$\pi_0$ maximizes the \emph{soft value}, that is, the entropy-regularized
+expected return,
+\[
+\pi \;\mapsto\;
+\mathbb{E}_{k_0,\pi}\!\left[
+  \sum_{t=0}^\infty \gamma^t 
+  \{\, r_0^\dagger(A_t,S_t)
+    + \mathcal{H}(\pi(\cdot\mid S_t)) \,\}
+\right],
+\]
+over all policies~$\pi$ \citep{haarnoja2017reinforcement}.  The resulting soft-optimal policy is the softmax (multinomial logit)
+distribution induced by the soft $Q$-function
+\(r_0^\dagger(a,s) + \gamma\, v_0^\dagger(a,s)\):
+\begin{equation}
+\pi_0(a \mid s)
+= \frac{\exp\!\left\{ r_0^\dagger(a,s) + \gamma\, v_0^\dagger(a,s) \right\}}
+       {\sum_{a' \in \mathcal{A}}
+        \exp\!\left\{ r_0^\dagger(a',s) + \gamma\, v_0^\dagger(a',s) \right\}},
+\label{eqn::softmaxprob}
+\end{equation}
+where $v_0^\dagger$ satisfies the soft Bellman fixed-point system
+\begin{align*}
+v_0^\dagger(a,s)
+&= \int V_0^\dagger(s')\, k_0(s' \mid a,s)\,\mu(ds'), \quad
+V_0^\dagger(s)
+= \log\!\left(
+    \sum_{a' \in \mathcal{A}}
+       \exp\!\bigl\{ r_0^\dagger(a',s) + \gamma\, v_0^\dagger(a',s) \bigr\}
+\right),
+\end{align*}
+with $V_0^\dagger$ the soft value function of $\pi_0$ and $v_0^\dagger$ its
+associated continuation value. Equivalently, in the maximum-entropy IRL formulation
+\citep{ziebart2008maximum,ziebart2010modeling}, the agent’s policy maximizes
+the entropy of the trajectory distribution subject to matching the observed
+behaviour.\footnote{This yields a Boltzmann trajectory distribution,
+\(\mathbb{P}_0^{\pi_0}((S_0,A_0,\ldots)=(s_0,a_0,\ldots))
+\propto
+\exp(\sum_{t=0}^\infty \gamma^t r_0^\dagger(a_t,s_t))\).}  
+We take the discount factor \(\gamma\) as known. Identification of \(\gamma\)
+from observed choices—requiring additional variation beyond that in our
+setting---is analysed in \citet{abbring2020identifying}.
+
+Soft optimality also arises in dynamic discrete-choice (DDC) models
+\citep{rust1987optimal,hotz1993conditional,aguirregabiria2010dynamic}, where
+the agent selects actions by maximizing a random utility $A_t \in \arg\max_{a \in \mathcal{A}}
+\left\{ r_0^\dagger(a,S_t) + \gamma\, v_0^\dagger(a,S_t) + \varepsilon_t(a) \right\},$ where, in the DDC model, $v_0^\dagger(a,s)$ coincides with the classical
+choice-specific continuation value and $\varepsilon_t(a)$ are i.i.d.\ Gumbel
+(Type I extreme value) shocks \citep{rust1987optimal,pitombeira2024trajectory}.
+
+ 
+
+\subsection{Notation}
+\label{sec::notation}
+
+We introduce the notation and regularity conditions used throughout.  Let
+$\lambda := \# \otimes \mu$ denote the product measure on $\mathcal{A} \times
+\mathcal{S}$, where $\#$ is the uniform measure on the finite action set
+$\mathcal{A}$ and $\mu$ is a finite dominating measure on $\mathcal{S}$.  Thus,
+for any measurable $B \subseteq \mathcal{A} \times \mathcal{S}$, $\lambda(B)
+= \tfrac{1}{|\mathcal{A}|} \sum_{a \in \mathcal{A}}
+  \int 1_B(a,s)\,\mu(ds).$
+Let $\mathcal{H} := L^\infty(\lambda)$ denote the space of essentially bounded
+reward functions, and let $\mathcal{K} \subset L^\infty(\mu \otimes \lambda)$
+denote the space of essentially bounded transition kernels $k$ (conditional
+densities of $S' \mid (A,S)$ with respect to~$\mu$) satisfying $c < k(s' \mid
+a,s) < C$ for $\lambda$-a.e.\ $(a,s)$.  We equip $\mathcal{H}$ and $\mathcal{K}$
+with the $L^2$ norms
+\[
+\|h\|_{\mathcal{H}}
+:= \Bigg( \int \sum_{a \in \mathcal{A}} h(a,s)^2\,\mu(ds) \Bigg)^{1/2},
+\qquad
+\|k\|_{\mathcal{K}}
+:= \Bigg( \int \sum_{a \in \mathcal{A}} k(s' \mid a,s)^2\,
+            \mu(ds')\,\lambda(a,ds) \Bigg)^{1/2}.
+\]
+For readability, we keep only the most frequently recurring conventions here.
+We write \(r_0^\dagger\) for the latent reward and
+\(r_0(a,s):=\log \pi_0(a\mid s)\) for the pseudo-reward. We use \(q\) and
+\(V\) for policy-specific \(Q\)- and state-value functions; when a scalar policy
+value is needed, we write \(V_{r,k}(\pi;\gamma)\). 
+
+We make the simplifying assumption that the initial state distribution,
+behaviour policy, and transition dynamics are uniformly bounded away from zero
+and infinity.
+\begin{enumerate}[label=\textbf{(A\arabic*)}, ref=A\arabic*, series=posit]
+\item \textit{(Bounded positivity).}\label{cond::boundedpositivity}
+There exist constants \(c,C\in(0,\infty)\) and \(\eta\in(0,1)\) such that, for
+\(\mu\otimes\lambda\)-a.e. $(s,a,s')\in\mathcal{S}\times\mathcal{A}\times\mathcal{S}$ ,$ c<\rho_0(s)<C,\qquad
+\eta<\pi_0(a\mid s)$, $c<k_0(s'\mid a,s)<C.$
+\end{enumerate}
+All results are stated under Assumption~\ref{cond::boundedpositivity}. Let
+\(\mathcal{M}\) denote the collection of distributions
+\(P(ds,da,ds')=\rho_P(s)\pi_P(a\mid s)k_P(s'\mid a,s)\mu(ds')\lambda(da,ds)\)
+satisfying this assumption. The boundedness requirement is imposed for
+technical convenience and can in principle be relaxed using suitable moment
+conditions on \(\rho_0\), \(\pi_0\), and \(k_0\).
+ 
+
+ 
+
+ 
+
+ 
+
+
+%Under the above conditions, the measures $\lambda$ and $\lambda_0$ are equivalent with density $w := d\lambda_0 / d\lambda$ bounded as $0 < m \le w \le M < \infty$, so the corresponding $L^p$ norms and spaces are equivalent for all $p \in (0,\infty]$.
+
+ 
+
+\section{Identification}
+\label{sec:ident}
+
+We first characterize reward indeterminacy under soft optimality, then show
+that policy value differences remain identified, and finally impose a
+normalization to identify the reward itself.
+
+\subsection{Partial identification of the reward}
+\label{sec::partialident}
+
+Without additional constraints, the reward \(r_0^\dagger\) is only partially
+identified: many rewards induce the same softmax policy for a soft-optimal
+agent~\citep{cao2021identifiability}. Its scale is also unidentified; by
+convention, we fix the entropy-regularization parameter at \(\tau=1\), which is
+equivalent to fixing the softmax temperature
+\citep{haarnoja2017reinforcement}. This subsection formalizes the resulting
+partial identification. 
+
+ 
+ 
+Formally, the partial identification of \(r_0^\dagger\) can be characterized
+through the softmax likelihood \citep{rust1987optimal,ziebart2008maximum}.  The
+observed policy \(\pi_0\) maximizes this soft Bellman--constrained likelihood,
+so any reward \(r\) that induces the same softmax policy is also a solution of
+the population M-estimation problem
+\begin{equation}
+\label{eqn::softbellmanloglik}
+r \in \argmin_{r' \in \mathcal{H}} 
+E_0\!\left[
+  \log\!\Bigg(\sum_{a \in \mathcal{A}}
+    \exp\{ r'(a,S) + \gamma v_{r',k_0}(a,S) \}\Bigg)
+  - \{ r'(A,S) + \gamma v_{r',k_0}(A,S) \}
+\right],
+\end{equation}
+where \(v_{r',k_0}\) satisfies the soft Bellman equation
+\begin{equation}
+v_{r',k_0}(a,s) 
+= \int \log\!\left(\sum_{a' \in \mathcal{A}}
+   \exp\!\big\{ r'(a',s') + \gamma v_{r',k_0}(a',s') \big\}\right)
+\, k_0(s' \mid a,s)\,\mu(ds').
+\label{eqn::softbellmanloss}
+\end{equation}
+Any reward function that induces the same behaviour as \(r_0^\dagger\) has the
+potential-based reward--shaping form
+\citep{ng1999policy,fu2018airl,geng2020deep}
+\begin{equation}
+r(a,s)
+= r_0^\dagger(a,s)
+  + c(s)
+  - \gamma \int c(s')\, k_0(s' \mid a,s)\,\mu(ds'),
+\label{eqn::equivclass}
+\end{equation}
+for a unique state-dependent potential \(c : \mathcal{S} \to \mathbb{R}\).  
+Under this transformation, the soft \(Q\)-functions satisfy
+\(q_{r,k_0}^{\mathrm{soft}}(a,s) 
+ = q_{r_0^\dagger,k_0}^{\mathrm{soft}}(a,s) + c(s)\).
+
+ 
+
+We begin with a trivial but informative solution to
+\eqref{eqn::softbellmanloglik}: the log-behaviour policy
+\(r_0(a,s) := \log \pi_0(a \mid s)\).  The soft Bellman constraint
+\eqref{eqn::softbellmanloss} is satisfied with \(v_{r_0,k_0} \equiv 0\),
+because the normalization \(\sum_{a' \in \mathcal{A}} \pi_0(a' \mid s) = 1\)
+implies that the log-partition term vanishes,
+\(\log \sum_{a' \in \mathcal{A}} \exp\{r_0(a',s)\} = 0\). 
+
+\begin{lemma}[Trivial reward solution]
+\label{theorem::trivialsol}
+The log-behaviour policy \(r_0 = \log \pi_0\) is a solution to
+\eqref{eqn::softbellmanloglik} and satisfies \eqref{eqn::equivclass} with
+\(c(s) = -\,V_0^\dagger(s)\).
+\end{lemma}
+ 
+
+\subsection{Identification of policy values}
+Although the reward is only partially identified, many quantities of practical
+interest remain point identified.  Lemma~\ref{theorem::trivialsol} shows that
+behaviour determines $r_0^\dagger$ only up to potential-based shaping.  Such
+shifts change all policy values by the same constant and thus do not affect
+policy comparisons.  Consequently, policy value differences remain identified,
+and the log-behaviour-policy reward $r_0$ suffices for policy evaluation.  The
+next result formalizes this fact.
+
+
+
+
+
+\begin{theorem}[Behaviour policy identifies value differences]
+\label{theorem::identvalue}
+Suppose that \(r_0^\dagger\) solves \eqref{eqn::softbellmanloglik} for a
+discount factor \(\gamma \in [0,1)\). Then, for any policy \(\pi\),
+\[
+q^{\pi,\gamma}_{r_0,k_0}(a,s)
+= q^{\pi,\gamma}_{r_0^\dagger,k_0}(a,s) - V_0^\dagger(s),
+\qquad
+V_{r_0,k_0}(\pi;\gamma)
+= V_{r_0^\dagger,k_0}(\pi;\gamma) - E_0[V_0^\dagger(S)].
+\]
+Hence, for any two policies \(\pi_1\) and \(\pi_2\), $V_{r_0,k_0}(\pi_1;\gamma) - V_{r_0,k_0}(\pi_2;\gamma)
+=
+V_{r_0^\dagger,k_0}(\pi_1;\gamma)
+- 
+V_{r_0^\dagger,k_0}(\pi_2;\gamma).$
+\end{theorem}
+
+ 
+\noindent A subtle but important point is that the identification of policy value
+differences holds only for the discount factor $\gamma$ that appears in the
+soft Bellman equation governing the agent’s behaviour.  To evaluate policies
+under a different discount factor $\gamma'$, the reward must typically be
+point identified.  Section~\ref{sec:normalization} shows how this can be
+achieved via a normalization constraint.  Before turning to that result, we
+illustrate Theorem~\ref{theorem::identvalue} in a counterfactual softmax
+setting.
+
+
+
+ 
+\begin{example}[Identification for counterfactual softmax policies] \label{ex:1}
+Let $\mathcal{A}^\star \subseteq \mathcal{A}$ and $\tau^\star\in(0,\infty)$.
+For $(r,k)\in\mathcal{H}\times\mathcal{K}$, define the counterfactual softmax policy
+\begin{equation} \label{eqn::softmaxpolicycf}
+\pi_{r,k}^\star(a\mid s)
+\propto \mathbbm{1}\{a\in\mathcal{A}^\star\}
+   \exp\!\bigl\{(r(a,s)+\gamma v_{r,k}^\star(a,s))/\tau^\star\bigr\},
+\end{equation}
+where \(v_{r,k}^\star\) solves the counterfactual soft Bellman equation
+\begin{align}
+\label{eqn::softbellmanCF}
+v_{r,k}^\star(a,s)
+\; &= \int \Phi_{r,k}^\star(s')\, k(s'\mid a,s)\,\mu(ds'),
+\nonumber\\
+\Phi_{r,k}^\star(s)
+\; &:= \tau^\star \log\!\left(\sum_{a'\in\mathcal{A}^\star}
+      \exp\!\left(\tfrac{1}{\tau^\star}(r(a',s)+\gamma v_{r,k}^\star(a',s))\right)\right).
+\end{align}
+Because $\pi_{r,k}^\star$ is invariant to potential-based reward shaping of the
+form \eqref{eqn::equivclass}, and
+Lemma~\ref{theorem::trivialsol} shows that $r_0$ and $r_0^\dagger$ differ by
+such a transformation, we have
+$\pi_{r_0^\dagger,k_0}^\star=\pi_{r_0,k_0}^\star$. Applying
+Theorem~\ref{theorem::identvalue} to the pair of policies
+$\pi_1=\pi_{r_0,k_0}^\star$ and $\pi_2=\pi_0$, the value difference
+$V_{r_0^\dagger,k_0}(\pi_{r_0^\dagger,k_0}^\star;\gamma)
+-
+V_{r_0^\dagger,k_0}(\pi_0;\gamma)$
+is identified using the log-behaviour-policy reward $r_0$ in place of
+$r_0^\dagger$.
+\qed
+\end{example}
+
+
+
+
+\subsection{Exact reward identification under normalization}
+\label{sec:normalization}
+
+The next theorem shows that, after normalization, the latent reward
+\(r_0^\dagger\) is exactly recoverable from the log-behaviour policy reward
+\(r_0\). We fix a reference policy \(\nu\) and a known state-only anchor
+\(g:\mathcal{S}\to\mathbb{R}\), and impose that the average reward in state
+\(s\) under \(\nu\) equals \(g(s)\):
+\begin{equation}
+\label{eqn::rdaggernorm}
+    \nu r_0^\dagger(s)
+    := \sum_{\tilde a \in \mathcal{A}} \nu(\tilde a \mid s)
+       r_0^\dagger(\tilde a,s)
+    = g(s),
+    \quad P_0\text{-a.e.~} s.
+\end{equation}
+
+
+This constraint anchors the free state potential in \eqref{eqn::equivclass}
+and covers common normalizations, including anchor-action, statewise
+sum-to-zero, and value-based constraints
+\citep{hotz1993conditional,bajari2010identification,
+kallus2016revealed,geng2020deep}. For example, requiring
+\(V_{r_0^\dagger,k}^{\nu,\gamma}(s)=h(s)\) for all \(s\) is equivalent, by the
+Bellman equation, to choosing
+\(g(s)=h(s)-\gamma\sum_{a\in\mathcal A}\nu(a\mid s)
+\int h(\tilde s)\,k(d\tilde s\mid a,s)\).
+The pair \((\nu,g)\) can also be chosen using auxiliary information, such as
+outcomes that determine a reference reward level
+\citep{kallus2018removing}. For instance, with auxiliary state--reward data
+from the agent, one could take \(\nu=\pi\) and
+\(g(s)=E_0\{r(A,S)\mid S=s\}\).
+
+
+The following identification result shows that the normalized reward can be expressed
+through the \(Q\)-function
+\(q_{r_0-g,k_0}^{\nu,\gamma} = \mathcal{T}_{k_0,\nu,\gamma}^{-1}(r_0-g)\) of the
+normalization policy \(\nu\).
+
+
+
+\begin{theorem}[Normalization identifies the reward itself]
+\label{theorem::identWithNormalization}
+Let \(\nu\) be a policy.  
+There exists a unique solution
+\(r_{0,\nu,\gamma,g} \in \mathcal{H}\) 
+to \eqref{eqn::softbellmanloglik}  that satisfies
+\(\nu r_{0,\nu,\gamma,g}(s) = g(s)\) for \(P_0\text{-a.e.\ } s \in \mathcal{S}\).
+Moreover,
+\begin{align*}
+    r_{0,\nu,\gamma,g}(a,s)
+    &= g(s) + q_{r_0-g,k_0}^{\nu,\gamma}(a,s)
+       - \sum_{\tilde a \in \mathcal{A}}
+         \nu(\tilde a \mid s)\,
+         q_{r_0-g,k_0}^{\nu,\gamma}(\tilde a,s), \\
+    v_{0,\nu,\gamma,g}(a,s)
+    &= \tfrac{1}{\gamma}\,\big(r_0(a,s) - g(s) - q_{r_0-g,k_0}^{\nu,\gamma}(a,s)\big),
+\end{align*}
+where  \(v_{0,\nu,\gamma,g}\) solves the soft Bellman equation with reward \(r_{0,\nu,\gamma,g}\). 
+\end{theorem}
+
+ 
+
+
+\noindent Thus, if \(r_0^\dagger\) satisfies \eqref{eqn::rdaggernorm}, it is
+identified by \(r_{0,\nu,\gamma,g}\). Inference under normalization therefore
+reduces to estimating the observable pseudo-reward \(r_0=\log\pi_0\) and the
+Bellman quantity \(q_{r_0-g,k_0}^{\nu,\gamma}\), which motivates the next
+section.
+
+
+
+
+
+\section{Debiased Inverse Reinforcement Learning}
+
+We now move from identification to inference. We first define a generic target
+functional built from the pseudo-reward and transition kernel, then derive its
+efficient influence function and bias expansion, and finally specialize these
+objects to the motivating examples below.
+
+\subsection{Statistical objective}
+\label{sec::statobj}
+
+The identification results in Section~\ref{sec:ident} imply that the
+log-behaviour policy $r_0 = \log \pi_0$ can be used as a \emph{pseudo-reward}
+for many IRL targets. Policy value differences are identified directly from
+$r_0$ by Theorem~\ref{theorem::identvalue}, and
+Theorem~\ref{theorem::identWithNormalization} shows that normalized reward
+functionals can also be recovered from \((r_0,k_0)\). We therefore study
+smooth real-valued functionals of the form
+\[
+\psi_0 := E_0[m(A,S,r_0,k_0)],
+\]
+where $(r,k)\mapsto m(\cdot,r,k)$ is a smooth map 
+from $\mathcal{H}\times\mathcal{K}$ to $L^2(\lambda)$.
+Formally, $\psi_0 = \Psi(P_0)$ corresponds to the parameter 
+$\Psi:\mathcal{M}\to\mathbb{R}$ defined for $P\in\mathcal{M}$ by $\Psi(P) := E_P[m(A,S,r_P,k_P)],$ where $k_P(s'\mid a,s) := \tfrac{dP_{S'\mid A,S}}{d\mu}(s'\mid a,s)$ is the 
+state transition kernel, and $r_P(a,s) = \log P(A=a \mid S = s)$.
+
+\subsection{Motivating examples}
+\label{subsec:examples}
+
+Our framework accommodates a wide range of counterfactual targets in IRL.
+We record the main targets used in the sequel: three policy-value parameters
+and one structural normalized-reward parameter.  
+
+\renewcommand{\theexample}{1a}
+\begin{example}[Policy value]
+\label{example::1a}
+The policy value $\psi_0 := E_0[V_{r_0,k_0}^{\pi,\gamma}(S)]$ of a
+policy $\pi$ with discount factor $\gamma$ corresponds to the map
+$m(a,s,r,k) = V_{r,k}^{\pi,\gamma}(s)$.  
+\qed
+\end{example}
+
+\noindent The same framework also covers interventions on the agent's
+behaviour or environment.
+
+\renewcommand{\theexample}{1b}
+\begin{example}[Value of a soft-optimal agent]
+\label{example::1b}
+ Consider the counterfactual softmax policy $\pi_{r_0,k_0}^\star$ defined in
+\eqref{eqn::softmaxpolicycf}, obtained by optimizing the pseudo-reward $r_0$
+under kernel $k_0$ with action set $\mathcal{A}^\star$ and entropy parameter
+$\tau^\star$.  
+Unlike Example~\ref{example::1a}, this policy depends on both $r_0$ and $k_0$.
+The policy value $\psi_0$ fits our framework through the map
+$m(a,s,r,k) := V_{r,k}^\star(s)$, where \(V_{r,k}^\star\) denotes the value
+function of \(\pi_{r,k}^\star\).  
+\qed
+\end{example}
+
+% JASA trim: smooth the compressed transition from Example 1b to Example 1c.
+\noindent A closely related counterfactual keeps the pseudo-reward target fixed
+but replaces the transition kernel by a known \(k^\star\), as in simulated or redesigned environments
+\citep[e.g.][]{abbeel2004apprenticeship,ziebart2008maximum,wulfmeier2015deep,fu2018airl}.
+
+\renewcommand{\theexample}{1c}
+\begin{example}[Policy values in counterfactual environments]
+The value of the soft-optimal agent that maximizes the pseudo-reward $r_0$ in an
+environment with known transition kernel $k^\star$ corresponds to
+$m(a,s,r,k) := V_{r,k^\star}^\star(s)$, where \(V_{r,k^\star}^\star\) denotes
+the value function of \(\pi_{r,k^\star}^\star\).  
+\qed
+\end{example}
+
+Under a normalization constraint, functionals of the true reward
+\(r_0^\dagger\) also fall within our framework. In these settings, the target
+is identified by the \(\nu\)-normalized reward
+\(\bar r_0 := r_{0,\nu,\gamma,g}\).
+
+\renewcommand{\theexample}{2}
+\begin{example}[Policy values under reward normalization]
+\label{example::norm}
+ Suppose we are interested in
+\(\psi_0 = E_0[\tilde m(A,S,\bar r_0,k_0)]\),
+a feature of the $\nu$-normalized reward \(\bar r_0\).  
+By Theorem~\ref{theorem::identWithNormalization}, this can be expressed as
+$\psi_0 = E_0[m(A,S,r_0,k_0)]$, where
+\[
+m(a,s,r,k)
+:= \tilde m(a,s,r_{r,k,\nu,\gamma,g},k), \qquad
+r_{r,k,\nu,\gamma,g}(a,s)
+:= g(s) + q_{r-g,k}^{\nu,\gamma}(a,s) - V_{r-g,k}^{\nu,\gamma}(s),
+ \]
+and $r_{r,k,\nu,\gamma,g} = g + (I-\nu)\,\mathcal{T}_{k,\nu,\gamma}^{-1}(r-g)$ denotes
+the $\nu$-normalized reward with anchor \(g\). This includes fixed-policy
+values or softmax values built with a target discount \(\gamma'\) that may
+differ from the normalization discount \(\gamma\).  
+\qed
+\end{example}
+
+\renewcommand{\theexample}{3}
+\begin{example}[Structural coefficients under reward normalization]
+\label{example::normcoef}
+Let \(x:\mathcal A\times\mathcal S\to\mathbb R^p\) be a known bounded feature
+map and write \(\bar r_0:=r_{0,\nu,\gamma,g}\). If
+\(G_0:=E_0\{x(A,S)x(A,S)^\top\}\) is nonsingular, the coefficient in the linear
+projection of the normalized reward onto \(x\) is
+\[
+\theta_0
+:=
+G_0^{-1}E_0\{x(A,S)\bar r_0(A,S)\}.
+\]
+For example, in Rust's bus replacement model, a coordinate of \(x(a,s)\) may
+indicate replacement, in which case the corresponding coordinate of
+\(\theta_0\) is a replacement-cost coefficient. \qed
+\end{example}
+
+\subsection{Statistical efficiency and functional bias expansion}
+\label{sec::EIFsub}
+
+A key step in our methodology is to establish the pathwise differentiability of 
+\(\Psi\) and derive its efficient influence function (EIF).  
+In semiparametric statistics, the EIF determines the generalized 
+Cramér--Rao lower bound for \(\Psi\) and forms the basis for constructing 
+debiased, efficient estimators \citep{bickel1993efficient, laan2003unified, van2011targeted, chernozhukov2018double}.
+
+
+
+The next conditions ensure that \(E_0[m(A,S,r,k)]\) is first-order
+expandable in \(r\) and \(k\). The \emph{reward tangent space} \(T_{\mathcal{H}}\)
+is defined as the completion of \(\mathcal{H}\) under the inner product $\langle h_1,h_2\rangle_{\mathcal{H},0}
+:=E_0[h_1(A,S)h_2(A,S)].$ We define the \emph{kernel tangent space at \(k\)} by
+\[
+T_{\mathcal{K}}(k)
+:= 
+\Big\{
+  \beta
+  :
+  \int \beta(s',a,s)^2\,k(s' \mid a,s)\,\mu(ds') < \infty
+  \ \text{and}\
+  \int \beta(s',a,s)\,k(s' \mid a,s)\,\mu(ds') = 0 
+  \ \text{for $\lambda$-a.e. } (a,s)
+\Big\},
+\]
+and set \(T_{\mathcal K} := T_{\mathcal K}(k_0)\), equipped with the inner product  
+\(\langle \beta_1,\beta_2\rangle_{\mathcal{K},0}
+:= E_0[\beta_1(S',A,S)\beta_2(S',A,S)]\).  
+Intuitively, \(T_{\mathcal{K}}\) consists of allowable infinitesimal kernel scores that preserve the normalization of conditional densities under \(k(\cdot \mid a,s)\mu(ds')\).
+
+
+
+ 
+
+
+\begin{enumerate}[label=\textbf{(C\arabic*)}, ref=C\arabic*, series=cond]
+\item (\textit{Functional differentiability}) \label{cond::boundedfunc} 
+There exist Gâteaux derivatives
+$\partial_r m(\cdot, r_0, k_0) : T_{\mathcal{H}} \to L^2(\lambda)$ 
+and $\partial_k m(\cdot, r_0, k_0) : T_{\mathcal{K}} \to L^2(\lambda)$
+at $(r_0, k_0)$ such that, for all $\alpha \in T_{\mathcal{H}}$ and $\beta \in T_{\mathcal{K}}$,
+\[
+   \frac{d}{dt}\, E_0\!\left[m\big(A,S,\, r_0 + t \alpha,\,(1+t\beta)k_0\big)\right]\Big|_{t=0}
+   = E_0\!\left[\partial_r m(A,S,r_0,k_0)(\alpha) 
+   + \partial_k m(A,S,r_0,k_0)(\beta)\right].
+\]
+
+\item (\textit{Continuity of derivatives}) \label{cond::boundedfunc2}
+The linear functionals $E_0[\partial_r m(A,S,r_0,k_0)(\cdot)]$ and $E_0[\partial_k m(A,S,r_0,k_0)(\cdot)]$
+are continuous, in the sense that
+\[
+\sup_{\alpha \in T_{\mathcal{H}}}
+\frac{E_0[\partial_r m(A,S,r_0,k_0)(\alpha)]}{\|\alpha\|_{\mathcal{H}, 0}}
+< \infty,
+\qquad
+\sup_{\beta \in T_{\mathcal{K}}}
+\frac{E_0[\partial_k m(A,S,r_0,k_0)(\beta)]}{\|\beta\|_{\mathcal{K}, 0}}
+< \infty.
+\]
+\item (\textit{Lipschitz continuity}) \label{cond::lipschitz} The map $(r,k) \mapsto E_0[m(A,S,r,k)]$ is locally Lipschitz continuous at $(r_0,k_0)$ with respect to $(\mathcal{H}, \|\cdot\|_{\mathcal{H}, 0}) \times (\mathcal{K}, \|\cdot\|_{\mathcal{K}})$.
+\end{enumerate}
+Conditions \ref{cond::boundedfunc}-\ref{cond::lipschitz} hold if the map
+\((r,k)\mapsto E_0[m(A,S,r,k)]\) is Fréchet differentiable at \((r_0,k_0)\)
+with respect to the product norm
+\(\|h\|_{\mathcal{H},0} + \|g\|_{\mathcal{K}}\); see
+Lemma~\ref{lemma::frechetimplieslip} in Appendix~\ref{appendix::EIFsub}.
+For additive Fréchet derivatives in the kernel argument, we write
+\(\addTK\) for the ambient normed linear space of additive kernel perturbations,
+equipped with \(\|\cdot\|_{\mathcal K}\), and denote the corresponding
+additive derivative by \(\adk\). Thus \(\partial_k\) is reserved for score
+derivatives on \(T_{\mathcal K}\), while \(\adk\) acts on additive directions
+\(g \in \addTK\).
+
+
+
+ 
+
+The EIF depends on two additional nuisance functions: the Riesz representers of
+the partial functional derivatives of \((r,k)\mapsto E_0[m(A,S,r,k)]\). Let
+\(\alpha_0\in T_{\mathcal H}\) and \(\beta_0\in T_{\mathcal K}\) denote these
+representers with respect to \(\langle\cdot,\cdot\rangle_{\mathcal H,0}\) and
+\(\langle\cdot,\cdot\rangle_{\mathcal K,0}\), so that
+\begin{align}
+E_0[\partial_r m(A,S,r_0,k_0)(\alpha)]
+&= \langle \alpha_0, \alpha \rangle_{\mathcal{H}, 0}, 
+\label{eqn::rieszreward}
+\\[1ex] 
+E_0[\partial_k m(A,S,r_0,k_0)(\beta)]
+&= \langle \beta_0, \beta \rangle_{\mathcal{K}, 0}.
+\label{eqn::rieszkernel}
+\end{align}
+ 
+ 
+
+
+ 
+
+
+\begin{theorem}[Pathwise differentiability]  \label{theorem::EIF}
+    Under \ref{cond::boundedfunc}-\ref{cond::lipschitz}, the parameter
+    \(\Psi: \mathcal{M} \to \mathbb{R}\) is pathwise differentiable at \(P_0\).
+    Its efficient influence function is
+    \[
+    \chi_0(s,a,s')
+    := \alpha_0(a,s)
+    - \sum_{\tilde a \in \mathcal{A}} \pi_0(\tilde a \mid s)\alpha_0(\tilde a, s)
+    + \beta_0(s,a,s')
+    + m(a, s, r_0, k_0)
+    - \Psi(P_0),
+    \]
+    where \(\alpha_0\) and \(\beta_0\) are the Riesz representers defined in
+    \eqref{eqn::rieszreward}--\eqref{eqn::rieszkernel}.
+\end{theorem}
+\noindent The EIF \(\chi_0\) determines the generalized Cramér--Rao lower
+bound for \(\Psi\). Its kernel component follows from existing EIF results for
+offline reinforcement learning. Specifically, if the rewards
+\(\{r_0(A_i,S_i)\}_{i=1}^n\) were observed, then
+\(\beta_0(S_i,A_i,S_i')+m(A_i,S_i,r_0,k_0)-\Psi(P_0)\) would be the
+nonparametric EIF for the known-reward target
+\(P\mapsto E_P\{m(A,S,r_0,k_P)\}\). Thus, in each IRL application, it remains
+only to derive the reward-side Riesz representer \(\alpha_0\) for the map
+\(r\mapsto E_0\{\partial_r m(A,S,r,k_0)\}\). For example, EIFs for policy
+values are given in
+\citet{van2018online,kallus2020double,kallus2022efficiently}, and
+\citet{van2025automaticDRL} derives EIFs for general continuous linear
+functionals of the \(Q\)-function. Although those works allow additive reward
+noise, the EIF for continuous linear functionals of the \(Q\)-function is
+unchanged because the reward-noise score is orthogonal to the target-relevant
+tangent space \citep{bickel1993efficient,laan2003unified}.
+
+
+%The derivation of influence functions in IRL is greatly simplified by leveraging existing EIF results from offline RL. When the reward $r_0$ is known, i.e., when $\{r_0(A_i, S_i)\}_{i=1}^n$ are observed, the term $\beta_0(s,a,s') + m(a, s, r_0, k_0) - \Psi(P_0)$ coincides with the nonparametric EIF of the parameter $P \mapsto E_P[m(A, S, r_0, k_P)]$ based on the reward $r_0$. Thus, if the EIF of $P \mapsto E_P[m(A, S, r_0, k_P)]$ is available in the offline RL setting where rewards are observed, the component $\beta_0$ can be directly extracted. In particular, for the policy value of a known policy, the nonparametric EIF in the offline setting has been derived in \citet{van2018online, kallus2020double, kallus2022efficiently, van2025automaticDRL}, and more generally, the nonparametric EIF for continuous linear functionals of the $Q$-function---including the policy value as a special case---is provided in \citet{van2025automaticDRL}. These works technically assume that noisy rewards are observed, i.e., $\{R_i = r_0(A_i, S_i) + \varepsilon_i\}_{i=1}^n$ with $E_0[\varepsilon_i \mid A_i, S_i] = 0$ almost surely; however, for continuous linear functionals of the $Q$-function, the EIF under the noiseless reward model coincides with that in the noisy case when the noise is zero (i.e., $R = r_0(A,S)$). Consequently, for such parameters, if the nonparametric EIF of $P \mapsto E_P[m(A, S, r_0, k_P)]$ is already known from offline IRL, then only the Riesz representer $\alpha_0$ of $r \mapsto E_0[\partial_r m(A, S, r, k_0)]$ remains to be determined in order to obtain an explicit formula for the EIF in IRL.
+
+
+
+ 
+  
+
+ 
+The EIF characterizes the first-order behaviour of plug-in estimators of $\psi_0$.
+To formalize this, we introduce the score
+\[
+\varphi_{r,k}(s',a,s;\alpha,\beta)
+:= \alpha(a,s)
+   - \sum_{\tilde a\in\mathcal{A}} \exp\{r(\tilde a,s)\}\,\alpha(\tilde a,s)
+   + \beta(s',a,s),
+\]
+which provides the linear approximation of $E_0[m(A,S,r,k)]$ around $(r_0,k_0)$.
+To analyze the bias of this approximation, define the remainder
+\[
+\mathrm{Rem}_0(r_0,k_0;\, r,k)
+:= E_0[m(A,S,r,k)] - E_0[m(A,S,r_0,k_0)]
+   - E_0[\varphi_{r_0,k_0}(\cdot;\alpha_0,\beta_0)].
+\]
+The next theorem establishes a von Mises expansion for this decomposition \citep{mises1947asymptotic}.
+
+\begin{theorem}[von Mises expansion]
+\label{theorem::vonmises}
+Assume \ref{cond::boundedfunc}. Let $r \in \mathcal{H}$, $k \in \mathcal{K}$, 
+$\alpha \in T_{\mathcal{H}}$, and $\beta \in T_{\mathcal{K}}(k)$, and suppose 
+$\|r\|_{L^\infty(\lambda)} + \|r_0\|_{L^\infty(\lambda)} < M$ for some 
+$M \in (0,\infty)$. Then
+\begin{align*}
+&E_0\!\big[m(A,S,r,k)\big] - E_0\!\big[m(A,S,r_0,k_0)\big] 
+\;+\; \int \varphi_{r,k}(s',a,s;\alpha,\beta)\, P_0(ds,da,ds') \\
+&\qquad
+= -\,\langle r - r_0,\, \alpha - \alpha_0 \rangle_{\mathcal{H}, 0}
+\;+\; O\!\big(\|r - r_0\|_{\mathcal{H}}^{2}\big) \\
+&\qquad\quad
++\; O\!\Big(
+      \|\beta_0 - \beta\|_{L^2(P_0)}
+      \,\Big\|\tfrac{k - k_0}{k_0}\Big\|_{L^2(P_0)}
+    \Big)
+\;+\; \operatorname{Rem}_0(r_0,k_0;\,r,k),
+\end{align*}
+where the implicit constants depend only on $M$.
+\end{theorem}
+\noindent It is often possible to show that the linearization remainder is second order,
+for example $\operatorname{Rem}_0(r_0,k_0;\,r,k)
+\lesssim
+\|k - k_0\|_{\mathcal{K}}^{2} + \|r - r_0\|_{\mathcal{H}}^{2}.$ For Example~\ref{example::1a}, this follows from Lemma~\ref{lemma::bellmanfrechet} in Appendix~\ref{appendix::applications}.
+
+ 
+
+%This characterization shows that the plug-in estimator \(\tfrac{1}{n}\sum_{i=1}^n m(A_i,S_i,r_n,k_n)\) of \(\Psi(P_0)\) can be corrected by adding an estimate of its bias, namely \(\tfrac{1}{n}\sum_{i=1}^n \varphi_{r_n,k_n}(S_i',A_i,S_i;\alpha_n,\beta_n)\). Later, we will use this insight to construct debiased machine learning estimators for $\psi_0$ based on one-step estimation \citep{bickel1993efficient}.
+
+
+\subsection{Functionals of \texorpdfstring{$\nu$}{nu}-normalized reward}
+\label{sec::eifnorm}
+Suppose we have already derived the EIF of a functional of the pseudo-reward $r_0$ using Theorem~\ref{theorem::EIF}, and we now seek the EIF of the corresponding functional of the $\nu$-normalized reward $r_{0,\nu,\gamma,g}$ from Theorem~\ref{theorem::identWithNormalization}.  
+The next result shows that the EIF can be obtained directly from the unnormalized case via a simple transformation of the associated Riesz representers.
+
+Consider the functional
+$\psi_0 = E_0[\tilde{m}(A,S,r_{0,\nu,\gamma,g},k_0)]$ from Example~\ref{example::norm}.  
+Let $\tilde{\alpha}_0$ and $\tilde{\beta}_{0}$ be the Riesz representers of the partial derivatives of the map $(r,k) \mapsto E_0[\tilde{m}(A,S,r,k)]$ at $(r_{0,\nu,\gamma,g}, k_0)$, defined by the property that for all $\alpha \in T_{\mathcal{H}}$ and $\beta \in T_{\mathcal{K}}$,
+\begin{align*}
+      E_0[\partial_r \tilde{m}(A,S,r_{0,\nu,\gamma,g},k_0)[\alpha]]
+      &= \langle \tilde{\alpha}_0, \alpha \rangle_{\mathcal{H}, 0}, \\
+      E_0[\partial_k \tilde{m}(A,S,r_{0,\nu,\gamma,g},k_0)[\beta]]
+      &= \langle \tilde{\beta}_{0}, \beta \rangle_{\mathcal{K}, 0}.
+\end{align*}
+The Riesz representers are defined analogously to \eqref{eqn::rieszreward} and \eqref{eqn::rieszkernel}, the only difference being that the partial derivatives are now evaluated at $(r_{0,\nu,\gamma,g}, k_0)$ rather than $(r_0, k_0)$.  
+The following theorem assumes Conditions~\ref{cond::boundedfunc::norm}--\ref{cond::lipschitz::norm}, which adapt Conditions~\ref{cond::boundedfunc}--\ref{cond::lipschitz} to the map $\tilde{m}$ evaluated at $(r_{0,\nu,\gamma,g}, k_0)$.  
+Since these conditions are direct analogues, they are stated in Appendix~\ref{appendix::conditionsEIFnorm}.
+
+
+
+\begin{theorem}[Pathwise differentiability for normalized rewards]
+\label{theorem::EIFnorm}
+Suppose \ref{cond::boundedfunc::norm}-\ref{cond::lipschitz::norm}, and define $m(a,s,r,k) := \tilde{m}(a,s,r_{r,k,\nu,\gamma,g},k).$ Then the parameter $\Psi: P \mapsto E_P[m(A,S,r_P,k_P)]$
+is pathwise differentiable with EIF $\chi_0$, given in Theorem \ref{theorem::EIF}, where
+ \begin{align*}
+	      \alpha_0(a,s)
+	      &:= \tilde{\alpha}_0(a,s)
+	      - \frac{\nu(a \mid s)}{\pi_0(a \mid s)}
+	         \sum_{\tilde a \in \mathcal{A}} \pi_0(\tilde a \mid s)\,
+	         \tilde{\alpha}_0(\tilde a,s); \\[6pt]
+	      \beta_0(s' \mid a,s) 
+	      &:= \tilde{\beta}_{0}(s' \mid a,s)
+	         + \alpha_0(a,s)\,
+	           \Big\{r_0(a,s) - g(s) + \gamma V_{r_0-g, k_0}^{\nu, \gamma}(s') 
+	           - q_{r_0-g, k_0}^{\nu, \gamma}(a,s)\Big\}.
+	\end{align*}
+\end{theorem}
+\noindent Equivalently, Theorem~\ref{theorem::EIFnorm} gives a conditional
+influence operator for the normalized reward itself.  For any downstream
+functional whose derivative with respect to the normalized reward has Riesz
+representer \(w\in T_{\mathcal H}\), define
+\[
+\mathcal A_\nu w(a,s)
+:= w(a,s)
+- \frac{\nu(a\mid s)}{\pi_0(a\mid s)}
+   \sum_{\tilde a\in\mathcal A}\pi_0(\tilde a\mid s)w(\tilde a,s)
+\]
+and
+\[
+\Delta_\nu(s',a,s)
+:= r_0(a,s)-g(s)
+   +\gamma V_{r_0-g,k_0}^{\nu,\gamma}(s')
+   -q_{r_0-g,k_0}^{\nu,\gamma}(a,s).
+\]
+Then the contribution to the EIF coming only from estimating
+\(r_{0,\nu,\gamma,g}\) is
+\[
+\mathcal I_\nu(w)(s',a,s)
+:= \mathcal A_\nu w(a,s)
+   -\sum_{\tilde a\in\mathcal A}\pi_0(\tilde a\mid s)
+      \mathcal A_\nu w(\tilde a,s)
+   + \mathcal A_\nu w(a,s)\Delta_\nu(s',a,s).
+\]
+Thus, to compute the EIF for any smooth functional
+\(E_0\{\tilde m(A,S,r_{0,\nu,\gamma,g},k_0)\}\), one may first compute the
+ordinary Riesz representers \((w,\tilde\beta)\) of \(\tilde m\) as if the
+normalized reward were observed, and then use
+\[
+\chi_0
+= \mathcal I_\nu(w)
+  + \tilde\beta_0(S',A,S)
+  + \tilde m(A,S,r_{0,\nu,\gamma,g},k_0)-\psi_0 .
+\]
+This separates the reusable normalized-reward influence calculation from the
+functional-specific derivative \(w\).
+
+\noindent The simple structure of the EIF follows from the following representation.
+
+\begin{lemma}[Representation of reward averages under normalization]
+\label{lemma::linearfuncidentnorm}
+For any \(w\in L^2(P_0)\),
+\[
+E_0\!\left[w(A,S)r_{0,\nu,\gamma,g}(A,S)\right]
+=
+E_0\!\left[
+w(A,S)\left\{g(S)+r_0(A,S)
+-\sum_{a\in\mathcal A}\nu(a\mid S)r_0(a,S)\right\}
+\right].
+\]
+\end{lemma}
+
+\noindent Hence, weighted averages of \(r_{0,\nu,\gamma,g}\), with possibly
+signed weights \(w\), reduce to the reward-free term \(E_0\{w(A,S)g(S)\}\) and
+an average of \(r_0\) after subtracting its \(\nu\)-mean at the same state.
+Consequently, linear summaries such as the best linear predictor of
+\(r_{0,\nu,\gamma,g}(A,S)\) can be identified from the pseudo-reward.
+
+\section{Automatic debiased estimation and inference}
+\label{sec::est}
+
+
+\subsection{General form of the estimator}
+
+Let $r_n$ and $k_n$ denote estimators of the pseudo-reward $r_0$
+(the log-behaviour policy) and the transition kernel $k_0$, respectively.
+The pseudo-reward $r_0$ can be learned from state–action data
+$\{(S_i,A_i)\}_{i=1}^n$ via probabilistic classification, while $k_0$ may be
+estimated using conditional density methods.  
+A natural estimator of $\psi_0$ is the plug-in estimator
+$n^{-1}\sum_{i=1}^n m(A_i,S_i,r_n,k_n)$.
+Under flexible nuisance estimation, this plug-in approach can exhibit
+substantial bias. We therefore use a one-step influence-function-based correction.
+
+Let $\alpha_n \in \mathcal{H}$ and $\beta_n \in L^2(P_0)$ estimate the
+representers $\alpha_0$ and $\beta_0$ from Section~\ref{sec::EIFsub}. We take
+$\beta_n$ to be centered with respect to $k_n$, so that
+$\int \beta_n(s',a,s)\,k_n(s' \mid a, s)\mu(ds')=0$; this can always be enforced post hoc. We propose the one-step estimator $\psi_n
+:=
+P_n\!\left\{
+m(\cdot,r_n,k_n)
++
+\varphi_{r_n,k_n}(\cdot\,;\alpha_n,\beta_n)
+\right\},$ or, equivalently,
+\begin{equation}
+\psi_n
+= \frac{1}{n}\sum_{i=1}^n m(A_i,S_i,r_n,k_n)
+  + \frac{1}{n}\sum_{i=1}^n\!\left[
+      \alpha_n(A_i,S_i)
+      - \sum_{a\in\mathcal{A}}
+          \exp\{r_n(a,S_i)\}\alpha_n(a,S_i)
+      + \beta_n(S_i',A_i,S_i)
+    \right].
+\label{eqn::estgeneral}
+\end{equation}
+The second term applies the EIF from Theorem~\ref{theorem::EIF} to correct the
+first-order bias of the plug-in estimator \citep{bickel1993efficient}. For policy
+value parameters, the kernel representer \(\beta_0\) coincides with the usual
+transition-kernel component of the EIF in off-policy evaluation, and can be
+estimated using existing DRL methods. The reward representer can often be
+derived analytically or estimated directly by \textit{Riesz regression}
+\citep{chernozhukov2022automatic,van2025automatic}, using the population risk
+\[
+\alpha \mapsto E_0\left[\alpha(A,S)^2
+-2\,\partial_r m(A,S,r_0,k_0)(\alpha)\right].
+\]
+Because \eqref{eqn::estgeneral} is agnostic to the choice of \(m\), we refer to
+this procedure as an \emph{automatic} DML estimator.
+
+When \(\psi_0\) depends on value- or \(Q\)-functions induced by \(k_0\), these
+higher-level nuisances can often be estimated directly, avoiding explicit
+estimation of \(k_0\). The next section uses this reparameterization for the main
+policy-value examples.
+
+ 
+
+ 
+
+\subsection{Asymptotic theory}
+
+The next theorem establishes that the proposed estimator $\psi_n$ is asymptotically
+linear with influence function $\chi_0$ and is therefore efficient for $\psi_0$.
+We impose the following conditions.
+
+\begin{enumerate}[label=\textbf{(C\arabic*)}, ref=C\arabic*, resume=cond]
+\item (\textit{Sample splitting and boundedness}) \label{cond::samplesplit} \label{cond::bounded}
+The estimators \(r_n\), \(k_n\), \(\alpha_n\), and \(\beta_n\) are obtained from data independent of \(\mathcal D_n\). Moreover, \(\bigl\|m(\cdot,r_n,k_n)+\varphi_{r_n,k_n}(\cdot\,;\alpha_n,\beta_n)\bigr\|_{L^2(P_0)}=O_P(1)\) and
+\(\bigl\|m(\cdot,r_0,k_0)+\varphi_{r_0,k_0}(\cdot\,;\alpha_0,\beta_0)\bigr\|_{L^2(P_0)}=O(1)\).
+ 
+
+\item (\textit{Nuisance consistency and estimation rates}) \label{cond::rates}
+\begin{enumerate}[label=(\alph*)]
+\item \label{cond::consistency} \(\bigl\|m(\cdot,r_n,k_n)+\varphi_{r_n,k_n}(\cdot\,;\alpha_n,\beta_n)-m(\cdot,r_0,k_0)-\varphi_{r_0,k_0}(\cdot\,;\alpha_0,\beta_0)\bigr\|_{L^2(P_0)}=o_P(1)\) 
+    \item \label{cond::reward} \label{cond::representers} \(\|r_n-r_0\|_{\mathcal H}=o_P(n^{-1/4})\) and  \(\|r_n-r_0\|_{\mathcal H,r_0}\,\|\alpha_n-\alpha_0\|_{\mathcal H,r_0}=o_P(n^{-1/2})\).
+    \item \label{cond::beta} \label{cond::remainder} \(\big\|\tfrac{k_n-k_0}{k_0}\big\|_{L^2(P_0)}\|\beta_n-\beta_0\|_{L^2(P_0)}=o_P(n^{-1/2})\) and  \(\operatorname{Rem}_0(r_0,k_0;\,r_n,k_n)=o_P(n^{-1/2})\).
+\end{enumerate}
+\end{enumerate}
+
+
+\begin{theorem}[Asymptotic linearity and efficiency]
+\label{thm:asymptotic_linearity}
+Suppose Conditions~\ref{cond::samplesplit}--\ref{cond::rates} hold.  
+Then the autoDML estimator $\psi_n$ defined in \eqref{eqn::estgeneral} satisfies
+\[
+\psi_n - \psi_0
+= \frac{1}{n}\sum_{i=1}^n \chi_0(S_i,A_i,S_i') + o_P(n^{-1/2}).
+\]
+Consequently, $\sqrt{n}\,(\psi_n - \psi_0) \rightsquigarrow N(0,\sigma_0^2)$,  
+where $\sigma_0^2 = \operatorname{Var}_{P_0}\!\big(\chi_0(S,A,S')\big)$.
+Thus $\psi_n$ is nonparametric efficient for $\psi_0$.
+\end{theorem}
+
+\noindent The conditions above are standard in debiased machine learning.  
+Condition~\ref{cond::samplesplit} enforces independence between nuisance estimation and evaluation; this can be relaxed to cross-fitting, where the sample is partitioned and nuisance functions are estimated on held-out folds \citep{van2011targeted, chernozhukov2018double}.  
+Condition~\ref{cond::bounded} guarantees uniform $L^2$ boundedness of the true and estimated uncentered influence functions.  
+Condition~\ref{cond::consistency} requires consistency of this estimated uncentered influence function, typically ensured when the nuisance estimators are consistent.  
+Condition~\ref{cond::rates} specifies the convergence rates needed for the von Mises remainder to be second order.  
+In particular, part~(c) yields a form of partial double robustness: slower convergence of $\alpha_n$ can be offset by faster convergence of $r_n$.  
+In our examples, the linearization remainder often satisfies $\operatorname{Rem}_0(r_0,k_0;\, r,k) = O\big(\|r - r_0\|_{\mathcal H}^2 + \|k - k_0\|_{\mathcal K}^2\big)$.
+
+
+ 
+
+\section{Applications}
+\label{sec::applications}
+
+% JASA move: make the main-text versus appendix split explicit at the start of Applications.
+This section specializes the generic theory to the three policy-value targets
+developed in the main text: the value of a fixed policy, the value of a fixed
+policy under reward normalization, and the value of a counterfactual
+soft-optimal policy. The corresponding normalized softmax and structural coefficient
+examples are collected in Appendix~\ref{app::additionalapplications}.
+
+\subsection{Efficient influence functions for example parameters}
+\label{section::EIFexamples}
+
+  We begin with Example~\ref{example::1a}, which concerns the value of a fixed
+policy \(\pi\). Our analysis relies on an overlap condition for the stationary
+state--action distribution, ensuring that the operator
+\(\mathcal{T}_{k_0,\pi}\) has a bounded inverse on \(L^2(\lambda)\). For a
+given policy \(\pi\), let \(p_{k}^{\pi,\gamma}\) denote a stationary
+state-\(\mu\)-density for the MDP with policy \(\pi\) and kernel \(k\). That
+is, for every \(f \in L^\infty(\mu)\), $\int f(s')\, p_{k}^{\pi,\gamma}(s')\, \mu(ds')
+=
+\int\!\!\int f(s')\, k_\pi'(s' \mid s)\, \mu(ds')\,
+p_{k}^{\pi,\gamma}(s)\,\mu(ds),$ where
+\(k_{\pi}'(s' \mid s):=\sum_{a \in \mathcal{A}} \pi(a \mid s)\, k(s' \mid a,s)\).
+
+
+
+
+
+ 
+\begin{enumerate}[label=\textbf{(D\arabic*)}, ref=D\arabic*, series=condexample]
+    %\item (\textit{Solution boundedness}) It holds that $\esssup_{a,s} \left|\frac{\pi_0(a \mid s)}{\exp \{r_0(a, s)\}}\right| < \infty$. \label{cond::boundedreward}
+    \item (\textit{Stationary overlap for $\pi$}) There exist constants $b, B \in (0,\infty)$ such that  $b \;\le\; \frac{p_{k_0}^{\pi,\gamma}}{\rho_0}(s) \cdot \frac{\pi(a \mid s)}{\pi_0(a \mid s)} \;\le\; B $ for $\lambda$-a.e. $(a,s).$ \label{cond::stationary}
+\end{enumerate}
+ 
+
+
+
+In what follows, denote the (unnormalized) discounted state–action occupancy density ratio by
+\begin{equation}
+    d_0^{\pi,\gamma}(a,s)
+    := \rho_0^{\pi,\gamma}(s)\,\frac{\pi(a \mid s)}{\pi_0(a \mid s)}, 
+    \qquad 
+    \rho_0^{\pi,\gamma}(s)
+    := \frac{1}{\rho_0(s)}\sum_{t=0}^\infty \gamma^t\,
+       \frac{d\mathbb{P}_{k_0,\pi}}{d\mu}(S_t = s),
+    \label{eqn::occupancy}
+\end{equation}
+where $\rho_0^{\pi,\gamma}$ is the associated state occupancy ratio.
+This state–action occupancy ratio characterizes the policy value through the identity
+$E_0[V_{r_0,k_0}^{\pi,\gamma}(S)] = E_0[d_0^{\pi,\gamma}(A,S)\,r_0(A,S)]$.
+In this sense, it plays the same role in offline policy evaluation as the inverse 
+propensity score does in causal inference.
+ 
+
+
+ 
+
+
+ 
+ 
+
+ 
+
+ 
+ 
+\begingroup
+ 
+   
+\begin{theorem}[EIF for known policy]
+\label{theorem::EIFvalue}
+ 
+   Let  $m(a,s,r,k) := V_{r,k}^{\pi,\gamma}(s)$. Under \ref{cond::stationary}, the parameter $\Psi: P \mapsto E_P[V_{r_P, k_P}^{\pi,\gamma}(S)]$ is pathwise differentiable at $P_0$ with efficient influence function
+    \begin{align*}
+    \chi_0(s,a,s') 
+    &= \rho_0^{\pi,\gamma}(s)\!\left(\frac{\pi(a\mid s)}{\pi_0(a\mid s)}-1\right) \\[4pt]
+     & \quad + d_0^{\pi,\gamma}(a,s)\Big\{r_0(a,s) + \gamma\,V_{r_0,k_0}^{\pi,\gamma}(s')
+     - q_{r_0,k_0}^{\pi,\gamma}(a,s)\Big\} \\[4pt]
+     & \quad + V_{r_0, k_0}^{\pi,\gamma}(s) - \Psi(P_0).
+    \end{align*}
+% Furthermore,  $\operatorname{Rem}_0(r_0,k_0; r,k) = O(\|k - k_0\|_{\mathcal{K}}^{2} + \|k - k_0\|_{\mathcal{K}}\|r - r_0\|_{\mathcal{H}}),$
+%with an implicit constant depending only on $\gamma$, $\mathcal{K}$, $b$, $B$, and $\max\{\|r\|_{L^\infty(\lambda)}, \|r_0\|_{L^\infty(\lambda)}\}$.
+
+\end{theorem}
+\endgroup
+ 
+\noindent In Theorem~\ref{theorem::EIFvalue}, the representers from 
+Theorem~\ref{theorem::EIF} take the explicit forms
+$\alpha_0(a,s) = \rho_0^{\pi,\gamma}(s)\,\tfrac{\pi(a\mid s)}{\pi_0(a\mid s)}$
+and 
+$\beta_0(s,a,s')
+= d_0^{\pi,\gamma}(a,s)\{r_0(a,s) + \gamma\,V_{r_0,k_0}^{\pi,\gamma}(s') 
+- q_{r_0,k_0}^{\pi,\gamma}(a,s)\}$.  
+Thus the EIF combines a density-ratio term from the pseudo-reward with the
+familiar temporal-difference term from off-policy evaluation
+\citep{van2018online, kallus2020double, kallus2022efficiently, van2025automaticDRL}.  
+%More generally, terms of the form ``weight $\times$ Bellman residual'' appear in EIFs of continuous linear functionals of the $Q$-function in offline RL \citep{van2025automaticDRL}.
+
+
+ 
+We next consider Example~\ref{example::1b}, concerning the value of the
+counterfactual softmax policy \(\pi_{r_0,k_0}^\star\). Here \(V^\star\)
+denotes the policy value, \(v^\star\) the continuation value, and
+\(\Phi^\star\) the log-sum-exp state value, where
+\[
+\Phi_{r_0,k_0}^\star(s)
+:= \tau^\star \log\!\Biggl(\sum_{\tilde a \in \mathcal{A}^\star}
+\exp\!\Bigl(\tau^{\star-1}\{r_0(\tilde a,s)
++ \gamma\,v_{r_0,k_0}^\star(\tilde a,s)\}\Bigr)\Biggr).
+\]
+We also define the conditional discounted state-occupancy ratio
+\[
+\rho_{r_0,k_0}^\star(s'\mid a,s)
+:= \frac{1}{\rho_0(s')}\sum_{t=0}^\infty \gamma^t\,
+\frac{\mathbb{P}_{k_0,\pi_{r_0,k_0}^\star}(S_t\in ds' \mid A_0=a,S_0=s)}{\mu(ds')},
+\]
+with marginal \(\rho_{r_0,k_0}^\star(s):=E_0[\rho_{r_0,k_0}^\star(s\mid A,S)]\)
+and state-action ratio
+\(d_{r_0,k_0}^\star(a,s):=\pi_{r_0,k_0}^\star(a\mid s)\pi_0(a\mid s)^{-1}
+\rho_{r_0,k_0}^\star(s)\).
+We also define the advantage-weighted state occupancy ratio
+\begin{equation} \label{eqn::tilderho}
+\widetilde{\rho}_{r_0,k_0}^\star(s)
+:= E_0\!\big[d_{r_0,k_0}^\star(A,S)\{q_{r_0,k_0}^\star(A,S)
+   - V_{r_0,k_0}^\star(S)\}\,\rho_{r_0,k_0}^\star(s\mid A,S)\big],
+\end{equation}
+with state--action version
+$\widetilde{d}_{r_0,k_0}^\star(a,s)
+:= \tfrac{\pi_{r_0,k_0}^\star(a\mid s)}{\pi_0(a\mid s)}\,
+   \widetilde{\rho}_{r_0,k_0}^\star(s)$.
+In the following condition, let
+$p_{k_0, r_0}^{\star} := p_{k_0}^{\pi_{r_0, k_0}^\star, \gamma}$ denote the
+stationary $\mu$-density under $\pi_{r_0, k_0}^\star$.
+
+
+
+\begin{enumerate}[label=\textbf{(D\arabic*)}, ref=D\arabic*, resume=condexample]
+    \item (\textit{Stationary overlap for $\pi_{r_0, k_0}^\star$}) There exist $b, B \in (0,\infty)$ such that $b \le \frac{p_{k_0, r_0}^{\star}(s)}{\rho_0(s)} \cdot \frac{\pi_{r_0, k_0}^\star(a \mid s)}{\pi_0(a \mid s)} \le B$ for $\lambda$-a.e.\ $(a,s)$. \label{cond::stationary3}
+    \item (\textit{Lipschitz continuity of the soft Bellman fixed point}) There exists $L\in (0,\infty)$ such that, for all $k \in \mathcal{K}$, $\|v_{r_0,k}^\star - v_{r_0, k_0}^\star\|_{L^2(\lambda)} \le L \|k - k_0\|_{\mathcal{K}}$. \label{cond::lipschitzvalue}
+\end{enumerate}
+
+Condition~\ref{cond::lipschitzvalue} ensures pathwise differentiability of
+$\Psi$ with respect to the kernel by controlling von Mises remainder terms of
+the form $\|v_{r_0,k}^\star-v_{r_0,k_0}^\star\|_{L^2(\lambda)}$ in terms of
+$\|k-k_0\|_{\mathcal K}$.
+ 
+\begingroup
+ 
+ 
+\begin{theorem}[EIF for softmax policy]
+\label{theorem::EIFsoftmax}
+Let $m(a,s,r,k) := V_{r,k}^\star(s)$. Under \ref{cond::stationary3} and \ref{cond::lipschitzvalue}, the parameter $\Psi: P \mapsto E_P[V_{r_P,k_P}^\star(S)]$ is pathwise differentiable at $P_0$ with efficient influence function
+\begin{align*}
+   \chi_0(s,a,s')
+&= \left\{\frac{1}{\tau^\star}\,\widetilde{\rho}_{r_0,k_0}^\star(s)
+    + \rho_{r_0,k_0}^{\star}(s)\right\}
+   \left\{\frac{\pi_{r_0,k_0}^\star(a\mid s)}{\pi_0(a\mid s)} - 1\right\} \\[4pt]
+& \quad + \frac{\gamma}{\tau^\star}\,\widetilde{d}_{r_0,k_0}^\star(a,s)
+   \left\{\Phi_{r_0,k_0}^\star(s')-v_{r_0,k_0}^\star(a,s)\right\} \\[4pt]
+& \quad + d_{r_0,k_0}^\star(a,s)\,\Big\{\,r_0(a,s) + \gamma\,V_{r_0,k_0}^{\star}(s') - q_{r_0,k_0}^\star(a,s)\,\Big\} \\[4pt]
+& \quad + V_{r_0,k_0}^\star(s) - \Psi(P_0)
+\end{align*}
+%Furthermore, under only \ref{cond::stationary3},  $\operatorname{Rem}_0(r_0,k_0; r,k) 
+%= O(\|k - k_0\|_{\mathcal{K}}^{2} 
+%+ \|r - r_0\|_{\mathcal{H}}^{2} 
+%+ \|v_{r_0,k}-v_{r_0,k_0}\|_{L^2(\lambda)}^{2}),$
+%with an implicit constant depending only on $\gamma$, $\mathcal{K}$, $b$, $B$, %and $\max\{\|r\|_{L^\infty(\lambda)}, \|r_0\|_{L^\infty(\lambda)}\}$.
+
+\end{theorem}
+\endgroup
+\noindent Relative to Theorem~\ref{theorem::EIFvalue}, this EIF adds the
+advantage-weighted ratio $\widetilde{\rho}_{r_0,k_0}^\star$ and the Bellman
+term
+\(\tfrac{\gamma}{\tau^\star}\,\widetilde{d}_{r_0,k_0}^\star(a,s)
+\{\Phi_{r_0,k_0}^\star(s') - v_{r_0,k_0}^\star(a,s)\}\).
+Both terms arise because the target policy depends on the soft Bellman
+solution \(v_{r_0,k_0}^\star\). 
+
+
+We now turn to Example~\ref{example::norm}. Write
+$d_{0,k_0}^{\pi,\gamma'}(a,s):=\rho_0^{\pi,\gamma'}(s)\,
+\frac{\pi(a \mid s)}{\pi_0(a \mid s)}$ for the discounted state--action
+occupancy ratio of \(\pi\) at discount \(\gamma'\), where
+\(\rho_0^{\pi,\gamma'}\) is the associated state occupancy ratio. Define
+$r_{0,\nu,\gamma,g}(a,s):=g(s)+q_{r_0-g,k_0}^{\nu,\gamma}(a,s)-
+V_{r_0-g,k_0}^{\nu,\gamma}(s)$, and abbreviate
+$q_{r_0,k_0,\nu}^{\pi,\gamma'}:=q_{r_{0,\nu,\gamma,g},k_0}^{\pi,\gamma'}$
+and
+$V_{r_0,k_0,\nu}^{\pi,\gamma'}(s):=\sum_{a\in\mathcal A}\pi(a\mid s)\,
+q_{r_0,k_0,\nu}^{\pi,\gamma'}(a,s)$. In addition to the stationary overlap
+condition from Condition~\ref{cond::stationary}, applied here with target
+discount \(\gamma'\), we require stationary overlap for the normalization
+policy \(\nu\):
+
+\begin{enumerate}[label=\textbf{(D\arabic*)}, ref=D\arabic*, resume=condexample]
+    \item (\textit{Stationary overlap for $\nu$}) There exist constants
+    $b, B \in (0,\infty)$ such that
+    $b \le \frac{p_{k_0}^{\nu,\gamma}(s)}{\rho_0(s)}
+    \cdot \frac{\nu(a \mid s)}{\pi_0(a \mid s)} \le B$
+    for $\lambda$-a.e.\ $(a,s)$. \label{cond::stationary2}
+\end{enumerate}
+
+\begingroup
+\begin{theorem}[EIF for policy value under reward normalization]
+\label{theorem::EIFvaluenorm}
+Let $m(a,s,r,k)
+:= \sum_{\tilde a \in \mathcal A}\pi(\tilde a \mid s)\,
+q_{r,k,\nu}^{\pi,\gamma'}(\tilde a,s),$ where \(q_{r,k,\nu}^{\pi,\gamma'}\) is the \(Q\)-function of \(\pi\) at discount
+\(\gamma'\) under the \(\nu\)-normalized reward \(r_{r,k,\nu,\gamma,g}\).
+Under \ref{cond::stationary}, \ref{cond::stationary2}, and
+\ref{cond::boundedfunc::norm}-\ref{cond::lipschitz::norm}, the parameter
+\(\Psi: P \mapsto E_P[m(A,S,r_P,k_P)]\) is pathwise differentiable at \(P_0\)
+with efficient influence function
+\begin{align*}
+\chi_0(s,a,s')
+&= \rho_0^{\pi,\gamma'}(s)\left(\frac{\pi(a\mid s)}{\pi_0(a\mid s)}
+   - \frac{\nu(a\mid s)}{\pi_0(a\mid s)}\right) \\[4pt]
+&\quad + d_{0,k_0}^{\pi,\gamma'}(a,s)
+   \left(1 - \frac{\nu(a \mid s)}{\pi(a \mid s)}\right)
+   \bigl\{r_0(a,s) - g(s) + \gamma V_{r_0-g, k_0}^{\nu,\gamma}(s')
+   - q_{r_0-g, k_0}^{\nu,\gamma}(a,s)\bigr\} \\[4pt]
+&\quad + d_{0,k_0}^{\pi,\gamma'}(a,s)\,
+   \bigl\{r_{0,\nu,\gamma,g}(a,s)
+   + \gamma' V_{r_0, k_0,\nu}^{\pi,\gamma'}(s')
+   - q_{r_0, k_0,\nu}^{\pi,\gamma'}(a,s)\bigr\} \\[4pt]
+&\quad + V_{r_0,k_0,\nu}^{\pi,\gamma'}(s) - \Psi(P_0).
+\end{align*}
+\end{theorem}
+\endgroup
+
+\noindent Theorem~\ref{theorem::EIFvaluenorm} retains the same two-part
+structure as Theorem~\ref{theorem::EIFvalue}, but adds a second Bellman term
+for the normalization map. The first augmentation accounts for estimating the
+normalized reward \(r_{0,\nu,\gamma,g}\) through the auxiliary value
+\(q_{r_0-g,k_0}^{\nu,\gamma}\); the second is the usual off-policy correction
+for evaluating \(\pi\) under that normalized reward.
+
+ 
+
+Results for the additional examples from Section~\ref{subsec:examples},
+namely softmax values under normalization and structural coefficients, are
+collected in Appendix~\ref{app::additionalapplications}.
+
+ 
+
+
+
+\subsection{Estimators and asymptotic theory}
+\label{sec::examplesestimators}
+
+We next give example-specific DML estimators that avoid direct estimation of
+the transition kernel \(k_0\). Instead, they target higher-level nuisance
+functions that yield doubly robust von Mises expansions and simpler rate
+conditions under which Theorem~\ref{thm:asymptotic_linearity} applies. We focus
+on Examples~ \ref{example::1a}, \ref{example::1b} and~\ref{example::norm}; additional estimators,
+conditions, and asymptotic results are deferred to
+Appendices~\ref{app:estimator:details} and~\ref{app::examplesestimators}.
+
+
+We revisit Example~\ref{example::1a}. Let \(\pi_n:=\exp\{r_n\}\), let
+\(q_n^{\pi,\gamma}\) estimate \(q_{r_0,k_0}^{\pi,\gamma}\), and define
+\(V_n^{\pi,\gamma}(s):=\sum_{\tilde a\in\mathcal A}\pi(\tilde a\mid s)
+q_n^{\pi,\gamma}(\tilde a,s)\). Let \(\rho_n^{\pi,\gamma}\) estimate the state
+occupancy ratio \(\rho_0^{\pi,\gamma}\). Our DML estimator of
+\(\psi_0=E_0[V_{r_0,k_0}^{\pi,\gamma}(S)]\) is
+\begin{align*}
+\psi_n
+&:= \frac{1}{n}\sum_{i=1}^n V_n^{\pi,\gamma}(S_i)
+  + \frac{1}{n}\sum_{i=1}^n
+  \rho_n^{\pi,\gamma}(S_i)
+  \frac{\pi(A_i\mid S_i)}{\pi_n(A_i\mid S_i)}
+  \left\{
+  r_n(A_i,S_i)+\gamma V_n^{\pi,\gamma}(S_i')
+  -q_n^{\pi,\gamma}(A_i,S_i)
+  \right\} \\
+&\quad
+  + \frac{1}{n}\sum_{i=1}^n
+  \rho_n^{\pi,\gamma}(S_i)
+  \left\{
+  1-\frac{\pi(A_i\mid S_i)}{\pi_n(A_i\mid S_i)}
+  \right\}.
+\end{align*}
+The nuisance \(q_{r_0,k_0}^{\pi,\gamma}\) can be estimated by fitted
+\(Q\)-evaluation, i.e., iterative regression on Bellman targets
+\citep{ernst2005tree,munos2005error,riedmiller2005neural,munos2008finite,mnih2013playing,van2025fitted}.
+The ratio \(\rho_0^{\pi,\gamma}\) can be estimated by DICE-style,
+moment-matching, or saddle-point methods
+\citep{liu2018breaking,uehara2020minimax,nachum2019dualdice,zhang2020gendice,wang2023projected,van2025automaticDRL}.
+For example, \(\rho_0^{\pi,\gamma}=\mathcal T_{k_0,\pi}(\widetilde\alpha_0)\)
+\citep{van2025automaticDRL}, where
+\[
+\widetilde\alpha_0
+:=
+\argmin_{\alpha\in L^2(\mu)}
+E_0\!\left[
+\{\mathcal T_{k_0,\pi}(\alpha)(A_0,S_0)\}^2
+-2\alpha(S_0)
+\right].
+\]
+Thus one may estimate \(\rho_0^{\pi,\gamma}\) by replacing
+\(\mathcal T_{k_0,\pi}\) with \(\mathcal T_{k_n,\pi}\), or by using an
+equivalent min--max formulation
+\citep{liu2018breaking,uehara2020minimax,dikkala2020minimax,kallus2020double}.
+The next theorem gives rate conditions under which \(\psi_n\) is asymptotically
+linear and efficient.
+
+\begin{enumerate}[label=\textbf{(E\arabic*)}, ref=E\arabic*, series = efficiency1a]
+  
+    
+    \item \label{assump:rates::policy} (\textit{Nuisance rates}) 
+    $\bigl\{\|\rho_n^{\pi,\gamma} - \rho_0^{\pi,\gamma}\|_{L^2(\rho_0)} 
+      + \|r_n - r_0\|_{\mathcal{H},r_0}\bigr\}\,
+    \bigl\|
+        \mathcal{T}_{k_0,\pi,\gamma}(q_n^{\pi,\gamma} - q_0^{\pi,\gamma})
+    \bigr\|_{\mathcal{H},r_0}
+    = o_p(n^{-1/2})$.
+\end{enumerate}
+
+
+ 
+\begin{theorem}[Asymptotic linearity for Example~\ref{example::1a}]
+\label{theorem::ALex1}
+Assume \ref{cond::stationary}, \ref{cond::rates}\ref{cond::reward}, and
+\ref{assump:rates::policy}--\ref{assump:consistency::policy}.  
+Then Theorem~\ref{thm:asymptotic_linearity} holds with influence function
+$\chi_0$ given in Theorem~\ref{theorem::EIFvalue}.
+\end{theorem}
+
+
+
+
+
+For Example~\ref{example::1b}, let \(r_n\) estimate \(r_0\), let
+\(v_n^\star\) estimate the soft Bellman fixed point
+\(v_{r_0,k_0}^\star\), and define $\pi_n^\star(a\mid s)
+\propto
+1\{a\in\mathcal A^\star\}
+\exp\!\left\{
+\tfrac{1}{\tau^\star}\{r_n(a,s)+\gamma v_n^\star(a,s)\}
+\right\}.$ Let \(q_n^\star\) estimate \(q_{r_0,k_0}^\star\), set $V_n^\star(s)
+:=
+\sum_{\tilde a\in\mathcal A^\star}
+\pi_n^\star(\tilde a\mid s)q_n^\star(\tilde a,s),$
+and let \(\widetilde\rho_n^\star\) and \(\rho_n^\star\) estimate
+\(\widetilde\rho_{r_0,k_0}^\star\) and \(\rho_{r_0,k_0}^\star\). The resulting
+estimator of \(\psi_0=E_0\{V_{r_0,k_0}^\star(S)\}\) is
+\begin{align*}
+\psi_n
+&:=
+\frac{1}{n}\sum_{i=1}^n V_n^\star(S_i)
++
+\frac{1}{n}\sum_{i=1}^n
+\rho_n^\star(S_i)
+\frac{\pi_n^\star(A_i\mid S_i)}{\pi_n(A_i\mid S_i)}
+\{r_n(A_i,S_i)+\gamma V_n^\star(S_i')-q_n^\star(A_i,S_i)\}
+\\
+&\quad+
+\frac{\gamma}{n\tau^\star}\sum_{i=1}^n
+\widetilde\rho_n^\star(S_i)
+\frac{\pi_n^\star(A_i\mid S_i)}{\pi_n(A_i\mid S_i)}
+\left[
+\tau^\star
+\log\!\left\{
+\sum_{a\in\mathcal A^\star}
+\exp\!\left(
+\tfrac{1}{\tau^\star}\{r_n(a,S_i')+\gamma v_n^\star(a,S_i')\}
+\right)
+\right\}
+-
+v_n^\star(A_i,S_i)
+\right]
+\\
+&\quad+
+\frac{1}{n}\sum_{i=1}^n
+\left\{
+\tfrac{1}{\tau^\star}\widetilde\rho_n^\star(S_i)
++
+\rho_n^\star(S_i)
+\right\}
+\left\{
+\frac{\pi_n^\star(A_i\mid S_i)}{\pi_n(A_i\mid S_i)}-1
+\right\}.
+\end{align*}
+The fixed point \(v_n^\star\) can be estimated by soft \(Q\)-iteration
+\citep{haarnoja2017reinforcement,van2025stationary}, and \(q_n^\star\) by fitted
+\(Q\)-evaluation under \(\pi_n^\star\). The ratio
+\(\widetilde\rho_{r_0,k_0}^\star\) can be estimated by first estimating
+\(\rho_{r_0,k_0}^\star(s'\mid a,s)\) and then applying
+\eqref{eqn::tilderho}.  
+\begin{enumerate}[label=\textbf{(E\arabic**)}, ref=E\arabic**, series=efficiency1b]
+\item \label{assump:rates::softstar}(\textit{Nuisance rates})  
+The following rates hold:
+\begin{enumerate}[label=(\alph*)]
+    \item \(\|v_n^\star - v_{r_0,k_0}^\star\|_{\mathcal{H},r_0}
+    = o_p(n^{-1/4})\).
+    
+    \item \(\|\widetilde{\rho}_n^\star - \widetilde{\rho}_{r_0,k_0}^\star\|_{\mathcal{H},r_0}\,
+    \bigl(\|r_n - r_0\|_{\mathcal{H},r_0} + \|v_n^\star - v_{r_0,k_0}^\star\|_{\mathcal{H},r_0}\bigr)
+    = o_p(n^{-1/2})\).
+    
+    \item \(\bigl(\|\rho_n^\star - \rho_{r_0,k_0}^\star\|_{\mathcal{H},r_0}
+      + \|r_n - r_0\|_{\mathcal{H},r_0}
+      + \|v_n^\star - v_{r_0,k_0}^\star\|_{\mathcal{H},r_0}\bigr)\,
+      \bigl\|\mathcal{T}_{r_0,k_0}^\star(q_n^\star - q_{r_0,k_0}^\star)\bigr\|_{\mathcal{H},r_0}
+      = o_p(n^{-1/2})\).
+\end{enumerate}
+\end{enumerate}
+
+ 
+ 
+
+
+\begin{theorem}[Asymptotic linearity for Example~\ref{example::1b}]
+\label{theorem::ALex1b}
+Assume \ref{cond::stationary3}, 
+\ref{cond::rates}\ref{cond::reward}, and 
+\ref{assump:rates::softstar}--\ref{assump:consistency::softstar}.  
+Then Theorem~\ref{thm:asymptotic_linearity} holds with influence function 
+$\chi_0$ given in Theorem~\ref{theorem::EIFsoftmax}.
+\end{theorem}
+
+
+
+
+ 
+
+ 
+
+ 
+
+For Example~\ref{example::norm}. Let \(\pi_n:=\exp\{r_n\}\), let
+\(q_n^{\nu,\gamma}\) estimate \(q_{r_0-g,k_0}^{\nu,\gamma}\), and define
+\(V_n^{\nu,\gamma}(s):=\sum_{\tilde a\in\mathcal A}\nu(\tilde a\mid s)\,
+q_n^{\nu,\gamma}(\tilde a,s)\) and
+\(r_{n,\nu,\gamma,g}(a,s):=g(s)+q_n^{\nu,\gamma}(a,s)-V_n^{\nu,\gamma}(s)\).
+Let \(q_{n,\nu}^{\pi,\gamma'}\) estimate
+\(q_{r_0,k_0,\nu}^{\pi,\gamma'}\), set
+\(V_{n,\nu}^{\pi,\gamma'}(s):=\sum_{\tilde a\in\mathcal A}\pi(\tilde a\mid s)\,
+q_{n,\nu}^{\pi,\gamma'}(\tilde a,s)\), and let \(\rho_n^{\pi,\gamma'}\)
+estimate \(\rho_0^{\pi,\gamma'}\). The corresponding estimator of
+\(\psi_0=E_0[V_{r_0,k_0,\nu}^{\pi,\gamma'}(S)]\) is
+\begin{align*}
+\psi_n
+&:= \frac{1}{n}\sum_{i=1}^n V_{n,\nu}^{\pi,\gamma'}(S_i) \\
+&\quad + \frac{1}{n}\sum_{i=1}^n \rho_n^{\pi,\gamma'}(S_i)\,
+        \frac{\pi(A_i \mid S_i)}{\pi_n(A_i \mid S_i)}
+        \bigl\{r_{n,\nu,\gamma,g}(A_i,S_i)
+        + \gamma' V_{n,\nu}^{\pi,\gamma'}(S_i')
+        - q_{n,\nu}^{\pi,\gamma'}(A_i,S_i)\bigr\} \\
+&\quad + \frac{1}{n}\sum_{i=1}^n \rho_n^{\pi,\gamma'}(S_i)
+        \left(
+            \frac{\pi(A_i \mid S_i)}{\pi_n(A_i \mid S_i)}
+            -
+            \frac{\nu(A_i \mid S_i)}{\pi_n(A_i \mid S_i)}
+        \right)
+        \bigl\{r_n(A_i,S_i) - g(S_i)
+        + \gamma V_n^{\nu,\gamma}(S_i')
+        - q_n^{\nu,\gamma}(A_i,S_i)\bigr\} \\
+&\quad + \frac{1}{n}\sum_{i=1}^n \rho_n^{\pi,\gamma'}(S_i)
+        \left(
+            \frac{\pi(A_i \mid S_i)}{\pi_n(A_i \mid S_i)}
+            -
+            \frac{\nu(A_i \mid S_i)}{\pi_n(A_i \mid S_i)}
+        \right).
+\end{align*}
+ 
+
+ 
+
+
+ 
+
+\begin{enumerate}[label=\textbf{(E\arabic***)}, ref=E\arabic***, series=efficiency2]
+    \item \label{assump:rates::policynorm} (\textit{Nuisance rates})
+    The following rate conditions hold:
+    \begin{enumerate}[label=(\alph*)]
+        \item
+        \(\bigl\{\|\rho_n^{\pi,\gamma'}-\rho_0^{\pi,\gamma'}\|_{L^2(\rho_0)}
+        +\|r_n-r_0\|_{\mathcal{H},r_0}\bigr\}\,
+        \bigl\|\mathcal{T}_{k_0,\pi,\gamma'}
+        (q_{n,\nu}^{\pi,\gamma'}-q_{0,\nu}^{\pi,\gamma'})\bigr\|_{\mathcal{H},r_0}
+        =o_p(n^{-1/2})\).
+        \item
+        \(\|r_n-r_0\|_{\mathcal{H},r_0}\,
+        \Bigl\{
+        \bigl\|\mathcal{T}_{k_0,\nu,\gamma}(q_n^{\nu,\gamma}-q_0^{\nu,\gamma})\bigr\|_{\mathcal{H},r_0}
+        +\bigl\|\mathcal{T}_{k_0,\pi,\gamma'}
+        (q_{n,\nu}^{\pi,\gamma'}-q_{0,\nu}^{\pi,\gamma'})\bigr\|_{\mathcal{H},r_0}
+        \Bigr\}
+        =o_p(n^{-1/2})\).
+    \end{enumerate}
+\end{enumerate}
+
+
+
+ 
+\begin{theorem}[Asymptotic linearity for Example~\ref{example::norm}]
+\label{theorem::ALex2}
+Assume \ref{cond::stationary}, \ref{cond::stationary2},
+\ref{cond::rates}\ref{cond::reward}, and
+\ref{assump:rates::policynorm}--\ref{assump:consistency::policynorm}.
+Then Theorem~\ref{thm:asymptotic_linearity} holds with influence function
+\(\chi_0\) given in Theorem~\ref{theorem::EIFvaluenorm}.
+\end{theorem}
+
+
+
+
+ 
+\section{Simulation study}
+\label{sec:simulation}
+
+We evaluated the proposed estimators in a continuous-state treatment MDP with
+two state variables, four actions, nonlinear rewards, and Gaussian state
+transitions. The behaviour policy is the soft-optimal policy induced by the
+data-generating reward and transition kernel, and all samples consist of
+stationary one-step transitions. Throughout the simulation study, we treat the
+transition kernel and discounted occupancy ratios as known, so that Bellman
+equations and related population quantities can be computed exactly. The aim is
+therefore not to study numerical error in solving Bellman equations, but to
+isolate the statistical problem of reward estimation and the propagation of
+reward-estimation error through policy and value-function operators. This
+design allows us to study the three policy-value targets from
+Section~\ref{sec::applications} within a common environment while retaining a
+continuous state space and sufficient structure to compute oracle values on a
+fine grid. All reported Monte Carlo summaries are based on $500$ replications
+per design point.
+
+Examples~\ref{example::1a} and~\ref{example::1b} illustrate complementary
+finite-sample behaviour. Example~\ref{example::1a} is the most favourable
+setting, and debiased IRL (D-IRL) exhibits near-nominal coverage together with a clear RMSE
+improvement over the plug-in estimator at moderate and large sample sizes.
+Example~\ref{example::1b} is more demanding because the target policy is
+estimated from the recovered reward, so nuisance error propagates through the
+soft Bellman map into both the target and the EIF correction. Even in that
+setting, D-IRL reduces bias and RMSE at every sample size, although coverage
+remains below nominal.
+Table~\ref{tab:simulation-main} summarizes the results for these two examples.
+
+
+\begin{table}[htb]
+\centering
+\caption{Examples~\ref{example::1a} and~\ref{example::1b}. Plug-in and D-IRL are
+summarized by Monte Carlo bias, Monte Carlo standard deviation, and RMSE.
+Coverage refers to the nominal $95\%$ Wald interval for D-IRL only.}
+\label{tab:simulation-main}
+\begingroup
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llrrrrrrr}
+\toprule
+Example & $n$ & Plug-in bias & Plug-in SD & Plug-in RMSE & D-IRL bias & D-IRL SD & D-IRL RMSE & Coverage \\
+\midrule
+1a & 1000 & -0.661 & 0.235 & 0.702 & 0.851 & 1.025 & 1.331 & 0.980 \\
+1a & 2500 & -0.334 & 0.152 & 0.367 & 0.244 & 0.329 & 0.410 & 0.944 \\
+1a & 5000 & -0.194 & 0.107 & 0.221 & 0.091 & 0.149 & 0.175 & 0.942 \\
+1a & 10000 & -0.102 & 0.075 & 0.126 & 0.038 & 0.083 & 0.091 & 0.938 \\
+1b & 1000 & 1.333 & 0.344 & 1.376 & 0.721 & 0.299 & 0.781 & 0.644 \\
+1b & 2500 & 0.734 & 0.213 & 0.765 & 0.379 & 0.163 & 0.413 & 0.620 \\
+1b & 5000 & 0.390 & 0.144 & 0.415 & 0.191 & 0.111 & 0.221 & 0.724 \\
+1b & 10000 & 0.194 & 0.093 & 0.216 & 0.094 & 0.070 & 0.117 & 0.864 \\
+\bottomrule
+\end{tabular}
+\endgroup
+\end{table}
+
+ 
+We report simulation results for Example~\ref{example::norm} in
+Appendix~\ref{app::additionalapplications}. Inference is more challenging in
+this setting because of the additional nuisance components, but coverage is
+accurate when these components are well estimated.
+
+\section{Conclusion}
+
+We developed a semiparametric framework for inference in softmax IRL and dynamic
+discrete choice models with nonparametric rewards. By expressing a broad class
+of reward-dependent estimands as smooth functionals of the behaviour policy and
+transition kernel, deriving their efficient influence functions, and
+constructing automatic debiased ML estimators, the framework delivers valid and
+computationally tractable inference under flexible reward representations. It
+therefore connects classical inference for Gumbel-shock DDC models with modern
+machine-learning-based IRL, and provides a reusable template for new
+reward-dependent targets within the shared softmax structure.
+Natural extensions include other shock structures, broader normalization
+constraints, and nonhomogeneous or finite-horizon settings.
+
+
+
+
+{
+ \singlespacing 
+\bibliographystyle{abbrvnat} % Or use 'abbrv' for another compact option
+\bibliography{ref} % Assuming your .bib file is named 'ref.bib'
+ }
+
+\end{document}

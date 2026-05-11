@@ -18,11 +18,25 @@ CONTROLLED_SETTINGS = {"discrete_chain", "discrete_grid", "linear_gaussian", "no
 GYM_SETTINGS = {"gym_pendulum", "gym_mountain_car_continuous", "gym_halfcheetah", "gym_hopper"}
 DEFAULT_ESTIMATORS = (
     "oracle",
-    "boosted_tree_stable",
     "neural_network_stable",
+    "neural_network_relaxed_tail",
+    "neural_network_stable_logistic_nuisance",
     "neural_network_google_parity",
+    "neural_network_stable_factored",
+    "neural_network_auto",
     "google_dualdice_neural",
 )
+ELIGIBLE_NEURAL_ESTIMATORS = (
+    "neural_network_stable",
+    "neural_network_relaxed_tail",
+    "neural_network_stable_logistic_nuisance",
+)
+DIAGNOSTIC_ONLY_NEURAL_ESTIMATORS = (
+    "neural_network_google_parity",
+    "neural_network_stable_factored",
+    "neural_network_auto",
+)
+GOOGLE_DUALDICE_ESTIMATOR = "google_dualdice_neural"
 
 
 @dataclass(frozen=True)
@@ -32,6 +46,7 @@ class NeuralDefaultCandidate:
     neural_activation: str
     neural_num_iterations: int
     neural_gradient_steps_per_iteration: int
+    neural_mcmc_samples: int
     neural_action_steps: int
     neural_source_steps: int
     neural_transition_steps: int
@@ -60,7 +75,23 @@ class NeuralDefaultAblationResult:
     results_path: Path
     audit_path: Path
     summary_path: Path
+    paired_path: Path
     report_path: Path
+
+
+RECOMMENDED_64X64_SILU_STAGE_BUDGET = NeuralDefaultCandidate(
+    candidate_id="stage_budget",
+    neural_hidden_dims=(64, 64),
+    neural_activation="silu",
+    neural_num_iterations=60,
+    neural_gradient_steps_per_iteration=6,
+    neural_mcmc_samples=24,
+    neural_action_steps=800,
+    neural_source_steps=800,
+    neural_transition_steps=1_000,
+    neural_direct_one_step_steps=1_000,
+    neural_direct_adjoint_steps=128,
+)
 
 
 CANDIDATES: tuple[NeuralDefaultCandidate, ...] = (
@@ -70,6 +101,7 @@ CANDIDATES: tuple[NeuralDefaultCandidate, ...] = (
         neural_activation="silu",
         neural_num_iterations=30,
         neural_gradient_steps_per_iteration=4,
+        neural_mcmc_samples=24,
         neural_action_steps=400,
         neural_source_steps=400,
         neural_transition_steps=600,
@@ -82,34 +114,51 @@ CANDIDATES: tuple[NeuralDefaultCandidate, ...] = (
         neural_activation="silu",
         neural_num_iterations=30,
         neural_gradient_steps_per_iteration=4,
+        neural_mcmc_samples=24,
         neural_action_steps=400,
         neural_source_steps=400,
         neural_transition_steps=600,
         neural_direct_one_step_steps=400,
         neural_direct_adjoint_steps=128,
     ),
-    NeuralDefaultCandidate(
-        candidate_id="stage_budget",
-        neural_hidden_dims=(64, 64),
-        neural_activation="silu",
-        neural_num_iterations=60,
-        neural_gradient_steps_per_iteration=6,
-        neural_action_steps=800,
-        neural_source_steps=800,
-        neural_transition_steps=1_000,
-        neural_direct_one_step_steps=1_000,
-        neural_direct_adjoint_steps=128,
-    ),
+    RECOMMENDED_64X64_SILU_STAGE_BUDGET,
     NeuralDefaultCandidate(
         candidate_id="stage_budget_long",
         neural_hidden_dims=(64, 64),
         neural_activation="silu",
         neural_num_iterations=80,
         neural_gradient_steps_per_iteration=8,
+        neural_mcmc_samples=24,
         neural_action_steps=1_000,
         neural_source_steps=1_000,
         neural_transition_steps=1_400,
         neural_direct_one_step_steps=1_400,
+        neural_direct_adjoint_steps=128,
+    ),
+    NeuralDefaultCandidate(
+        candidate_id="stage_budget_mid",
+        neural_hidden_dims=(64, 64),
+        neural_activation="silu",
+        neural_num_iterations=100,
+        neural_gradient_steps_per_iteration=8,
+        neural_mcmc_samples=24,
+        neural_action_steps=1_500,
+        neural_source_steps=1_500,
+        neural_transition_steps=2_200,
+        neural_direct_one_step_steps=2_200,
+        neural_direct_adjoint_steps=128,
+    ),
+    NeuralDefaultCandidate(
+        candidate_id="stage_budget_heavy",
+        neural_hidden_dims=(64, 64),
+        neural_activation="silu",
+        neural_num_iterations=120,
+        neural_gradient_steps_per_iteration=10,
+        neural_mcmc_samples=32,
+        neural_action_steps=2_000,
+        neural_source_steps=2_000,
+        neural_transition_steps=3_000,
+        neural_direct_one_step_steps=3_000,
         neural_direct_adjoint_steps=128,
     ),
     NeuralDefaultCandidate(
@@ -118,6 +167,7 @@ CANDIDATES: tuple[NeuralDefaultCandidate, ...] = (
         neural_activation="relu",
         neural_num_iterations=30,
         neural_gradient_steps_per_iteration=4,
+        neural_mcmc_samples=24,
         neural_action_steps=400,
         neural_source_steps=400,
         neural_transition_steps=600,
@@ -130,6 +180,7 @@ CANDIDATES: tuple[NeuralDefaultCandidate, ...] = (
         neural_activation="relu",
         neural_num_iterations=60,
         neural_gradient_steps_per_iteration=6,
+        neural_mcmc_samples=24,
         neural_action_steps=800,
         neural_source_steps=800,
         neural_transition_steps=1_000,
@@ -171,6 +222,42 @@ def full_matrix_specs() -> tuple[MatrixSpec, ...]:
     )
 
 
+def dualdice5000_matrix_specs() -> tuple[MatrixSpec, ...]:
+    seeds = (0, 1, 2)
+    return (
+        MatrixSpec(
+            matrix_id="dualdice5000_tabular",
+            settings=("discrete_chain", "discrete_grid"),
+            sample_sizes=(1_000, 5_000),
+            gammas=(0.9, 0.99),
+            seeds=seeds,
+            discrete_policy_shifts=(0.0, 0.35, 0.65, 1.0, 1.5),
+            google_num_updates=5_000,
+            google_batch_size=128,
+        ),
+        MatrixSpec(
+            matrix_id="dualdice5000_gaussian",
+            settings=("linear_gaussian",),
+            sample_sizes=(1_000, 5_000),
+            gammas=(0.9, 0.95, 0.99),
+            seeds=seeds,
+            linear_gaussian_policy_shifts=(0.5, 1.0, 2.0),
+            google_num_updates=5_000,
+            google_batch_size=128,
+        ),
+        MatrixSpec(
+            matrix_id="dualdice5000_gym",
+            settings=("gym_pendulum", "gym_mountain_car_continuous", "gym_halfcheetah", "gym_hopper"),
+            sample_sizes=(1_000,),
+            gammas=(0.9, 0.95, 0.99),
+            seeds=seeds,
+            gym_target_value_rollouts=64,
+            google_num_updates=5_000,
+            google_batch_size=128,
+        ),
+    )
+
+
 def smoke_matrix_specs() -> tuple[MatrixSpec, ...]:
     return (
         MatrixSpec(
@@ -188,6 +275,16 @@ def smoke_matrix_specs() -> tuple[MatrixSpec, ...]:
     )
 
 
+def matrix_specs(matrix: str) -> tuple[MatrixSpec, ...]:
+    if matrix == "smoke":
+        return smoke_matrix_specs()
+    if matrix == "full":
+        return full_matrix_specs()
+    if matrix == "dualdice5000":
+        return dualdice5000_matrix_specs()
+    raise ValueError("matrix must be 'full', 'smoke', or 'dualdice5000'.")
+
+
 def run_neural_default_ablation(
     *,
     output_root: str | Path = "outputs/neural_default_ablation",
@@ -202,7 +299,7 @@ def run_neural_default_ablation(
     root = Path(output_root)
     root.mkdir(parents=True, exist_ok=True)
     candidates = _select_candidates(candidate_ids)
-    specs = smoke_matrix_specs() if matrix == "smoke" else full_matrix_specs()
+    specs = matrix_specs(matrix)
 
     config_paths: list[Path] = []
     merged_rows: list[dict[str, Any]] = []
@@ -232,20 +329,24 @@ def run_neural_default_ablation(
     results_path = root / "neural_default_ablation_results.csv"
     audit_path = root / "neural_default_ablation_conservatism_audit.csv"
     summary_path = root / "neural_default_ablation_summary.csv"
+    paired_path = root / "neural_vs_dualdice5000.csv"
     report_path = root / "neural_default_ablation_report.md"
     audit_rows = build_conservatism_audit_rows(merged_rows)
     summary_rows = summarize_ablation_rows(merged_rows, audit_rows)
+    paired_rows = paired_dualdice5000_rows(merged_rows, audit_rows)
 
     write_csv(results_path, merged_rows)
     write_csv(audit_path, audit_rows)
     write_csv(summary_path, summary_rows)
-    report_path.write_text(render_ablation_report(summary_rows), encoding="utf-8")
+    write_csv(paired_path, paired_rows)
+    report_path.write_text(render_ablation_report(summary_rows, paired_rows=paired_rows), encoding="utf-8")
     return NeuralDefaultAblationResult(
         output_root=root,
         config_paths=tuple(config_paths),
         results_path=results_path,
         audit_path=audit_path,
         summary_path=summary_path,
+        paired_path=paired_path,
         report_path=report_path,
     )
 
@@ -300,7 +401,159 @@ def summarize_ablation_rows(
     return summary
 
 
-def render_ablation_report(summary_rows: Sequence[dict[str, Any]]) -> str:
+def paired_dualdice5000_rows(
+    rows: Iterable[dict[str, Any]],
+    audit_rows: Iterable[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    rows_list = [dict(row) for row in rows]
+    audit_counts = _audit_counts(audit_rows or build_conservatism_audit_rows(rows_list))
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    google_by_cell: dict[tuple[str, ...], dict[str, Any]] = {}
+    for row in rows_list:
+        candidate_id = str(row.get("candidate_id", ""))
+        estimator = str(row.get("estimator", ""))
+        groups.setdefault((candidate_id, estimator), []).append(row)
+        if (
+            estimator == GOOGLE_DUALDICE_ESTIMATOR
+            and row.get("status") == "ok"
+            and int(round(_to_float(row.get("google_num_updates"), 0.0))) == 5_000
+        ):
+            google_by_cell[_paired_cell_key(row)] = row
+
+    out: list[dict[str, Any]] = []
+    for (candidate_id, estimator), group in sorted(groups.items()):
+        if not estimator.startswith("neural_network"):
+            continue
+        comparisons = []
+        for neural_row in group:
+            if neural_row.get("status") != "ok":
+                continue
+            google_row = google_by_cell.get(_paired_cell_key(neural_row))
+            if google_row is None:
+                continue
+            neural_score = _paired_score(neural_row)
+            google_score = _paired_score(google_row)
+            if np.isfinite(neural_score) and np.isfinite(google_score):
+                comparisons.append((neural_row, google_row, neural_score, google_score))
+        if not comparisons:
+            continue
+
+        controlled = [item for item in comparisons if str(item[0].get("setting", "")) in CONTROLLED_SETTINGS]
+        gym = [item for item in comparisons if str(item[0].get("setting", "")) in GYM_SETTINGS]
+        status_counts = _status_counts(group)
+        audit_key = (candidate_id, estimator)
+        role = "eligible" if estimator in ELIGIBLE_NEURAL_ESTIMATORS else "diagnostic_only"
+        score_ratios = [_safe_ratio(neural_score, google_score) for _, _, neural_score, google_score in comparisons]
+        gym_score_ratios = [_safe_ratio(neural_score, google_score) for _, _, neural_score, google_score in gym]
+        controlled_score_ratios = [
+            _safe_ratio(neural_score, google_score) for _, _, neural_score, google_score in controlled
+        ]
+        runtime_ratios = [
+            _safe_ratio(_to_float(neural_row.get("runtime_sec")), _to_float(google_row.get("runtime_sec")))
+            for neural_row, google_row, _, _ in comparisons
+        ]
+        row = {
+            "candidate_id": candidate_id,
+            "estimator": estimator,
+            "selection_role": role,
+            "row_count": len(group),
+            "ok_count": status_counts.get("ok", 0),
+            "timeout_count": status_counts.get("timeout", 0),
+            "error_count": status_counts.get("error", 0),
+            "ok_rate": status_counts.get("ok", 0) / max(len(group), 1),
+            "timeout_rate": status_counts.get("timeout", 0) / max(len(group), 1),
+            "error_rate": status_counts.get("error", 0) / max(len(group), 1),
+            "comparison_cells": len(comparisons),
+            "controlled_cells": len(controlled),
+            "gym_cells": len(gym),
+            "win_rate_vs_google": _mean(float(neural_score <= google_score) for _, _, neural_score, google_score in comparisons),
+            "median_score_ratio_vs_google": _median(score_ratios),
+            "mean_score_ratio_vs_google": _mean(score_ratios),
+            "controlled_score_ratio_median": _median(controlled_score_ratios),
+            "gym_score_ratio_median": _median(gym_score_ratios),
+            "neural_score_median": _median(neural_score for _, _, neural_score, _ in comparisons),
+            "google_score_median": _median(google_score for _, _, _, google_score in comparisons),
+            "neural_score_mean": _mean(neural_score for _, _, neural_score, _ in comparisons),
+            "google_score_mean": _mean(google_score for _, _, _, google_score in comparisons),
+            "controlled_neural_score_median": _median(neural_score for _, _, neural_score, _ in controlled),
+            "controlled_google_score_median": _median(google_score for _, _, _, google_score in controlled),
+            "gym_neural_score_median": _median(neural_score for _, _, neural_score, _ in gym),
+            "gym_google_score_median": _median(google_score for _, _, _, google_score in gym),
+            "gym_neural_score_mean": _mean(neural_score for _, _, neural_score, _ in gym),
+            "gym_google_score_mean": _mean(google_score for _, _, _, google_score in gym),
+            "audit_fail_count": audit_counts.get(audit_key, {}).get("fail", 0),
+            "audit_warn_count": audit_counts.get(audit_key, {}).get("warn", 0),
+            "controlled_audit_fail_count": audit_counts.get(audit_key, {}).get("controlled_fail", 0),
+            "collapse_count": sum(int(_is_collapse(item)) for item in group if str(item.get("setting", "")) in CONTROLLED_SETTINGS),
+            "nonfinite_raw_fraction_max": _max(_to_float(item.get("nonfinite_raw_fraction"), 0.0) for item in group),
+            "negative_raw_fraction_max": _max(_to_float(item.get("negative_raw_fraction"), 0.0) for item in group),
+            "clipping_fraction_max": _max(_row_clipping_fraction(item) for item in group),
+            "ess_fraction_median": _median(
+                _to_float(item.get("effective_sample_size_fraction")) for item in group if item.get("status") == "ok"
+            ),
+            "weight_q99_median": _median(_row_tail_metric(item, "q99") for item in group if item.get("status") == "ok"),
+            "weight_max_median": _median(_row_tail_metric(item, "max") for item in group if item.get("status") == "ok"),
+            "runtime_sec_median": _median(
+                _to_float(item.get("runtime_sec")) for item in group if item.get("status") == "ok"
+            ),
+            "google_runtime_sec_median": _median(_to_float(google_row.get("runtime_sec")) for _, google_row, _, _ in comparisons),
+            "runtime_ratio_median": _median(runtime_ratios),
+        }
+        passed, failures = _dualdice5000_gate(row)
+        row["passes_final_gate"] = float(passed)
+        row["gate_failures"] = "; ".join(failures)
+        out.append(row)
+    return out
+
+
+def evaluate_dualdice5000_default(paired_rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    eligible = [
+        dict(row)
+        for row in paired_rows
+        if row.get("selection_role") == "eligible" and bool(_to_float(row.get("passes_final_gate"), 0.0) > 0.5)
+    ]
+    if eligible:
+        selected = min(
+            eligible,
+            key=lambda row: (
+                _to_float(row.get("median_score_ratio_vs_google"), float("inf")),
+                _to_float(row.get("runtime_ratio_median"), float("inf")),
+            ),
+        )
+        return {
+            "decision": "promote_neural_default",
+            "candidate_id": selected.get("candidate_id", ""),
+            "estimator": selected.get("estimator", ""),
+            "detail": "eligible fixed neural candidate passed the DualDICE5000 gate",
+        }
+    eligible_near_misses = [dict(row) for row in paired_rows if row.get("selection_role") == "eligible"]
+    if eligible_near_misses:
+        near_miss = min(
+            eligible_near_misses,
+            key=lambda row: (
+                len(str(row.get("gate_failures", "")).split("; ")),
+                _to_float(row.get("median_score_ratio_vs_google"), float("inf")),
+            ),
+        )
+        return {
+            "decision": "keep_current_defaults",
+            "candidate_id": near_miss.get("candidate_id", ""),
+            "estimator": near_miss.get("estimator", ""),
+            "detail": f"best near miss failed: {near_miss.get('gate_failures', '')}",
+        }
+    return {
+        "decision": "keep_current_defaults",
+        "candidate_id": "",
+        "estimator": "",
+        "detail": "no eligible fixed neural candidates were paired with Google DualDICE5000",
+    }
+
+
+def render_ablation_report(
+    summary_rows: Sequence[dict[str, Any]],
+    *,
+    paired_rows: Sequence[dict[str, Any]] | None = None,
+) -> str:
     decision = evaluate_stage_budget_promotion(summary_rows)
     lines = [
         "# Neural Stable Default Ablation",
@@ -350,6 +603,44 @@ def render_ablation_report(summary_rows: Sequence[dict[str, Any]]) -> str:
             "",
         ]
     )
+    if paired_rows:
+        dualdice_decision = evaluate_dualdice5000_default(paired_rows)
+        lines.extend(
+            [
+                "## DualDICE5000 Gate",
+                "",
+                f"Decision: **{dualdice_decision['decision']}**",
+                "",
+                f"Selected/near-miss: `{dualdice_decision['candidate_id']}` + `{dualdice_decision['estimator']}`.",
+                "",
+                str(dualdice_decision["detail"]),
+                "",
+                "| candidate | estimator | role | cells | win rate | median ratio | gym mean ratio | runtime ratio | gate |",
+                "|---|---|---|---:|---:|---:|---:|---:|---|",
+            ]
+        )
+        for row in sorted(
+            paired_rows,
+            key=lambda item: (
+                str(item.get("selection_role", "")) != "eligible",
+                _to_float(item.get("median_score_ratio_vs_google"), float("inf")),
+            ),
+        ):
+            gate = "pass" if _to_float(row.get("passes_final_gate"), 0.0) > 0.5 else str(row.get("gate_failures", "fail"))
+            lines.append(
+                "| {candidate} | {estimator} | {role} | {cells} | {win} | {median} | {gym} | {runtime} | {gate} |".format(
+                    candidate=row.get("candidate_id", ""),
+                    estimator=row.get("estimator", ""),
+                    role=row.get("selection_role", ""),
+                    cells=row.get("comparison_cells", 0),
+                    win=_fmt(row.get("win_rate_vs_google")),
+                    median=_fmt(row.get("median_score_ratio_vs_google")),
+                    gym=_fmt(row.get("gym_score_ratio_median")),
+                    runtime=_fmt(row.get("runtime_ratio_median")),
+                    gate=str(gate).replace("|", "/"),
+                )
+            )
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -450,7 +741,7 @@ def read_csv_rows(path: str | Path) -> list[dict[str, Any]]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the neural stable-default ablation benchmark.")
     parser.add_argument("--output-root", default="outputs/neural_default_ablation")
-    parser.add_argument("--matrix", choices=("full", "smoke"), default="full")
+    parser.add_argument("--matrix", choices=("full", "smoke", "dualdice5000"), default="full")
     parser.add_argument("--candidate-ids", nargs="*", default=None)
     parser.add_argument("--external-repo-path", default="/tmp/google-research")
     parser.add_argument("--no-google-dualdice", action="store_true")
@@ -471,6 +762,7 @@ def main() -> None:
     print(f"Wrote merged results: {result.results_path}")
     print(f"Wrote audit: {result.audit_path}")
     print(f"Wrote summary: {result.summary_path}")
+    print(f"Wrote DualDICE5000 pairs: {result.paired_path}")
     print(f"Wrote report: {result.report_path}")
 
 
@@ -500,7 +792,6 @@ def _make_config(
         discrete_policy_shifts=spec.discrete_policy_shifts,
         linear_gaussian_policy_shifts=spec.linear_gaussian_policy_shifts,
         boosted_estimator_presets=("stable",),
-        neural_estimator_presets=("stable", "google_parity"),
         include_google_dual_dice=include_google_dualdice,
         boosted_num_iterations=80,
         boosted_mcmc_samples=48,
@@ -510,7 +801,7 @@ def _make_config(
         boosted_moment_calibration="scalar",
         neural_num_iterations=candidate.neural_num_iterations,
         neural_gradient_steps_per_iteration=candidate.neural_gradient_steps_per_iteration,
-        neural_mcmc_samples=24,
+        neural_mcmc_samples=candidate.neural_mcmc_samples,
         neural_batch_size=512,
         neural_hidden_dims=candidate.neural_hidden_dims,
         neural_activation=candidate.neural_activation,
@@ -522,6 +813,14 @@ def _make_config(
         neural_density_ratio_loss="lsif",
         neural_fixed_point_damping=0.5,
         neural_moment_calibration="scalar",
+        neural_estimator_presets=(
+            "stable",
+            "relaxed_tail",
+            "stable_logistic_nuisance",
+            "google_parity",
+            "stable_factored",
+            "auto",
+        ),
         neural_nuisance_prediction_max=50.0,
         neural_occupancy_ratio_max=50.0,
         google_num_updates=spec.google_num_updates,
@@ -545,6 +844,7 @@ def _write_config(
     payload = {
         "candidate_id": candidate.candidate_id,
         "matrix_id": spec.matrix_id,
+        "candidate": _jsonable(asdict(candidate)),
         "overrides": _jsonable_config(config),
     }
     write_json(path, payload)
@@ -592,6 +892,7 @@ def _tag_rows(
         "candidate_neural_activation": candidate.neural_activation,
         "candidate_neural_num_iterations": candidate.neural_num_iterations,
         "candidate_neural_gradient_steps_per_iteration": candidate.neural_gradient_steps_per_iteration,
+        "candidate_neural_mcmc_samples": candidate.neural_mcmc_samples,
         "candidate_neural_action_steps": candidate.neural_action_steps,
         "candidate_neural_source_steps": candidate.neural_source_steps,
         "candidate_neural_transition_steps": candidate.neural_transition_steps,
@@ -691,6 +992,114 @@ def _wide_relu_detail(stage: dict[str, Any] | None, wide: dict[str, Any] | None)
         f"(stage controlled/Gym={_fmt(stage_controlled)}/{_fmt(stage_gym)}, "
         f"wide controlled/Gym={_fmt(wide_controlled)}/{_fmt(wide_gym)})."
     )
+
+
+def _paired_cell_key(row: dict[str, Any]) -> tuple[str, ...]:
+    return (
+        str(row.get("candidate_id", "")),
+        str(row.get("profile", row.get("stage", ""))),
+        str(row.get("setting", "")),
+        str(row.get("dataset_variant", "")),
+        str(row.get("policy_shift", "")),
+        str(row.get("gamma", "")),
+        str(row.get("sample_size", "")),
+        str(row.get("seed", "")),
+    )
+
+
+def _paired_score(row: dict[str, Any]) -> float:
+    if str(row.get("setting", "")) in CONTROLLED_SETTINGS:
+        return _controlled_score(row)
+    return _gym_score(row)
+
+
+def _gym_score(row: dict[str, Any]) -> float:
+    se_units = _to_float(row.get("ope_value_abs_error_se_units"))
+    if np.isfinite(se_units):
+        return se_units
+    return _to_float(row.get("ope_value_abs_error"))
+
+
+def _safe_ratio(numerator: float, denominator: float) -> float:
+    if not np.isfinite(numerator) or not np.isfinite(denominator):
+        return np.nan
+    return float(numerator / max(float(denominator), 1e-12))
+
+
+def _status_counts(rows: Sequence[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        status = str(row.get("status", ""))
+        counts[status] = counts.get(status, 0) + 1
+    return counts
+
+
+def _row_clipping_fraction(row: dict[str, Any]) -> float:
+    return max(
+        0.0,
+        _to_float(row.get("clipping_fraction"), 0.0),
+        _to_float(row.get("projection_clipped_fraction_final"), 0.0),
+    )
+
+
+def _row_tail_metric(row: dict[str, Any], metric: str) -> float:
+    if metric == "q99":
+        return _first_finite(row, ("weight_q99", "q99_ratio", "weight_p99_final"))
+    if metric == "max":
+        return _first_finite(row, ("weight_max", "max_ratio", "weight_max_final"))
+    raise ValueError(f"Unknown tail metric '{metric}'.")
+
+
+def _first_finite(row: dict[str, Any], keys: Sequence[str]) -> float:
+    for key in keys:
+        value = _to_float(row.get(key))
+        if np.isfinite(value):
+            return value
+    return np.nan
+
+
+def _dualdice5000_gate(row: dict[str, Any]) -> tuple[bool, list[str]]:
+    failures: list[str] = []
+    if row.get("selection_role") != "eligible":
+        failures.append("diagnostic_only")
+    if int(row.get("controlled_cells", 0) or 0) <= 0:
+        failures.append("missing_controlled_pairs")
+    if int(row.get("gym_cells", 0) or 0) <= 0:
+        failures.append("missing_gym_pairs")
+    if int(row.get("controlled_audit_fail_count", 0) or 0) > 0:
+        failures.append("controlled_audit_fail")
+    if int(row.get("collapse_count", 0) or 0) > 0:
+        failures.append("controlled_collapse")
+    if _to_float(row.get("controlled_score_ratio_median"), float("inf")) > 1.10:
+        failures.append("controlled_score_ratio_gt_1.10")
+
+    gym_neural_median = _to_float(row.get("gym_neural_score_median"))
+    gym_google_median = _to_float(row.get("gym_google_score_median"))
+    gym_neural_mean = _to_float(row.get("gym_neural_score_mean"))
+    gym_google_mean = _to_float(row.get("gym_google_score_mean"))
+    if not (
+        np.isfinite(gym_neural_median)
+        and np.isfinite(gym_google_median)
+        and gym_neural_median <= gym_google_median
+    ):
+        failures.append("gym_median_worse_than_google")
+    if not (
+        np.isfinite(gym_neural_mean)
+        and np.isfinite(gym_google_mean)
+        and gym_neural_mean <= 1.10 * gym_google_mean
+    ):
+        failures.append("gym_mean_gt_1.10_google")
+    if _to_float(row.get("win_rate_vs_google"), 0.0) < 0.50:
+        failures.append("win_rate_lt_0.50")
+    if _to_float(row.get("ok_rate"), 0.0) < 0.95:
+        failures.append("ok_rate_lt_0.95")
+    if _to_float(row.get("timeout_rate"), 0.0) >= 0.05:
+        failures.append("timeout_rate_ge_0.05")
+    if _to_float(row.get("nonfinite_raw_fraction_max"), 0.0) > 0.0:
+        failures.append("nonfinite_raw_weights")
+    if _to_float(row.get("runtime_ratio_median"), float("inf")) > 2.0:
+        failures.append("runtime_ratio_gt_2")
+    return len(failures) == 0, failures
 
 
 def _to_float(value: Any, default: float = np.nan) -> float:

@@ -84,6 +84,35 @@ def smoke_matrix_specs() -> tuple[MatrixSpec, ...]:
     )
 
 
+def reduced_matrix_specs() -> tuple[MatrixSpec, ...]:
+    return (
+        MatrixSpec(
+            matrix_id="tabular_reduced",
+            settings=("discrete_chain", "discrete_grid"),
+            sample_sizes=(300,),
+            gammas=(0.9,),
+            seeds=(0,),
+            discrete_policy_shifts=(0.65, 1.5),
+        ),
+        MatrixSpec(
+            matrix_id="gaussian_reduced",
+            settings=("linear_gaussian",),
+            sample_sizes=(300,),
+            gammas=(0.9,),
+            seeds=(0,),
+            linear_gaussian_policy_shifts=(1.0, 3.0),
+        ),
+        MatrixSpec(
+            matrix_id="gym_reduced",
+            settings=("gym_pendulum", "gym_mountain_car_continuous"),
+            sample_sizes=(300,),
+            gammas=(0.9,),
+            seeds=(0,),
+            gym_target_value_rollouts=4,
+        ),
+    )
+
+
 def full_matrix_specs(*, include_large_gym: bool = True) -> tuple[MatrixSpec, ...]:
     seeds = tuple(range(5))
     gym_settings = ("gym_pendulum", "gym_mountain_car_continuous")
@@ -132,7 +161,12 @@ def run_moment_evaluator_ablation(
     root = Path(output_root)
     root.mkdir(parents=True, exist_ok=True)
     evaluators = _select_evaluators(evaluator_ids)
-    specs = smoke_matrix_specs() if matrix == "smoke" else full_matrix_specs(include_large_gym=include_large_gym)
+    if matrix == "smoke":
+        specs = smoke_matrix_specs()
+    elif matrix == "reduced":
+        specs = reduced_matrix_specs()
+    else:
+        specs = full_matrix_specs(include_large_gym=include_large_gym)
 
     config_paths: list[Path] = []
     merged_rows: list[dict[str, Any]] = []
@@ -410,7 +444,7 @@ def read_csv_rows(path: str | Path) -> list[dict[str, Any]]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run moment-evaluator ablations for neural AutoML CV.")
     parser.add_argument("--output-root", default="outputs/moment_evaluator_ablation")
-    parser.add_argument("--matrix", choices=("smoke", "full"), default="smoke")
+    parser.add_argument("--matrix", choices=("smoke", "reduced", "full"), default="smoke")
     parser.add_argument("--evaluator-ids", nargs="*", default=None)
     parser.add_argument("--automl-tuning", choices=("fast", "balanced"), default="balanced")
     parser.add_argument("--external-repo-path", default="/tmp/google-research")
@@ -449,9 +483,9 @@ def _make_config(
     write_plots: bool,
     estimator_timeout_sec: float | None,
 ) -> OccupancyRatioBenchmarkConfig:
-    profile = "smoke" if spec.matrix_id == "smoke" else "high_stakes"
-    smoke = spec.matrix_id == "smoke"
-    timeout = estimator_timeout_sec if estimator_timeout_sec is not None else (120.0 if smoke else None)
+    light = spec.matrix_id == "smoke" or spec.matrix_id.endswith("_reduced")
+    profile = "smoke" if light else "high_stakes"
+    timeout = estimator_timeout_sec if estimator_timeout_sec is not None else (120.0 if light else None)
     return OccupancyRatioBenchmarkConfig(
         stage=profile,
         profile=profile,
@@ -466,20 +500,20 @@ def _make_config(
         linear_gaussian_policy_shifts=spec.linear_gaussian_policy_shifts,
         neural_estimator_presets=("stable",),
         include_google_dual_dice=False,
-        neural_num_iterations=20 if smoke else 80,
-        neural_gradient_steps_per_iteration=3 if smoke else 8,
-        neural_mcmc_samples=12 if smoke else 24,
-        neural_action_steps=120 if smoke else 1_000,
-        neural_transition_steps=160 if smoke else 1_400,
-        neural_direct_one_step_steps=160 if smoke else 1_400,
-        neural_direct_adjoint_steps=32 if smoke else 128,
+        neural_num_iterations=20 if light else 80,
+        neural_gradient_steps_per_iteration=3 if light else 8,
+        neural_mcmc_samples=12 if light else 24,
+        neural_action_steps=120 if light else 1_000,
+        neural_transition_steps=160 if light else 1_400,
+        neural_direct_one_step_steps=160 if light else 1_400,
+        neural_direct_adjoint_steps=32 if light else 128,
         tune_cv=True,
         automl_tuning=str(automl_tuning),
         cv_folds=3,
         cv_moment_extra_blocks=evaluator.extra_blocks,
         source_state_correction_mode="auto",
         gym_target_value_rollouts=spec.gym_target_value_rollouts,
-        mc_truth_samples=50_000 if spec.matrix_id != "smoke" else 2_000,
+        mc_truth_samples=2_000 if light else 50_000,
         estimator_timeout_sec=timeout,
         resume=resume,
         write_plots=write_plots,

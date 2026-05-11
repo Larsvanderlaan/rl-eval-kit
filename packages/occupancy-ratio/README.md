@@ -6,7 +6,8 @@ evaluation.
 The importable Python package is `occupancy_ratio`. It provides boosted and
 neural fitted occupancy-ratio iteration (FORI), conservative product AutoML
 tuning, diagnostics/calibration helpers, benchmark tooling, and an optional
-Google DualDICE comparator.
+Google DualDICE comparator. It also exposes `fit_minimax_weight(...)`, a common
+facade for official Google DICE variants and SCOPE-RL minimax weight learners.
 
 ## Install
 
@@ -76,6 +77,78 @@ fold_rows = tuned.fold_rows()
 AutoML selection uses proxy diagnostics only; it never selects using oracle
 ratios, benchmark truth, or target-policy Monte Carlo values.
 
+## External Minimax Weights
+
+Use `fit_minimax_weight(...)` when you want official Google or SCOPE-RL
+estimators behind the same prediction helpers:
+
+```python
+from occupancy_ratio import fit_minimax_weight
+
+model = fit_minimax_weight(
+    states=states,
+    actions=actions,
+    next_states=next_states,
+    target_actions=target_actions_under_pi,
+    target_next_actions=target_next_actions_under_pi,
+    gamma=0.95,
+    initial_states=initial_states,
+    initial_actions=initial_actions_under_pi,
+    method="google_dice_rl_recommended",
+)
+```
+
+## Target-Validation Assisted Tuning
+
+When independent target-policy validation rollouts or simulator labels are
+available, use the opt-in target-validation tuner. Existing proxy-only AutoML
+defaults remain unchanged.
+
+```python
+from occupancy_ratio import tune_occupancy_ratio_with_target_validation
+
+tuned = tune_occupancy_ratio_with_target_validation(
+    states=states,
+    actions=actions,
+    next_states=next_states,
+    target_actions=target_actions_under_pi,
+    target_next_actions=target_next_actions_under_pi,
+    rewards=rewards,
+    gamma=0.99,
+    initial_states=initial_states,
+    initial_actions=initial_actions_under_pi,
+    validation_states=target_states,
+    validation_actions=target_actions,
+    validation_rewards=target_rewards,
+    validation_episode_ids=target_episode_ids,
+    validation_timestep=target_timesteps,
+    validation_continuation=target_continuation,
+)
+
+model = tuned.model
+rows = tuned.validation_rows()
+diagnostics = tuned.validation_diagnostics
+```
+
+The default `score_mode="discounted_moments"` compares candidate
+reference-weighted moments, `E_ref[w f]`, against empirical discounted
+occupancy moments from target-policy validation rollouts. Finite rollouts are
+validation samples rather than exact infinite-horizon truth; truncation-tail
+diagnostics report the remaining discount mass.
+
+The default `selection_rule="min_score"` picks the minimum guarded validation
+score. Occupancy guardrails run first, so scalar OPE and moment validation do
+not bypass ESS, clipping, normalization, or noncollapse checks. Pass
+`selection_rule="one_se"` for a conservative one-standard-error selector.
+Diagnostics always report both `selected_min_score_candidate_id` and
+`selected_one_se_candidate_id`.
+
+If only a scalar target-policy value is available, use
+`score_mode="scalar_ope"` with `target_value` and optionally `target_value_se`.
+Under the package's normalized discounted-occupancy convention, scalar mode
+compares `mean_ref(w * reward)` to `(1 - gamma) * target_value`. Scalar mode is
+value-only and does not validate the full ratio function.
+
 ## Documentation Map
 
 The MkDocs site under `docs/` contains:
@@ -86,6 +159,7 @@ The MkDocs site under `docs/` contains:
 - data-shape contracts;
 - initial-source correction semantics;
 - AutoML tuning behavior and telemetry;
+- target-validation assisted tuning;
 - diagnostics, calibration, and benchmark usage;
 - generated API reference pages for public functions, configs, and models.
 

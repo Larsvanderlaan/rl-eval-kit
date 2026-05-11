@@ -3,16 +3,59 @@
 
 # --- Logs ---
 *.log
+.codex_*.py
 
-# --- Build/output anywhere ---
+# --- Local archives and generated outputs ---
+archive/generated/*
+!archive/generated/README.md
+legacy/
+stale/
+outputs/
+website/
+**/outputs/
+**/results/
+submissions/**/results/
+submissions/**/outputs/
+submissions/**/artifacts/cache/
+submissions/**/artifacts/mplconfig/
+submissions/**/.cache/
+submissions/**/.mplconfig/
+
+# --- Build artifacts ---
 **/dist/
 **/build/
 **/target/
+**/.astro/
 **/*.egg-info/
 **/.pytest_cache/
 **/__pycache__/
+**/.cache/
+**/.mplconfig/
 **/.Rproj.user/
 **/.ipynb_checkpoints/
+*.pyc
+
+# --- Large data/model artifacts ---
+*.hdf5
+*.h5
+*.npy
+*.npz
+*.onnx
+*.pkl
+*.pt
+*.pth
+*.tfrecord
+*.tfrecord-*
+
+# --- LaTeX intermediates ---
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc
 
 # --- Node (if any packages are JS/TS) ---
 **/node_modules/
@@ -29,7 +72,5 @@
 myenv3
 myenv3/
 myenv3/**
+stale/local_envs/
 *.ipynb
-
-
-

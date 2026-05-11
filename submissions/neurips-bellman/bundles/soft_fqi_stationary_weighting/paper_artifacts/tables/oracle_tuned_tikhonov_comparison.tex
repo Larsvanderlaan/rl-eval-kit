@@ -1,0 +1,13 @@
+\begin{tabular}{llllllll}
+\toprule
+family & regime & oracle criterion & selected Tikhonov/target & Bellman RMSE & Advantage x1e3 & True Q RMSE & Value error \\
+\midrule
+estimated weights & shift 45 & Bellman RMSE & $\gamma_w=1$, fixed, $\lambda=1e-05$ & 0.614 [0.555, 0.654] & 4.97 [4.69, 5.24] & 22.1 [18.8, 25.6] & 25.6 [25.6, 25.6] \\
+estimated weights & shift 72 & Bellman RMSE & $\gamma_w=1$, fixed, $\lambda=1e-05$ & 0.291 [0.27, 0.326] & 6.55 [5.67, 7.51] & 2.49 [1.22, 4.86] & 25.6 [25.6, 27.3] \\
+estimated weights & shift 80 & Bellman RMSE & $\gamma_w=0.95$, fixed, $\lambda=1e-05$ & 0.946 [0.715, 1.21] & 3.32 [2.36, 6.91] & 10.6 [4.45, 20.7] & 25.6 [25.6, 27.1] \\
+minimax soft Q & shift 27 & Bellman RMSE & $\lambda_q=\lambda_c=10^{-1}$ & 0.953 [0.951, 0.956] & 0.282 [0.279, 0.287] & 20.3 [20.1, 20.4] & 25.6 [25.6, 25.6] \\
+minimax soft Q & shift 45 & Bellman RMSE & $\lambda_q=\lambda_c=10^{-1}$ & 0.903 [0.901, 0.905] & 0.222 [0.215, 0.226] & 22.2 [22.1, 22.3] & 25.6 [25.6, 25.6] \\
+minimax soft Q & shift 72 & Bellman RMSE & $\lambda_q=\lambda_c=10^{-2}$ & 0.786 [0.782, 0.792] & 3.02 [2.94, 3.11] & 21.1 [20.7, 21.4] & 25.6 [25.6, 25.6] \\
+minimax soft Q & shift 80 & Bellman RMSE & $\lambda_q=\lambda_c=3\times 10^{-2}$ & 0.891 [0.889, 0.893] & 1.02 [0.99, 1.04] & 26.7 [26.7, 26.8] & 27.3 [27.3, 27.3] \\
+\bottomrule
+\end{tabular}

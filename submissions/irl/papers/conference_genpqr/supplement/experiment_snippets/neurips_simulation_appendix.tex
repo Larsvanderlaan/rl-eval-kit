@@ -1,0 +1,78 @@
+\section{Simulation Details}
+\label{app:simulation-details}
+
+This appendix summarizes the simulation design and implementation choices used
+in Section~\ref{sec:experiments}. The full experiment scripts, configuration
+choices, and plotting code are included in the accompanying repository.
+
+\paragraph{Environment.}
+We adapt the synthetic environment of \citet{geng2020deep}. States are
+continuous with dimension \(p=5\), the action set has \(|\mathcal A|=5\)
+actions, and the discount factor is \(\gamma=0.9\). We use an infinite-horizon
+stationary data-generating process and generate finite trajectories of length
+\(10\) for offline training and evaluation. The normalization is the anchor
+constraint \(r(s,a^\dagger)=0\), implemented as anchor-action normalization
+with \(a^\dagger=0\) and \(g(s)=0\). Train and test sets within each seed are
+generated from the same underlying MDP parameters, with independent rollouts.
+
+\paragraph{Behavior policy and transitions.}
+The logged policy is generated from a soft \(Q\)-planner with \(\alpha=1\), so
+that the DeepPQR log-policy identity is correctly matched. The planner induces
+a heterogeneous but non-degenerate behavior policy, and we vary anchor support
+by shifting the anchor-action logit. Transitions are deterministic conditional
+on state and action up to boundary handling: actions induce action-specific
+state shifts, and trajectories that leave the bounded state region are reset
+uniformly within that region. We clip estimated action probabilities to
+\([0.01,0.99]\) and renormalize before using them in either GenPQR or DeepPQR.
+
+\paragraph{Experiment 1.}
+The matched DeepPQR-vs.-GenPQR comparison uses shared AIRL policy estimation
+and neural downstream approximation. We consider three settings:
+\texttt{(200, -1.0)}, \texttt{(1000, -1.0)}, and \texttt{(2500, 0.0)}, where
+the first entry is the number of training trajectories and the second is the
+anchor-logit shift. These correspond to low-sample rare-anchor, mid-sample
+rare-anchor, and high-sample common-anchor regimes. Each setting uses \(300\)
+test trajectories and \(100\) random seeds.
+
+\paragraph{Experiment 2.}
+The higher-sample comparison fixes \(1000\) training trajectories, \(300\) test
+trajectories, and anchor-logit shift \(0.0\), again over \(100\) seeds. We
+compare DeepPQR, GenPQR with two policy estimators and two \(Q\)-estimators,
+and several reward-recovery baselines that are standard in the IRL literature.
+
+\paragraph{Policy estimators.}
+AIRL uses a standard action-independent reward network and potential network,
+both implemented as two-layer ReLU MLPs with hidden widths \((64,64)\), Adam
+step size \(10^{-3}\), \(60\) behavior-cloning warm-start epochs, and \(80\)
+adversarial updates in the paper experiments. Behavior cloning uses the same
+\((64,64)\) MLP architecture and \(40\) epochs in Experiment~2. MaxEnt-IRL is
+implemented as a neural softmax-\(Q\) model with hidden widths \((128,128)\)
+and \(150\) gradient steps. These architectures were chosen to be standard for
+low-dimensional synthetic control problems and to remain stable across seeds;
+larger networks did not materially improve performance in pilot runs.
+
+\paragraph{\(Q\)-evaluation.}
+Neural FQE uses a dueling-style MLP \(Q(s,a)=V(s)+A(s,a)-\bar A(s)\) with
+hidden widths \((128,128)\), Adam step size \(5\times 10^{-3}\), \(8\) Bellman
+iterations, and \(4\) epochs of regression per iteration. Boosted FQE uses
+LightGBM directly, with \(4\) outer Bellman iterations and \(30\) boosting
+rounds per iteration, learning rate \(0.05\), \(32\) leaves, and minimum leaf
+size \(20\). We selected these settings to balance Bellman-fit accuracy,
+runtime, and seed-to-seed stability; the boosted configuration follows the
+repository's adapted FQE implementation and avoids long inner re-fitting loops.
+
+\paragraph{DeepPQR and baselines.}
+DeepPQR uses the same shared AIRL policy estimate as GenPQR in the matched
+comparison. It then estimates the anchor \(Q\)-function on the anchor-action
+subset, reconstructs the full \(Q\)-function from log-policy ratios, and fits
+the final reward-regression network. The AIRL state-reward baseline uses the
+AIRL reward head directly; the log-policy pseudo-reward baseline uses
+\(\log \hat\pi(a\mid s)-g(s)\); MaxEnt-IRL uses its learned \(Q\)-surrogate as
+reward; and the linear reward baseline fits a strictly linear state-action
+reward model with action-specific coefficients and ridge regularization.
+
+\paragraph{Reporting.}
+For each method we report reward mean squared error, reward correlation with
+the ground-truth normalized reward, held-out policy negative log-likelihood
+when applicable, and wall-clock runtime. Confidence intervals are normal
+approximation intervals based on the \(100\) seed-level estimates.

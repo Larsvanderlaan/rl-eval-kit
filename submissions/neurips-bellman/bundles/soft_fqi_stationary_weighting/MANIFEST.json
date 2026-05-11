@@ -1,0 +1,441 @@
+{
+  "bundle": "soft_fqi_stationary_weighting",
+  "created_utc": "2026-05-07T02:01:04+00:00",
+  "description": "Stationary-weighted soft-FQI reproducibility bundle",
+  "exclusion_policy": [
+    "exclude author/local-machine identifiers from text files",
+    "exclude manuscripts unless explicitly part of reproducibility artifacts",
+    "exclude caches, bytecode, notebook checkpoints, LaTeX build files, archives, hidden metadata, and broad exploratory outputs",
+    "preserve binary figure/table artifacts byte-for-byte where copied from final outputs"
+  ],
+  "files": [
+    {
+      "anonymized_text": true,
+      "path": "MANIFEST.json",
+      "role": "machine-readable manifest for this bundle",
+      "sha256": null,
+      "source": "generated for anonymous submission bundle"
+    },
+    {
+      "anonymized_text": true,
+      "path": "README.md",
+      "role": "bundle instructions",
+      "sha256": "657855a9a3f58d5a13058f5e5d7d9b6e31d5b575cdbfd347801b8d6afeaf6097",
+      "source": "generated for anonymous submission bundle"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/debug.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "0ef96c179b3696a63a2e139b6cb6a37d3db474633faf075a3f514c6f2c6902c2",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/debug.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/main_linear_minimax_10regime.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "706d3471d415a6f7307a9831540b3ec349f25887cfdfa5bbce6c5082e96af482",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/main_linear_minimax_10regime.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/minimax_tuning_fairness.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "d55fc677f5168f7f0ab97c83dd405421254ed0fd4ab2183de4908d5cb3276ee0",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/minimax_tuning_fairness.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/negative_control_rich_q.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "492261c93d9517995b42219bb0f0e802080539e96b89281672333bdc727775db",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/negative_control_rich_q.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/oracle_stabilization_sensitivity.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "a58cd4865e019bc06528342111a04b94809630782080f6c79799f43030fcb10f",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/oracle_stabilization_sensitivity.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/paper.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "37d5582a2aa6717c370a658cdac9d6062f2f3aef577de1c0956e889752da4f34",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/paper.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/paper_main_200_stabilized.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "8e117f3afaab9d16c8888d370caa27aeceee595131be81140d2d6dba7568a5ff",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/paper_main_200_stabilized.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/paper_main_200_tau1em6_stabilized.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "d625572363d02d1420d8626b13d13d4382ef3fc783f83f24c3760fbf33473d5c",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/paper_main_200_tau1em6_stabilized.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/population_geometry_linear.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "9bfaa0ce5125d0bd89ed3278fd1351ac615f94958a08731ce12bdc056b13a46b",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/population_geometry_linear.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/population_geometry_rich_q.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "6df231f964639c58bd7bd6b815667199c6199c4e8acfc378338b1fdcee56bc96",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/population_geometry_rich_q.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/sample_size_ess_sensitivity.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "17b40af48ed3f5e8f2ab90d879a5cb6c978161d37237dd65fd363f1c0518130d",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/sample_size_ess_sensitivity.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/configs/weight_ablation_gamma_cv.yaml",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "a9bf899a535dc27bcfcca1867adc557785718bf486a6d45460473aaf0a184b66",
+      "source": "experiments/soft_fqi_stationary_weighting/configs/weight_ablation_gamma_cv.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/README.md",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "2f976b0d154776040ed315c9308094c3c05ecb15c55961df39028d6a942ba9ca",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/README.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/annealing_tau_comparison_200.csv",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "cb8fe276fb8a281c27bd642c0b4a10af95ea6e24380bc87515a095a164c71145",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/annealing_tau_comparison_200.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/appendix_simulation_details.tex",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "ff5d951036a435d5bf4bced5b9d165bd9a5e7509116a048a4b9fada84146834e",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/appendix_simulation_details.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/appendix_temperature_annealing.tex",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "f15fc348456a89958294fc0c7ef28a0c2403e1b94ea80100b6a83286b63af876",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/appendix_temperature_annealing.tex"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_figure.pdf",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "5f2a90b8f32317774a961f2056139da6aa9fc9b901f66c21a70117f81fb9369d",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_figure.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_figure.png",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "6e49d0d407595d03001482361e911c1da4c3cab49f0b7a2475a65ee5ada6a1ff",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_figure.png"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_section.tex",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "2e6959303e54776d6d984ca9731c8062d9bf59cb0ed18cf2f4281aee58efc102",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_section.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_table.csv",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "48718d4eb5604131fecc067f96ee8a704f734f37af75ac081288a7c83d0956c1",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_table.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_table.tex",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "49bf0a6a1e6125b85b422c9db9f631154718a532873f3b34c04a81aae371df3c",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/main_text_simulation_table.tex"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/minimax_vs_weighting_overlap_regimes.pdf",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "4b03b470bf82fca76f08cf1830503b63c120ce168451c53e8633495e3c96d35d",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/minimax_vs_weighting_overlap_regimes.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/minimax_vs_weighting_overlap_regimes.png",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "ec1b91ebca5d7f8de861a60c38271b409e59f63f7ed7429d4f6e6f0d4e10fbc1",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/minimax_vs_weighting_overlap_regimes.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_minimax_oracle_sensitivity.pdf",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "5e676a56856f64d7ad6938bfb497ed902cf2588e247af6704c10f937da02ca57",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_minimax_oracle_sensitivity.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_minimax_oracle_sensitivity.png",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "d5be20f4cac78b4b70da1fd7da5460db3c322b6a4b2cce4bd47840bc752abf29",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_minimax_oracle_sensitivity.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_population_geometry_control.pdf",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "204d759e6b6f0a6136b8db50115b44511b69918f29712da7c2f4540aab8ac376",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_population_geometry_control.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_population_geometry_control.png",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "59bae13fdb8493ff1e7ce1438cb1c030ca66791e203a44fc5c144290158d12b7",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_population_geometry_control.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_supporting_diagnostics.pdf",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "0895b3f23b29ab46f05d5197fb5e117f2b287411de172b16797f23b365bcfbbf",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_supporting_diagnostics.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_supporting_diagnostics.png",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "ee47746fd5d2111d6f476f4cc6a572848e01a93b66bb3776288fcc6153fa8186",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_supporting_diagnostics.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_weight_estimator_sensitivity.pdf",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "6035ad5021e30e8bd8c8f305769d7f6fb7948d97dcda292c7d4924dbd2ef4f43",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_weight_estimator_sensitivity.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_weight_estimator_sensitivity.png",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "7a4b4c2d4bb99897c6ef19c0c84f2f5a8fb29465d0f3eb8f8e85edf33485912b",
+      "source": "experiments/soft_fqi_stationary_weighting/final_draft_bundle/softfqi_weight_estimator_sensitivity.png"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/aggregate_results.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "2cc02bd06901cf1a938b8602a1da25b4130c8d6b09b984000a707dd787d9237b",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/aggregate_results.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/assess_story.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "f5c3c38f5193a73c180fe143dfa18889e4d22de11b90e243585e97abe48a35eb",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/assess_story.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/make_main_text_figure.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "f4a9a16ac8b8c1e8ccd51cb1e6d2fac6660182877cf11101de6ab084ab8a3f4f",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/make_main_text_figure.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/make_oracle_tuned_tikhonov_table.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "43ffecae63253dad171bbdcca78d45d9355c4a8ebb962700adde315261b01bfa",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/make_oracle_tuned_tikhonov_table.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/make_overnight_decision_tables.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "b2ddb80335c4ab56389c0ce2ea1bc0c34900ff574064deadba29864fd95e0f42",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/make_overnight_decision_tables.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/make_paper_extra_figures.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "75c25f4a0b8d6c80221667d920cf73c78b00a92df6365c4671eef4c3a5bc34a7",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/make_paper_extra_figures.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/make_plots.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "2d9b02442b564afadf6addba7495d4278b265da56f5178da044601cb6bad3d5a",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/make_plots.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/make_tables.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "1e40c3a79a6fd08caf04d0876b1d871690372d40df85d420d781494fe89daa54",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/make_tables.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/run_debug.sh",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "3bf7f576ce5d153075352067777047783c8ce1a41f197c00337ab205eeb8d566",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/run_debug.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/scripts/run_experiment.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "6b3a3a8f56e3610bfa01cae1bf800f47d557745c1847a45e8b10420d74207d28",
+      "source": "experiments/soft_fqi_stationary_weighting/scripts/run_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/src/__init__.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "4138cc640349a557333d788c75748c812382d7072c58d470f52f2f91faf64847",
+      "source": "experiments/soft_fqi_stationary_weighting/src/__init__.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/src/algorithms.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "7148477e87c015cd86896ac053ee447d9beedaa4cb7e87951d4ecac109e849c8",
+      "source": "experiments/soft_fqi_stationary_weighting/src/algorithms.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/src/data.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "db54462440711310d910e25a66afbcb23ad6d981d57a52472ffe79a01f4ca69f",
+      "source": "experiments/soft_fqi_stationary_weighting/src/data.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/src/env.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "7fd73a87c20b853b7cd89c5e5b1b074198f10f7ca310fac213aec9a239139747",
+      "source": "experiments/soft_fqi_stationary_weighting/src/env.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/src/experiment.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "184060c26d787da291c2ac57d12b3579f3e804ddea93920eb0ce9d2127048288",
+      "source": "experiments/soft_fqi_stationary_weighting/src/experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/src/features.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "19f364a1c1b8c9662d8e5eabbce77e2cb34a888b58596a8f6dfc5fb8f78bf871",
+      "source": "experiments/soft_fqi_stationary_weighting/src/features.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/src/metrics.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "3f81895fdb77bd4ccee50c0694e435bbeed5abeb8285cb5896ec8a79ebf77c10",
+      "source": "experiments/soft_fqi_stationary_weighting/src/metrics.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/src/soft_dp.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "d3868e8469ba147d1da141506b8d5caaa04843a198e2fffee580d2db391b78f4",
+      "source": "experiments/soft_fqi_stationary_weighting/src/soft_dp.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/src/weights.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "171ec499583c1cb00e7bf41bb08e7c6cfca1735bc76d80c5cacc34f210018e6a",
+      "source": "experiments/soft_fqi_stationary_weighting/src/weights.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/soft_fqi_stationary_weighting/tests/test_smoke.py",
+      "role": "soft-FQI source, final configs, tests, reports, and final artifacts",
+      "sha256": "eee868751951cdd74a6bf377f0344445a058b395510eeb3070fb0d14dd3968e8",
+      "source": "experiments/soft_fqi_stationary_weighting/tests/test_smoke.py"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/main_text_simulation_figure.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "5f2a90b8f32317774a961f2056139da6aa9fc9b901f66c21a70117f81fb9369d",
+      "source": "papers/soft_fqi_stationary_weighting/figures/main_text_simulation_figure.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/minimax_vs_weighting_overlap_regimes.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "4b03b470bf82fca76f08cf1830503b63c120ce168451c53e8633495e3c96d35d",
+      "source": "papers/soft_fqi_stationary_weighting/figures/minimax_vs_weighting_overlap_regimes.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/soft_fqi_garnet_benchmark_5b.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "0bff11a2b1c0f181c0ba15b85df16c6563fdb44abfa50a8589ad4c04e53e7057",
+      "source": "papers/soft_fqi_stationary_weighting/figures/soft_fqi_garnet_benchmark_5b.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/softfqi_minimax_oracle_sensitivity.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "5e676a56856f64d7ad6938bfb497ed902cf2588e247af6704c10f937da02ca57",
+      "source": "papers/soft_fqi_stationary_weighting/figures/softfqi_minimax_oracle_sensitivity.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/softfqi_supporting_diagnostics.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "0895b3f23b29ab46f05d5197fb5e117f2b287411de172b16797f23b365bcfbbf",
+      "source": "papers/soft_fqi_stationary_weighting/figures/softfqi_supporting_diagnostics.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/softfqi_weight_estimator_sensitivity.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "6035ad5021e30e8bd8c8f305769d7f6fb7948d97dcda292c7d4924dbd2ef4f43",
+      "source": "papers/soft_fqi_stationary_weighting/figures/softfqi_weight_estimator_sensitivity.pdf"
+    },
+    {
+      "anonymized_text": true,
+      "path": "paper_artifacts/tables/oracle_tuned_tikhonov_comparison.tex",
+      "role": "paper-referenced final table artifact",
+      "sha256": "1a2c211397ca33fc0885f129fb614e55633ef5f56168c178b76fea48bcc21857",
+      "source": "papers/soft_fqi_stationary_weighting/tables/oracle_tuned_tikhonov_comparison.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "requirements.txt",
+      "role": "minimal Python dependency list",
+      "sha256": "671e288371fbf14416563511d69e9eadf92c861a653b434b1cfdaf36bc284402",
+      "source": "generated for anonymous submission bundle"
+    }
+  ],
+  "source_root": "neurips_bellman canonical paper/experiment tree"
+}

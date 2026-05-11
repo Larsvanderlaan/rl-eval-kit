@@ -1,0 +1,5 @@
+run_label,critic_family,method,n_seeds,n_policies,relative_bellman_calibration_error_plugin,relative_bellman_calibration_error,relative_q_bellman_mse,relative_absolute_ope_error,bellman_calibration_win_rate,q_bellman_mse_win_rate
+"Hopper 192 traj., 20 seeds",neural_fqe,linear,20,11,0.474519537638519,0.4501930775785187,0.4088736373001105,0.971584634649866,1.0,1.0
+"Hopper 192 traj., 20 seeds",neural_fqe,isotonic_histogram,20,11,0.3926361261013055,0.3530023198382784,0.3177093999201768,0.9731037844450602,1.0,1.0
+"Hopper 192 traj., 20 seeds",rf_fqe,linear,20,11,0.9932657998324972,1.021192783329808,1.0039087948368397,1.0003400028924068,0.3454545454545454,0.55
+"Hopper 192 traj., 20 seeds",rf_fqe,isotonic_histogram,20,11,3.6703404706857823,0.9123936844273364,0.6229195138204896,0.932828556891477,0.5181818181818182,0.7727272727272727

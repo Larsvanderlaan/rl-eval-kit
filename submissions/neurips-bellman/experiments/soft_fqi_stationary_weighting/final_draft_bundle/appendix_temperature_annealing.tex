@@ -1,0 +1,41 @@
+\paragraph{Annealing sensitivity.}
+The main experiment uses direct low-temperature fitting at $\tau=10^{-3}$. To
+check whether continuation becomes more important near the hard-max limit, we
+also repeat the experiment at $\tau=10^{-6}$. For $\tau=10^{-3}$ we use the
+staged schedule $0.2,0.05,0.01,0.003,10^{-3}$; for $\tau=10^{-6}$ we append a
+final $10^{-6}$ stage. Table~\ref{tab:soft-fqi-annealing-sensitivity} reports
+median stationary projected Bellman error over 200 datasets. Annealing remains
+a small effect at both temperatures: the largest median change is $1.35\%$ at
+$\tau=10^{-3}$ and $1.21\%$ at $\tau=10^{-6}$.
+
+\begin{table}[t]
+\centering
+\caption{Annealing sensitivity. Entries are median stationary projected
+Bellman error over 200 offline datasets. Gain is
+$(\mathrm{direct}-\mathrm{annealed})/\mathrm{direct}$.}
+\label{tab:soft-fqi-annealing-sensitivity}
+\begin{tabular}{lllccc}
+\toprule
+\(\tau\) & Regime & Method & Direct & Annealed & Gain \\
+\midrule
+\(10^{-3}\) & On-policy & Unweighted & 0.526 & 0.521 & 0.94\% \\
+\(10^{-3}\) & On-policy & Oracle & 0.516 & 0.510 & 1.05\% \\
+\(10^{-3}\) & On-policy & Estimated & 0.533 & 0.527 & 1.05\% \\
+\(10^{-3}\) & Mild shift & Unweighted & 0.822 & 0.819 & 0.37\% \\
+\(10^{-3}\) & Mild shift & Oracle & 0.511 & 0.506 & 1.04\% \\
+\(10^{-3}\) & Mild shift & Estimated & 0.584 & 0.577 & 1.17\% \\
+\(10^{-3}\) & Severe shift & Unweighted & 0.798 & 0.788 & 1.26\% \\
+\(10^{-3}\) & Severe shift & Oracle & 0.595 & 0.591 & 0.77\% \\
+\(10^{-3}\) & Severe shift & Estimated & 0.839 & 0.832 & 0.82\% \\
+\(10^{-6}\) & On-policy & Unweighted & 0.529 & 0.524 & 0.94\% \\
+\(10^{-6}\) & On-policy & Oracle & 0.519 & 0.515 & 0.80\% \\
+\(10^{-6}\) & On-policy & Estimated & 0.533 & 0.529 & 0.79\% \\
+\(10^{-6}\) & Mild shift & Unweighted & 0.811 & 0.808 & 0.38\% \\
+\(10^{-6}\) & Mild shift & Oracle & 0.509 & 0.505 & 0.85\% \\
+\(10^{-6}\) & Mild shift & Estimated & 0.581 & 0.574 & 1.09\% \\
+\(10^{-6}\) & Severe shift & Unweighted & 0.798 & 0.789 & 1.21\% \\
+\(10^{-6}\) & Severe shift & Oracle & 0.623 & 0.617 & 0.83\% \\
+\(10^{-6}\) & Severe shift & Estimated & 0.849 & 0.845 & 0.42\% \\
+\bottomrule
+\end{tabular}
+\end{table}

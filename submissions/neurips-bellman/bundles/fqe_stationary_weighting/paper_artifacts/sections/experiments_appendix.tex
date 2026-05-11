@@ -1,0 +1,109 @@
+\section{Experiments}
+\label{sec::appendix}
+
+\subsection{Finite-state diagnostic experiments}
+
+\paragraph{Baird hub-and-spokes.}
+The Baird experiment uses a hub state and six spoke states
+\citep{baird1995residual}. The solid action moves deterministically to the hub;
+the dashed action moves uniformly to one of the spokes. The target policy always
+takes the solid action. The behavior policy takes the solid action with
+probability \(\kappa\), so decreasing \(\kappa\) reduces stationary overlap with
+the target policy. We use the standard seven-dimensional linear feature map,
+zero rewards, ridge-regularized least squares at each FQE step, and exact
+stationary ratios. Since \(Q^\pi\equiv0\), the experiment isolates whether the
+projected Bellman iteration contracts in the intended norm. Reported curves are
+averaged over 100 independent datasets.
+
+\paragraph{Sparse Garnet MDPs.}
+The Garnet experiment uses random MDPs with \(100\) states, \(4\) actions, and
+branching factor \(5\). For each state-action pair, five next states are sampled
+without replacement and assigned Dirichlet transition probabilities. Rewards
+are Gaussian. The target policy is sampled randomly; the behavior policy is
+\(\varepsilon\)-greedy with \(\varepsilon=0.1\). Data are generated with a reset
+scheme that deliberately breaks stationarity. The linear feature class has
+dimension \(5\) and contains \(Q^\pi\), but is generically not Bellman complete.
+Thus any instability is due to the fitted projection geometry, not ordinary
+realizability failure. The main figure uses exact stationary ratios; the same
+qualitative stabilization was also observed with tabular DualDICE-style ratio
+estimates.
+
+\subsection{Controlled linear-Gaussian benchmark}
+
+The continuous benchmark uses \(S_t\in\mathbb R^2\) and \(A_t\in\mathbb R\).
+The dynamics are linear Gaussian,
+\[
+S_{t+1}=B S_t + C A_t+\epsilon_t,
+\qquad
+\epsilon_t\sim N(0,\sigma^2 I),
+\]
+with quadratic reward
+\[
+r(s,a)=-\|s-s^\star\|^2-\lambda a^2 .
+\]
+The target and behavior policies are Gaussian linear policies,
+\[
+A_t\mid S_t=s \sim N(K_\pi s,\sigma_\pi^2),
+\qquad
+A_t\mid S_t=s \sim N(K_b s,\sigma_b^2),
+\]
+where \(K_b=K_\pi+\Delta v\). The scalar \(\Delta\) is the shift shown in the
+plots. Low, moderate, and severe shifts correspond to \(\Delta=0,1.1,1.35\).
+
+Because the system is linear Gaussian with quadratic rewards, \(Q^\pi\),
+\(V^\pi\), and the discounted value \(\psi_\pi\) are computed analytically by a
+quadratic fixed-point recursion. Discounted state-action occupancies are
+represented as Gaussian mixtures over time. For \(\gamma_{\rm ratio}=1\), the
+reference distribution is the stationary Gaussian state-action distribution
+under the corresponding policy. Oracle weights are evaluated as stabilized
+mixture-density or stationary Gaussian density ratios.
+
+Offline data are sampled from the behavior reference distribution matched to
+\(\gamma_{\rm ratio}\). For \(\gamma_{\rm ratio}<1\), this means drawing a
+geometric time \(T\) and recording a transition from the behavior trajectory at
+time \(T\). For \(\gamma_{\rm ratio}=1\), data are sampled from the behavior
+stationary distribution. The value estimand is always the discounted
+\(\gamma=0.95\) policy value; \(\gamma_{\rm ratio}\) only changes the regression
+weighting target. This distinction is important: stationary weighting can be
+excellent for stationary-reference \(Q\) error while not necessarily optimizing
+the discounted initial-state value.
+
+FQE is run with three feature regimes. The main text uses the misspecified
+affine class \([1,s_1,s_2,a]\). A full quadratic class serves as a
+well-specified check, and a diagonal quadratic class is used as an additional
+misspecification stress test. Linear FQE uses analytic target-action
+expectations, so there is no Monte Carlo noise in the Bellman target. Neural FQE
+uses a small \(Q(s,a)\) network and Gauss-Hermite quadrature for the target
+action expectation.
+
+The ratio estimators use the discounted or stationary flow moment equations.
+For \(\gamma_{\rm ratio}<1\), the moment condition includes the
+\((1-\gamma_{\rm ratio})\nu_0\pi\) right-hand side. For
+\(\gamma_{\rm ratio}=1\), the stationary moment has zero right-hand side plus a
+mean-one normalization. We report raw oracle weights, clipped oracle weights,
+linear estimated weights, clipped estimated weights, and neural/RKHS estimated
+weights. Clipping is fixed in advance by an ESS target and maximum-weight cap;
+it is not tuned separately by shift or estimator.
+
+The primary metrics are target-reference \(Q\) MSE, behavior-reference \(Q\)
+MSE, and discounted policy-value MSE. Diagnostics include ESS fraction, weight
+quantiles and maxima, estimated-vs-oracle log-ratio RMSE, correlation with
+oracle weights, feature calibration error, unstable-run fraction, and Monte
+Carlo standard errors across seeds. The final paper run uses \(100\) seeds for
+the main linear estimators and \(20\) seeds for neural-ratio and neural-FQE
+variants.
+
+\input{tables/controlled_benchmark_summary.tex}
+
+The controlled benchmark supports a narrower but more useful claim than
+uniform dominance. Under low shift, all methods are similar. Under moderate
+shift with misspecified affine FQE, weighting sharply reduces target-reference
+\(Q\) error and improves value accuracy. Under severe shift, the same weighting
+principle still helps target-reference error, but ESS and upper weight quantiles
+show that the problem is close to an overlap boundary. Neural FQE reduces the
+need for weighting because the function class is more flexible; nevertheless,
+near-stationary discounted weighting with \(\gamma_{\rm ratio}=0.99\) improves
+both target-reference \(Q\) error and value MSE in the moderate and severe
+shift settings. We view this as evidence that weighting is most useful when
+approximation error is distribution-sensitive, and as a reminder that ratio
+estimation and overlap remain practical bottlenecks.

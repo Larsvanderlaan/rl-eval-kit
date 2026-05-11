@@ -99,6 +99,42 @@ def make_grid_mdp(width: int = 3, height: int = 3, policy_shift: float = 0.45) -
     )
 
 
+def make_random_tabular_mdp(
+    *,
+    n_states: int = 20,
+    n_actions: int = 2,
+    policy_shift: float = 1.0,
+    transition_concentration: float = 1.0,
+    overlap_floor: float = 0.02,
+    seed: int = 0,
+) -> DiscreteMDP:
+    """Full-support random finite MDP with controlled target-behavior shift."""
+    rng = np.random.default_rng(int(seed))
+    transition = rng.dirichlet(
+        np.full(int(n_states), float(transition_concentration), dtype=np.float64),
+        size=(int(n_states), int(n_actions)),
+    ).reshape(int(n_states), int(n_actions), int(n_states))
+    behavior_logits = rng.normal(scale=0.7, size=(int(n_states), int(n_actions)))
+    shift_logits = rng.normal(scale=1.0, size=(int(n_states), int(n_actions)))
+    behavior_policy = _floor_probabilities(_softmax(behavior_logits, axis=1), overlap_floor)
+    target_policy = _floor_probabilities(
+        _softmax(behavior_logits + float(policy_shift) * shift_logits, axis=1),
+        overlap_floor,
+    )
+    reference_state_dist = _floor_probabilities(
+        rng.dirichlet(np.ones(int(n_states), dtype=np.float64)),
+        overlap_floor / max(int(n_states), 1),
+    )
+    rewards = rng.uniform(-1.0, 1.0, size=(int(n_states), int(n_actions)))
+    return DiscreteMDP(
+        transition=transition,
+        rewards=rewards,
+        behavior_policy=behavior_policy,
+        target_policy=target_policy,
+        reference_state_dist=reference_state_dist,
+    )
+
+
 def induced_state_transition(mdp: DiscreteMDP, policy: Array) -> Array:
     return np.einsum("sa,san->sn", policy, mdp.transition)
 
@@ -140,8 +176,18 @@ def make_discrete_dataset(
     sample_size: int,
     seed: int,
     policy_shift: float | None = None,
+    n_states: int | None = None,
+    n_actions: int | None = None,
 ) -> BenchmarkDataset:
-    if policy_shift is None:
+    if setting == "random_tabular_mdp":
+        shift = 1.0 if policy_shift is None else float(policy_shift)
+        mdp = make_random_tabular_mdp(
+            n_states=20 if n_states is None else int(n_states),
+            n_actions=2 if n_actions is None else int(n_actions),
+            policy_shift=shift,
+            seed=int(seed + 31_337),
+        )
+    elif policy_shift is None:
         mdp = make_grid_mdp() if setting == "discrete_grid" else make_chain_mdp()
     else:
         shift = float(policy_shift)
@@ -175,6 +221,8 @@ def make_discrete_dataset(
     }
     if policy_shift is not None:
         metadata["policy_shift"] = float(policy_shift)
+    if setting == "random_tabular_mdp":
+        metadata["transition_source"] = "random_dirichlet"
 
     return BenchmarkDataset(
         setting=setting,
@@ -196,3 +244,14 @@ def make_discrete_dataset(
         sample_size=int(sample_size),
         metadata=metadata,
     )
+
+
+def _softmax(values: Array, axis: int) -> Array:
+    shifted = np.asarray(values, dtype=np.float64) - np.max(values, axis=axis, keepdims=True)
+    exp = np.exp(shifted)
+    return exp / np.sum(exp, axis=axis, keepdims=True)
+
+
+def _floor_probabilities(probabilities: Array, floor: float) -> Array:
+    probs = np.maximum(np.asarray(probabilities, dtype=np.float64), float(floor))
+    return probs / np.sum(probs, axis=-1, keepdims=True)

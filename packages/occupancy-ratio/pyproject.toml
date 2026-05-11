@@ -20,6 +20,7 @@ benchmark = ["matplotlib", "gymnasium", "mujoco"]
 tabular-benchmark = ["openml", "scikit-learn", "obp", "minari"]
 google = ["tensorflow", "tensorflow-addons"]
 google-dualdice = ["tensorflow", "tensorflow-addons"]
+scope-rl = ["scope-rl"]
 docs = ["mkdocs", "mkdocs-material", "mkdocstrings[python]", "pymdown-extensions"]
 dev = ["build", "pytest", "ruff", "torch", "matplotlib", "gymnasium", "mujoco"]
 

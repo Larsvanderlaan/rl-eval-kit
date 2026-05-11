@@ -1,0 +1,75 @@
+name: debug
+base_seed: 20260501
+output_dir: results/debug
+
+grid:
+  n_x: 9
+  n_y: 9
+
+environment:
+  process_noise: 0.085
+  teleport_prob: 0.003
+
+algorithm:
+  gamma: 0.97
+  tau_final: 0.001
+  n_iters: 5
+  ridge: 0.0001
+  metrics_stride: 1
+  value_iteration_tol: 0.00001
+  value_iteration_max_iter: 800
+  anneal_taus: [0.2, 0.05, 0.01, 0.003, 0.001]
+
+behavior:
+  decoy_tau: 0.02
+
+regimes:
+  on_policy: {target: 0.95, decoy: 0.00, uniform: 0.05}
+  mild_shift: {target: 0.55, decoy: 0.35, uniform: 0.10}
+  moderate_shift: {target: 0.20, decoy: 0.70, uniform: 0.10}
+
+data:
+  n_samples: 150
+
+weights:
+  gamma_weights: [0.0, 0.5, 0.95, 1.0]
+  n_state_centers: 4
+  bandwidth_scale: 1.0
+  ridge_primal: 0.0001
+  ridge_dual: 0.0001
+  normalization_penalty: 10.0
+  min_weight: 0.00000001
+  max_weight: 20.0
+  clip_quantile: 0.99
+  target_ess_fraction: 0.25
+
+neural:
+  hidden_dims: [24]
+  batch_size: 256
+  epochs_per_iter: 1
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  target_update_tau: 1.0
+  grad_clip_norm: 5.0
+  device: cpu
+
+stages:
+  - name: stage1_core
+    learners: [population, linear]
+    regimes: [on_policy, mild_shift, moderate_shift]
+    schedules: [direct, annealed]
+    methods: [unweighted, oracle]
+    seeds: [0]
+  - name: stage2_weights
+    learners: [linear]
+    regimes: [mild_shift, moderate_shift]
+    schedules: [direct]
+    methods: [unweighted, oracle, estimated]
+    seeds: [0]
+  - name: stage3_neural
+    learners: [neural]
+    regimes: [moderate_shift]
+    schedules: [direct]
+    methods: [unweighted, oracle, estimated]
+    gamma_weights: [0.95]
+    seeds: [0]

@@ -1,0 +1,42 @@
+{
+  "profile": "medium",
+  "settings": [
+    "discrete_chain",
+    "discrete_grid",
+    "random_tabular_mdp",
+    "linear_gaussian"
+  ],
+  "estimators": [
+    "oracle",
+    "neural_fori_default_stable",
+    "neural_fori_cv_size",
+    "neural_fori_oracle"
+  ],
+  "seeds": [0, 1, 2, 3, 4],
+  "sample_sizes": [1000, 5000, 10000],
+  "gammas": [0.9, 0.95, 0.99],
+  "discrete_policy_shifts": [0.0, 0.35, 0.65, 1.0, 1.5],
+  "linear_gaussian_policy_shifts": [0.25, 0.5, 1.0, 2.0, 3.0],
+  "random_tabular_state_counts": [20, 50, 100],
+  "random_tabular_action_counts": [2, 5],
+  "include_google_dual_dice": false,
+  "neural_num_iterations": 80,
+  "neural_gradient_steps_per_iteration": 8,
+  "neural_mcmc_samples": 32,
+  "neural_batch_size": 512,
+  "neural_hidden_dims": [64, 64],
+  "neural_action_steps": 1000,
+  "neural_transition_steps": 1400,
+  "neural_density_ratio_loss": "lsif",
+  "neural_fixed_point_damping": 0.5,
+  "neural_moment_calibration": "scalar",
+  "tune_cv": false,
+  "automl_tuning": "off",
+  "cv_score_method": "bellman_gmm",
+  "cv_gmm_objective": "ratio",
+  "cv_moment_extra_blocks": ["second_order", "multiscale_rff", "support", "policy_shift"],
+  "source_state_correction_mode": "auto",
+  "estimator_timeout_sec": 900,
+  "resume": true,
+  "write_plots": true
+}

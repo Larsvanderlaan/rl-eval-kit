@@ -1,0 +1,184 @@
+% Proof snippet for the GenPQR + FQE finite-sample bound.
+% Intended for adaptation into the main paper.
+
+\paragraph{Boundedness condition for the FQE recursion.}
+In addition to Assumptions~\ref{assump:policy-gen}--\ref{assump:q-gen},
+assume that the regression class is uniformly bounded:
+\[
+\sup_{f\in\mathcal F}\|f\|_\infty \le B_{\mathcal F}<\infty.
+\]
+Assumption~\ref{assump:policy-gen} already gives
+\(\|\hat u\|_\infty \vee \|u^\star\|_\infty \le B\), and \(g\) is bounded by
+construction. Hence the Bellman targets \(\mathcal T^\mu_{\hat u}f\) are
+uniformly bounded whenever \(f\in\mathcal F\) is. This is the standard
+boundedness condition used in sup-norm FQE analyses.
+
+\begin{lemma}[FQE error bound]
+\label{lem:fqe-bound}
+Let \(\mathcal T^\mu_u f := u-g+\gamma P\mu f\), and let
+\(Q^\mu_{\hat u-g}\) denote the unique fixed point of
+\(\mathcal T^\mu_{\hat u}\). Suppose \(\hat Q^{(k)}\) is produced by
+Algorithm~\ref{alg:simple-irl}. Under
+Assumptions~\ref{assump:policy-gen}--\ref{assump:q-gen} and the boundedness
+condition above, there exists a constant \(C\in(0,\infty)\) such that, with
+probability at least \(1-\delta\),
+\begin{align*}
+\|Q^\mu_{\hat u-g}-\hat Q^{(K)}\|_{2,\mathrm{beh}}
+&\le
+\gamma^K\|Q^\mu_{\hat u-g}-\hat Q^{(0)}\|_{\infty}\\
+&\qquad+
+\frac{1}{1-\gamma}
+\Bigl(
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\Bigr).
+\end{align*}
+\end{lemma}
+
+\begin{proof}
+Write \(Q_{\hat u}:=Q^\mu_{\hat u-g}\), and define the Bellman residual at step
+\(k\) by
+\[
+\xi_k
+:=
+\mathcal T^\mu_{\hat u}\hat Q^{(k-1)}-\hat Q^{(k)}.
+\]
+Since \(Q_{\hat u}\) is the fixed point of \(\mathcal T^\mu_{\hat u}\),
+\[
+Q_{\hat u}-\hat Q^{(k)}
+=
+\mathcal T^\mu_{\hat u}(Q_{\hat u})
+-\mathcal T^\mu_{\hat u}(\hat Q^{(k-1)})
++\xi_k
+=
+\gamma P\mu\bigl(Q_{\hat u}-\hat Q^{(k-1)}\bigr)+\xi_k.
+\]
+Taking sup norms and using that \(P\mu\) is a contraction in
+\(\|\cdot\|_\infty\),
+\[
+\|Q_{\hat u}-\hat Q^{(k)}\|_\infty
+\le
+\gamma\|Q_{\hat u}-\hat Q^{(k-1)}\|_\infty
++\|\xi_k\|_\infty.
+\]
+Iterating yields the standard inexact Picard recursion
+\begin{equation}
+\label{eq:picard-unroll}
+\|Q_{\hat u}-\hat Q^{(K)}\|_\infty
+\le
+\gamma^K\|Q_{\hat u}-\hat Q^{(0)}\|_\infty
++
+\sum_{j=1}^K \gamma^{K-j}\|\xi_j\|_\infty.
+\end{equation}
+Since \(\nu_\pi\) is a probability measure,
+\(\|f\|_{2,\mathrm{beh}}\le \|f\|_\infty\), it suffices to control
+\(\|\xi_j\|_\infty\).
+
+Fix \(j\in[K]\). By Lemma~\ref{lemma::periter},
+\[
+\|\mathcal T^\mu_{\hat u}\hat Q^{(j-1)}-\hat Q^{(j)}\|_{2,\mathrm{beh}}
+\le
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\]
+with probability at least \(1-\delta/(2K)\), where the last term uses
+Lemma~\ref{lemma::KLell2} and absorbs the bounded-logit constant into \(C\).
+Under the boundedness condition above, this is precisely the standard
+population Bellman-residual control used in the sup-norm FQE argument of
+\citet{munos2008finite}; equivalently, one may state
+Assumption~\ref{assump:q-gen} directly in the Picard norm, or replace
+\(\varepsilon_{\mathcal F}\) by the weighted inherent Bellman error of
+\citet{van2025fitted}. Thus, after enlarging \(C\) if necessary, we may write
+\[
+\|\xi_j\|_\infty
+\le
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\]
+simultaneously for all \(j\in[K]\) on an event of probability at least
+\(1-\delta\), by a union bound over \(j=1,\dots,K\). Substituting this into
+\eqref{eq:picard-unroll} and summing the geometric series gives
+\[
+\|Q_{\hat u}-\hat Q^{(K)}\|_\infty
+\le
+\gamma^K\|Q_{\hat u}-\hat Q^{(0)}\|_\infty
++
+\frac{1}{1-\gamma}
+\Bigl(
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\Bigr).
+\]
+Finally,
+\(
+\|Q_{\hat u}-\hat Q^{(K)}\|_{2,\mathrm{beh}}
+\le
+\|Q_{\hat u}-\hat Q^{(K)}\|_\infty
+\),
+which proves the claim.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:pqr-fqe}]
+Apply Theorem~\ref{thm:reward-recovery} with \(\hat Q=\hat Q^{(K)}\):
+\begin{align*}
+\|r^\star-\hat r\|_{2,\mathrm{beh}}
+&\le
+\bigl(1+\sqrt{C_{\mu/\pi}}\bigr)
+\Bigg\{
+\|Q^\mu_{\hat u-g}-\hat Q^{(K)}\|_{2,\mathrm{beh}}\\
+&\qquad\qquad+
+\left(
+1+\frac{\gamma\sqrt{C_{\nu_\pi P/d_\mu}C_{d_\mu/\rho}C_{\mu/\pi}}}{1-\gamma}
+\right)
+\|u^\star-\hat u\|_{2,\mathrm{beh}}
+\Bigg\}.
+\end{align*}
+By Lemma~\ref{lem:fqe-bound},
+\begin{align*}
+\|Q^\mu_{\hat u-g}-\hat Q^{(K)}\|_{2,\mathrm{beh}}
+&\le
+\gamma^K\|Q^\mu_{\hat u-g}-\hat Q^{(0)}\|_{\infty}\\
+&\qquad+
+\frac{1}{1-\gamma}
+\Bigl(
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
++ C\,\hat\rho_\pi(n,\delta/2)
+\Bigr).
+\end{align*}
+Moreover, Lemma~\ref{lemma::KLell2} gives
+\[
+\|u^\star-\hat u\|_{2,\mathrm{beh}}
+\le
+C\,\hat\rho_\pi(n,\delta/2)
+\]
+with probability at least \(1-\delta/2\). Substituting these two bounds into
+Theorem~\ref{thm:reward-recovery}, and absorbing all \(B\)-dependent constants
+into \(C\), yields
+\begin{align*}
+\|r^\star-\hat r\|_{2,\mathrm{beh}}
+&\le
+\bigl(1+\sqrt{C_{\mu/\pi}}\bigr)
+\Bigg\{
+\gamma^K\|\hat Q^{(0)}-Q^\mu_{\hat u-g}\|_{\infty}
++
+\frac{1}{1-\gamma}
+\Bigl(
+\varepsilon_{\mathcal F}
++\hat\rho_Q(n,\delta/(2K))
+\Bigr)\\
+&\qquad\qquad+
+\left(
+C
++\frac{\gamma\sqrt{C_{\nu_\pi P/d_{\mu}}C_{d_\mu/\rho}C_{\mu/\pi}}}{1-\gamma}
+\right)
+\hat\rho_\pi(n,\delta/2)
+\Bigg\},
+\end{align*}
+with probability at least \(1-\delta\), after a final union bound. This is the
+claimed result.
+\end{proof}

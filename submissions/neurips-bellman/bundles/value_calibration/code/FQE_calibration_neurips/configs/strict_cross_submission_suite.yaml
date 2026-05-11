@@ -1,0 +1,224 @@
+output_subdir:
+  debug: debug_strict_cross_submission_v2
+  paper: paper_strict_cross_submission_v2
+
+validation:
+  name: well_specified_debug
+  config: configs/well_specified_debug.yaml
+  gate:
+    bias_threshold: 2.0
+    mse_threshold: 8.0
+    degradation_factor: 4.0
+    degradation_abs_tolerance: 0.25
+    sample_trend_abs_tolerance: 0.05
+  mode_overrides:
+    debug:
+      replications: 1
+      sample_sizes: [80, 120]
+      test_transitions: 80
+      diagnostic_test_transitions: 120
+      true_q_rollouts_per_state: 1
+      calibration_error_bins: 8
+      calibration_error_min_bin_size: 5
+      calibration_error_folds: 2
+      compute_true_q_mse: false
+      direct_true_v_rollout: true
+      initial_eval_states: 80
+      oracle_rollouts: 80
+      cross_folds: 2
+      calibration_protocols: [cross]
+      baseline_learners: [linear_fqe]
+      calibrators: [linear, isotonic]
+      split_fractions: []
+      learner_params:
+        linear_fqe: {feature_type: linear, ridge: 0.0001, n_iters: 10}
+    paper:
+      sample_sizes: [500]
+      reward_noise_settings: [0.0]
+      test_transitions: 400
+      diagnostic_test_transitions: 50000
+      true_q_rollouts_per_state: 1
+      calibration_error_bins: 50
+      calibration_error_min_bin_size: 1000
+      calibration_error_folds: 3
+      compute_true_q_mse: false
+      direct_true_v_rollout: true
+      initial_eval_states: 1000
+      oracle_rollouts: 1000
+      cross_folds: 2
+      calibration_protocols: [cross]
+      split_fractions: []
+      baseline_learners: [linear_fqe]
+      calibrators: [linear, isotonic]
+      learner_params:
+        linear_fqe: {feature_type: linear, ridge: 0.0001, n_iters: 80}
+
+suites:
+  - name: undertraining_sweep
+    config: configs/undertraining_sweep.yaml
+    mode_overrides:
+      debug: &strict_debug
+        replications: 1
+        sample_sizes: [80]
+        state_dimensions: [3]
+        coverage_settings: [moderate]
+        reward_noise_settings: [0.05]
+        test_transitions: 80
+        diagnostic_test_transitions: 120
+        true_q_rollouts_per_state: 1
+        calibration_error_bins: 8
+        calibration_error_min_bin_size: 5
+        calibration_error_folds: 2
+        compute_true_q_mse: false
+        direct_true_v_rollout: true
+        initial_eval_states: 80
+        oracle_rollouts: 80
+        cross_folds: 2
+        calibration_protocols: [cross]
+        calibrators: [linear, isotonic, isotonic_histogram]
+        split_fractions: []
+        split_comparators: []
+        learner_params:
+          random_feature_fqe: {feature_type: linear, ridge: 0.0005, n_iters: 8}
+          neural_fqe: {hidden_dims: [10], n_iters: 3, epochs_per_iter: 1, batch_size: 32, lr: 0.002, device: cpu}
+      paper: &strict_paper
+        gamma: 0.985
+        horizon: 120
+        sample_sizes: [1200]
+        state_dimensions: [4]
+        coverage_settings: [moderate]
+        reward_noise_settings: [0.05]
+        transition_noise: 0.04
+        test_transitions: 1200
+        diagnostic_test_transitions: 50000
+        true_q_rollouts_per_state: 1
+        calibration_error_bins: 50
+        calibration_error_min_bin_size: 1000
+        calibration_error_folds: 5
+        compute_true_q_mse: false
+        direct_true_v_rollout: true
+        initial_eval_states: 1200
+        oracle_rollouts: 1200
+        cross_folds: 5
+        misspecification: finite_iteration_scale
+        reference_shift_scale: 0.15
+        policy_shift: {good: 0.10, moderate: 0.45, severe: 1.15, extrapolation: 1.7}
+        calibration_protocols: [cross]
+        calibrators: [histogram, isotonic, isotonic_histogram, linear]
+        value_calibration_iterations: 8
+        split_fractions: []
+        split_comparators: []
+        calibrator_params: {n_bins: 10, bin_strategy: quantile, min_bin_size: 20, value_calibration_iterations: 8}
+        learner_params:
+          random_feature_fqe: {feature_type: linear, ridge: 0.0005, n_iters: 50}
+          neural_fqe: {hidden_dims: [48, 48], n_iters: 24, epochs_per_iter: 5, batch_size: 128, lr: 0.001, weight_decay: 0.0001, target_tau: 0.3, device: cpu}
+        baseline_learners:
+          - random_feature_fqe_iter2
+          - random_feature_fqe_iter3
+          - random_feature_fqe_iter4
+          - random_feature_fqe_well_tuned
+        learner_variants:
+          random_feature_fqe_iter3:
+            base_learner: random_feature_fqe
+            learner_quality_regime: under_iterated
+            calibration_difficulty: finite_iteration_bias
+            main_figure_role: main
+            params: {n_iters: 3}
+          neural_fqe_iter3:
+            base_learner: neural_fqe
+            learner_quality_regime: under_iterated
+            calibration_difficulty: finite_iteration_bias
+            main_figure_role: main
+            params: {hidden_dims: [32], n_iters: 3, epochs_per_iter: 1, target_tau: 0.08, weight_decay: 0.0}
+
+  - name: model_misspecification_sweep
+    config: configs/model_misspecification_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *strict_debug
+        misspecification_settings: [affine, monotone_distortion]
+        baseline_learners: [linear_fqe_misspecified, random_feature_fqe_restricted]
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 8}
+          random_feature_fqe: {n_components: 12, bandwidth: 0.9, ridge: 0.01, n_iters: 8}
+      paper:
+        sample_sizes: [500]
+        state_dimensions: [6]
+        coverage_settings: [moderate]
+        reward_noise_settings: [0.2]
+        transition_noise: 0.25
+        test_transitions: 400
+        diagnostic_test_transitions: 50000
+        true_q_rollouts_per_state: 1
+        calibration_error_bins: 50
+        calibration_error_min_bin_size: 1000
+        calibration_error_folds: 3
+        compute_true_q_mse: false
+        direct_true_v_rollout: true
+        initial_eval_states: 2000
+        oracle_rollouts: 2000
+        cross_folds: 5
+        policy_shift: {good: 0.15, moderate: 0.75, severe: 1.35, extrapolation: 1.7}
+        environment_tier: nonlinear_synthetic
+        misspecification_settings: [affine, monotone_distortion]
+        reference_shift_scale: 0.5
+        shifted_initial_eval_states: true
+        calibration_protocols: [cross]
+        calibrators: [histogram, isotonic, isotonic_histogram, linear]
+        split_fractions: []
+        split_comparators: []
+        value_calibration_iterations: 5
+        calibrator_params: {n_bins: 12, bin_strategy: quantile, min_bin_size: 20, value_calibration_iterations: 5}
+        baseline_learners:
+          - linear_fqe_misspecified
+          - random_feature_fqe_restricted
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 30}
+          random_feature_fqe: {n_components: 80, bandwidth: 0.9, ridge: 0.02, n_iters: 30}
+          neural_fqe: {hidden_dims: [16], n_iters: 6, epochs_per_iter: 2, batch_size: 96, lr: 0.0015, weight_decay: 0.02, target_tau: 0.15, device: cpu}
+
+  - name: bellman_incomplete_sweep
+    config: configs/bellman_incomplete_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *strict_debug
+        misspecification: bellman_incomplete
+        baseline_learners: [linear_fqe_restricted, random_feature_fqe_low_capacity]
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 8}
+          random_feature_fqe: {n_components: 12, bandwidth: 0.8, ridge: 0.01, n_iters: 8}
+      paper:
+        sample_sizes: [500]
+        state_dimensions: [6]
+        coverage_settings: [moderate]
+        reward_noise_settings: [0.15]
+        transition_noise: 0.20
+        test_transitions: 400
+        diagnostic_test_transitions: 50000
+        true_q_rollouts_per_state: 1
+        calibration_error_bins: 50
+        calibration_error_min_bin_size: 1000
+        calibration_error_folds: 3
+        compute_true_q_mse: false
+        direct_true_v_rollout: true
+        initial_eval_states: 2000
+        oracle_rollouts: 2000
+        cross_folds: 5
+        policy_shift: {good: 0.15, moderate: 0.70, severe: 1.35, extrapolation: 1.7}
+        environment_tier: bellman_incomplete
+        misspecification: bellman_incomplete
+        reference_shift_scale: 0.6
+        shifted_initial_eval_states: true
+        calibration_protocols: [cross]
+        calibrators: [histogram, isotonic, isotonic_histogram, linear]
+        split_fractions: []
+        split_comparators: []
+        value_calibration_iterations: 5
+        calibrator_params: {n_bins: 12, bin_strategy: quantile, min_bin_size: 20, value_calibration_iterations: 5}
+        baseline_learners:
+          - linear_fqe_restricted
+          - random_feature_fqe_low_capacity
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 35}
+          random_feature_fqe: {n_components: 80, bandwidth: 0.8, ridge: 0.02, n_iters: 35}
+          neural_fqe: {hidden_dims: [32], n_iters: 6, epochs_per_iter: 2, batch_size: 96, lr: 0.0015, weight_decay: 0.001, target_tau: 0.2, device: cpu}

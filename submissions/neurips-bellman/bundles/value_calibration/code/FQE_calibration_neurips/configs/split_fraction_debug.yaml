@@ -1,0 +1,36 @@
+seed: 30303
+replications: 1
+gamma: 0.90
+horizon: 12
+n_actions: 3
+sample_sizes: [120]
+state_dimensions: [4]
+coverage_settings: [good]
+reward_noise_settings: [0.05]
+transition_noise: 0.05
+test_transitions: 100
+diagnostic_test_transitions: 160
+true_q_rollouts_per_state: 1
+calibration_error_bins: 8
+calibration_error_min_bin_size: 5
+calibration_error_folds: 3
+initial_eval_states: 100
+oracle_rollouts: 80
+policy_shift: {good: 0.10, moderate: 0.60, severe: 1.20, extrapolation: 1.50}
+misspecification: well_specified_linear
+baseline_learners: [linear_fqe, neural_fqe]
+calibration_protocols: [split]
+calibrators: [linear, isotonic]
+calibration_targets: [value_bellman]
+importance_weight_scheme: action_ratio
+importance_weight_clip: 20.0
+normalize_importance_weights: true
+value_calibration_iterations: 4
+cross_folds: 3
+split_fractions: [0.5, 0.6, 0.7, 0.8, 0.9]
+split_comparators: [offset_correction, residual_correction]
+calibrator_params: {n_bins: 4, bin_strategy: quantile, min_bin_size: 5}
+comparator_params: {n_components: 16, ridge: 0.01}
+learner_params:
+  linear_fqe: {feature_type: linear, ridge: 0.0001, n_iters: 12}
+  neural_fqe: {hidden_dims: [12], n_iters: 2, epochs_per_iter: 1, batch_size: 32, lr: 0.002, device: cpu}

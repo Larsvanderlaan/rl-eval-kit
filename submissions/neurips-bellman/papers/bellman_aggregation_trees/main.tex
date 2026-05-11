@@ -1,0 +1,1034 @@
+% NeurIPS 2026 anonymous-submission paper draft.
+\documentclass{article}
+
+\PassOptionsToPackage{numbers,sort&compress}{natbib}
+\PassOptionsToPackage{hypertexnames=false}{hyperref}
+\usepackage{neurips_2026}
+
+\usepackage[dvipsnames]{xcolor}
+\definecolor{Bleu}{RGB}{0,0,204}
+\makeatletter
+\@ifpackageloaded{hyperref}{}{\usepackage{hyperref}}
+\makeatother
+\hypersetup{
+  colorlinks=true,
+  citecolor=Bleu,
+  linkcolor=Bleu,
+  urlcolor=Bleu,
+  hypertexnames=false
+}
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs}
+\usepackage{bbm}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\spann}{span}
+\DeclareMathOperator{\rank}{rank}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\cS}{\mathcal S}
+\newcommand{\cA}{\mathcal A}
+\newcommand{\cX}{\mathcal X}
+\newcommand{\cD}{\mathcal D}
+\newcommand{\cT}{\mathcal T}
+\newcommand{\cF}{\mathcal F}
+\newcommand{\cV}{\mathcal V}
+\newcommand{\one}{\mathbbm 1}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\linf}[1]{\left\lVert #1 \right\rVert_\infty}
+\newcommand{\hatP}{\widehat P}
+\newcommand{\hatr}{\widehat r}
+\newcommand{\hatq}{\widehat q}
+\newcommand{\hatQ}{\widehat Q}
+\newcommand{\hatA}{\widehat A}
+\newcommand{\hatb}{\widehat b}
+\newcommand{\tildeA}{\widetilde A}
+\newcommand{\tildeb}{\widetilde b}
+\newcommand{\bell}{\mathcal B}
+\newcommand{\proj}{\Pi}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{proposition}{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\title{Target-Weighted Bellman Aggregation Trees and Forests for Offline Policy Evaluation}
+
+\author{%
+  Anonymous Authors
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Regression trees and random forests are natural tools for interpretable and
+adaptive value estimation, but tree-based fitted value methods usually treat
+Bellman updates as ordinary supervised labels. The resulting splits are
+optimized for transient pseudo-outcomes and for the sampling distribution of
+the offline data, which need not match the distribution under which value
+accuracy matters. We propose \emph{target-weighted Bellman Aggregation Trees
+and Forests} for offline policy evaluation. A tree defines a partition, while a
+forest defines a finite collection of leaf-indicator features. In both cases,
+the final value estimate is obtained by solving one target-weighted projected
+Bellman equation, rather than by iterating supervised regressions. Single
+Bellman Aggregation Trees (BATs) give the interpretable partition special case;
+Bellman Aggregation Forests (BAFs) use randomized honest trees to build a
+richer finite feature space before a joint Bellman solve. For fixed or honest
+learned features, the population estimator is the projected Bellman fixed
+point, with approximation error controlled by the projection error of
+\(Q^\pi\). Finite samples, rank reduction, validation pruning, and estimated
+weights enter as perturbations of the projected Bellman linear system. The
+manuscript gives a method and theory draft with a falsifiable experimental
+protocol; empirical BAT/BAF results remain pending.
+\end{abstract}
+
+\section{Introduction}
+
+Tree-based value estimation is appealing for a simple reason: a tree gives a
+readable partition of the state-action space. If a fitted value function
+assigns the same number to all points in a leaf, one would like that leaf to
+mean something dynamical: points in the same leaf should have similar immediate
+rewards and similar continuation behavior under the policy being evaluated, in
+the distribution where accuracy matters. Standard tree-based fitted value
+methods do not enforce this interpretation. They usually embed regression
+trees or tree ensembles inside fitted Bellman iteration: at each round, a
+Bellman target is computed from the previous value estimate and a supervised
+regressor is fit to that target \citep{ernst2005tree,munos2008finite}. This is
+a useful modular algorithm, but the fitted tree is optimized for a moving
+pseudo-label, usually under the behavior distribution. A split may reduce
+prediction error for the current target while merging states whose
+target-policy transitions lead to different parts of the value function.
+
+This paper starts from the opposite perspective. A tree is not only a
+supervised learner; it is also a finite aggregation of the state-action space.
+A random forest is not only an average of supervised trees; it is also a
+finite, adaptive feature map built from many leaf indicators. Once such a
+feature map and an evaluation distribution \(\mu\) are fixed, policy evaluation
+has a canonical solution: project the Bellman equation onto the span of those
+features under \(\mu\). For a single tree this projection is exactly the
+aggregate Bellman equation between leaves. For a forest it is a single linear
+projected Bellman solve over all forest leaf features.
+
+We propose \emph{target-weighted Bellman Aggregation Trees and Forests}. Given
+offline transitions \((S_i,A_i,R_i,S'_i)\) from a behavior distribution
+\(\nu\), the method learns tree or forest features over \(X=(S,A)\), evaluates
+them under a reference distribution \(\mu\), typically the target policy's
+stationary state-action distribution, and uses weights \(w=d\mu/d\nu\) to fit
+the projected Bellman system. Splits are chosen by weighted held-out Bellman
+residuals computed after provisional Bellman solves. The final value estimate
+is then refit on an independent estimation sample. For BAF, all provisional
+per-tree values are discarded; the retained object is the forest feature map,
+and the final values come from one joint projected Bellman solve.
+
+The contribution is deliberately narrow. BATs and BAFs are not proposed as deep
+offline RL systems. They address a more basic statistical question: how should
+one fit regression trees and random forests when the regression target is a
+Bellman fixed point and the evaluation distribution differs from the sampling
+distribution? The answer is to treat tree leaves as Bellman aggregation
+features, then solve the target-weighted projected Bellman equation induced by
+those features.
+
+Our contributions are:
+\begin{itemize}[leftmargin=1.5em]
+\item We formulate BATs and BAFs as non-iterative estimators for offline
+policy evaluation: a single tree is a partition-indicator feature map, and a
+forest is a randomized collection of leaf-indicator features.
+\item We give a practical construction using weighted Bellman-aware split
+scores, honest sample splitting, stabilized weights, validation pruning, and
+honest rank reduction before the final forest solve.
+\item We prove that, for fixed or honest learned features, the estimator solves
+a projected Bellman equation and has aggregation bias controlled by
+\(\|(I-\proj^\mu_\psi)Q^\pi\|_{L^2(\mu)}\). For trees this is within-leaf
+variation; for forests it is projection error onto the forest leaf-feature
+span.
+\item We state finite-sample and weight-estimation perturbation bounds for the
+projected Bellman linear system, plus a finite-candidate validation guarantee.
+\item We give an experimental protocol, with results pending, designed to
+isolate whether Bellman-aware tree and forest features improve value accuracy
+per degree of freedom compared with ordinary supervised tree objectives.
+\end{itemize}
+
+\section{Problem Setup}
+\label{sec:setup}
+
+We consider an infinite-horizon discounted Markov decision process with state
+space \(\cS\), finite action space \(\cA\), transition kernel \(K\), bounded
+reward \(|R|\le R_{\max}\), and discount \(\gamma\in(0,1)\). The target policy
+\(\pi(a\mid s)\) is fixed. Let \(X=(S,A)\in\cX=\cS\times\cA\), and define
+\[
+  X^\pi_+ = (S',A'),\qquad
+  S'\sim K(\cdot\mid S,A),\quad A'\sim \pi(\cdot\mid S').
+\]
+The policy-evaluation Bellman operator is
+\[
+  (T^\pi Q)(s,a)
+  =
+  \E\!\left[R+\gamma Q(S',A')\mid S=s,A=a,\; A'\sim\pi(\cdot\mid S')\right],
+\]
+and \(Q^\pi\) is its unique fixed point. We observe \(n\) i.i.d. one-step
+offline transitions \((S_i,A_i,R_i,S'_i)\) with
+\(X_i=(S_i,A_i)\sim\nu\). Trajectory data require standard mixing or blocking
+arguments. We evaluate error under a reference distribution \(\mu\) on
+\(\cX\), typically the target-policy stationary state-action distribution
+\(\mu_\pi\), and assume \(\mu\ll\nu\) with density ratio \(w=d\mu/d\nu\).
+
+\paragraph{Finite Bellman features.}
+Let \(\psi:\cX\to\R^d\) be a finite feature map selected independently of the
+final estimation sample. It represents value functions
+\[
+  Q_\theta(x)=\psi(x)^\top\theta,\qquad \theta\in\R^d.
+\]
+For a next state \(s'\), write
+\[
+  \bar\psi(s')=\E_{A'\sim\pi(\cdot\mid s')}[\psi(s',A')].
+\]
+The target-weighted projected Bellman equations are
+\[
+  A^\mu_\psi\theta=b^\mu_\psi,\qquad
+  A^\mu_\psi
+  =
+  \E_\mu\!\left[\psi(X)\{\psi(X)-\gamma\psi(X^\pi_+)\}^\top\right],
+  \quad
+  b^\mu_\psi
+  =
+  \E_\mu[\psi(X)R].
+  \label{eq:population_linear_system}
+\]
+With behavior data, these moments are estimated by importance weighting:
+\[
+  \hatA_\psi
+  =
+  \frac{\sum_i \hat w_i\psi_i(\psi_i-\gamma\bar\psi_i^+)^\top}
+       {\sum_i\hat w_i},
+  \qquad
+  \hatb_\psi
+  =
+  \frac{\sum_i\hat w_i\psi_i R_i}{\sum_i\hat w_i},
+  \label{eq:empirical_linear_system}
+\]
+where \(\psi_i=\psi(S_i,A_i)\) and
+\(\bar\psi_i^+=\bar\psi(S'_i)\). The final estimate is
+\(\hat Q_\psi(x)=\psi(x)^\top\hat\theta\), where
+\(\hatA_\psi\hat\theta=\hatb_\psi\) after deterministic rank reduction if
+needed.
+
+\paragraph{Trees and forests as features.}
+A regression tree \(\cT\) partitions \(\cX\) into leaves
+\(\ell\in\{1,\ldots,L\}\). Its feature map is
+\(\psi_{\cT}(x)=e_{\phi_{\cT}(x)}\), the one-hot indicator of the leaf
+containing \(x\). In this case \eqref{eq:population_linear_system} is exactly
+the aggregate Bellman equation
+\[
+  q=r^\mu+\gamma P^\mu q,
+  \qquad
+  r^\mu_\ell=\E_\mu[R\mid X\in\ell],
+  \quad
+  P^\mu_{\ell m}=\Pr_\mu\{\phi_{\cT}(X^\pi_+)=m\mid X\in\ell\}.
+\]
+A random forest \(\cF=(\cT_1,\ldots,\cT_B)\) defines the concatenated leaf
+feature map
+\[
+  \psi_{\cF}(x)
+  =
+  \frac{1}{B}\big(e_{\phi_{\cT_1}(x)}^\top,\ldots,
+  e_{\phi_{\cT_B}(x)}^\top\big)^\top .
+\]
+The scaling is fixed and immaterial after rank reduction; it keeps the forest
+features on a comparable numerical scale as \(B\) changes. BAF solves
+\eqref{eq:empirical_linear_system} once over the span of these forest
+features. It is not the average of \(B\) independently labeled BATs.
+
+\section{Bellman Aggregation Trees and Forests}
+\label{sec:method}
+
+The method has two stages. First, it constructs tree or forest features using
+Bellman-aware split scores. Second, it discards provisional split-time values
+and solves the final target-weighted projected Bellman system on an independent
+estimation sample. The theorem-clean version uses five disjoint sample roles:
+growth-fit, growth-score, validation, rank, and estimation. Cross-fitting can
+recover data efficiency, but honesty keeps the estimand transparent.
+
+\subsection{Bellman-Aware Split Scoring}
+
+For a candidate feature map \(\psi\), estimate \(\hatA_\psi,\hatb_\psi\) on
+the growth-fit sample and solve
+\(\hatA_\psi\hat\theta_\psi=\hatb_\psi\). Score the candidate on a held-out
+sample by
+\[
+  \delta_i(\psi)
+  =
+  R_i+\gamma(\bar\psi_i^+)^\top\hat\theta_\psi
+  -\psi_i^\top\hat\theta_\psi,
+  \qquad
+  \mathrm{Score}_\mu(\psi)
+  =
+  \frac{\sum_{i\in\cD_{\mathrm{hold}}}\hat w_i\delta_i(\psi)^2}
+       {\sum_{i\in\cD_{\mathrm{hold}}}\hat w_i}
+  +\lambda\,\dim(\spann\psi).
+  \label{eq:score}
+\]
+During growth, \(\cD_{\mathrm{hold}}\) is the growth-score sample. The
+validation sample is used only to prune a finite path or finite forest
+candidate set.
+
+For a single BAT, the candidate maps are one-hot leaf indicators for candidate
+tree splits, and the provisional solve can be implemented as the aggregate
+leaf Bellman solve. For BAF, randomized BAT-style trees are grown using
+subsampling and feature subsampling. The split score is a feature-construction
+criterion; the final forest values are obtained only after all trees have been
+grown and the joint forest feature map has been rank reduced.
+
+\begin{algorithm}[t]
+\caption{Target-Weighted Bellman Aggregation Forest}
+\label{alg:baf}
+\begin{algorithmic}[1]
+\REQUIRE Offline data \(\cD\), target policy \(\pi\), raw weights
+\(\tilde w\), number of trees \(B\), discount \(\gamma\), split and pruning
+parameters, stabilization parameters.
+\STATE Split \(\cD\) into growth-fit, growth-score, validation, rank, and estimation samples.
+\STATE Stabilize and normalize \(\tilde w\) within each sample to obtain \(\hat w\).
+\FOR{\(b=1,\ldots,B\)}
+  \STATE Draw randomized growth-fit and growth-score subsamples and feature subsets.
+  \STATE Grow a BAT-style tree path using admissible splits with minimum raw count, weighted mass, and ESS.
+  \STATE Score candidate splits by \eqref{eq:score} using provisional Bellman solves on the current tree.
+  \STATE Prune the finite path on the validation sample and store the selected tree \(\cT_b\).
+\ENDFOR
+\STATE Build \(\psi_{\cF}\) from all selected forest leaves; for BAT take \(B=1\).
+\STATE Drop linearly dependent columns by deterministic QR/SVD on the rank sample.
+\STATE Estimate \(\hatA_{\psi_{\cF}}\) and \(\hatb_{\psi_{\cF}}\) by \eqref{eq:empirical_linear_system}.
+\STATE Solve \(\hatA_{\psi_{\cF}}\hat\theta=\hatb_{\psi_{\cF}}\).
+\STATE \textbf{return} \(\hat Q(x)=\psi_{\cF}(x)^\top\hat\theta\).
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Stabilized Weights and Rank Reduction}
+
+Given raw density-ratio estimates \(\tilde w_i\), the practical estimator clips
+and shrinks them before tree construction:
+\[
+  \bar w_i=(1-\alpha)\min\{\tilde w_i,c\}+\alpha,\qquad
+  \hat w_i=\frac{\bar w_i}{|\cD_s|^{-1}\sum_{j\in\cD_s}\bar w_j},
+  \quad i\in\cD_s .
+\]
+Here \(\cD_s\) is one of the sample roles. A leaf is admissible only if it
+has enough raw observations, enough weighted mass, and effective sample size
+\[
+  \mathrm{ESS}(\ell)
+  =
+  \frac{\left(\sum_{i:\phi(X_i)=\ell}\hat w_i\right)^2}
+       {\sum_{i:\phi(X_i)=\ell}\hat w_i^2}
+\]
+above a prespecified threshold. Forest features are often linearly dependent:
+each tree contributes leaf indicators that sum to a constant, and different
+trees may create redundant columns. The theorem-clean implementation performs
+deterministic rank reduction on an independent rank sample before the projected
+Bellman solve. Using the estimation design for QR/SVD is a pragmatic
+implementation shortcut because it uses no rewards, but the stated
+finite-sample theorem treats the retained full-rank feature map as fixed before
+final estimation. Ridge regularization is reported separately because it
+changes the estimand.
+
+\section{Theory}
+\label{sec:theory}
+
+The theory treats a learned tree or forest as fixed after conditioning on the
+growth, validation, and rank-reduction data. The central object is the feature span
+\(\cV_\psi=\{\psi^\top\theta:\theta\in\R^d\}\), not the particular algorithm
+that produced it.
+After rank reduction, \(d=d_r=\dim(\cV_\psi)\) denotes the retained feature
+dimension. We write
+\[
+  (P_\pi f)(x)=\E[f(X^\pi_+)\mid X=x],
+  \qquad
+  \proj^\mu_\psi f
+  =
+  \argmin_{g\in\cV_\psi}\|f-g\|_{L^2(\mu)}
+\]
+for the target-policy transition operator and the \(L^2(\mu)\) orthogonal
+projection onto the retained feature span.
+
+\begin{assumption}[Sampling, overlap, and boundedness]
+\label{ass:coverage}
+The final estimation sample consists of i.i.d. one-step transitions with
+\(X_i\sim\nu\). The reference measure satisfies \(\mu\ll\nu\), the oracle
+weight \(w=d\mu/d\nu\) is known for the main finite-sample theorem and bounded
+by \(W\), rewards satisfy \(|R|\le R_{\max}\), and \(\gamma\in(0,1)\).
+\end{assumption}
+
+\begin{assumption}[Reference-measure contraction]
+\label{ass:l2contract}
+The Bellman operator is a \(\gamma\)-contraction in \(L^2(\mu)\):
+\[
+  \|T^\pi f-T^\pi g\|_{L^2(\mu)}
+  \le
+  \gamma\|f-g\|_{L^2(\mu)}
+  \qquad\text{for all bounded } f,g .
+\]
+This holds, for example, when \(\mu=\mu_\pi\) is a stationary state-action
+distribution for the target-policy Markov chain.
+\end{assumption}
+
+\begin{lemma}[Stationary reference measures are contraction measures]
+\label{lem:stationary_contraction}
+If \(\mu_\pi\) is stationary for the target-policy Markov chain on
+\(\cX\), then \(T^\pi\) is a \(\gamma\)-contraction in \(L^2(\mu_\pi)\).
+\end{lemma}
+
+\begin{assumption}[Honest finite features and rank]
+\label{ass:rank}
+The feature map \(\psi:\cX\to\R^d\) is selected independently of the final
+estimation sample, satisfies \(\|\psi(x)\|_2\le K\), and has full rank after
+deterministic rank reduction. The population projected Bellman matrix
+\(A^\mu_\psi\) in \eqref{eq:population_linear_system} has
+\(\sigma_{\min}(A^\mu_\psi)\ge \kappa>0\).
+\end{assumption}
+
+\begin{proposition}[Projected Bellman target]
+\label{prop:projected}
+Under Assumption~\ref{ass:l2contract}, the operator
+\(\proj^\mu_\psi T^\pi\), restricted to \(\cV_\psi\), is a
+\(\gamma\)-contraction, where \(\proj^\mu_\psi\) is the \(L^2(\mu)\) projection
+onto \(\cV_\psi\). Hence there is a unique \(Q^\mu_\psi\in\cV_\psi\) satisfying
+\[
+  Q^\mu_\psi=\proj^\mu_\psi T^\pi Q^\mu_\psi .
+\]
+If \(A^\mu_\psi\) is nonsingular, then
+\(Q^\mu_\psi(x)=\psi(x)^\top\theta^\mu_\psi\) with
+\(A^\mu_\psi\theta^\mu_\psi=b^\mu_\psi\).
+\end{proposition}
+
+\begin{theorem}[Aggregation bias for trees and forests]
+\label{thm:aggregation_bias}
+Under Assumption~\ref{ass:l2contract}, any fixed tree or forest feature map
+\(\psi\) satisfies
+\[
+  \|Q^\mu_\psi-Q^\pi\|_{L^2(\mu)}
+  \le
+  \frac{1}{1-\gamma}
+  \|(I-\proj^\mu_\psi)Q^\pi\|_{L^2(\mu)}.
+\]
+For a BAT, let \(\proj^\mu_{\cT}\) denote the \(L^2(\mu)\) projection onto the
+tree leaves. The right-hand side is the within-leaf variation of \(Q^\pi\)
+under \(\mu\):
+\[
+  \|(I-\proj^\mu_{\cT})Q^\pi\|_{L^2(\mu)}^2
+  =
+  \E_\mu[\operatorname{Var}\{Q^\pi(X)\mid \phi_{\cT}(X)\}].
+\]
+For a BAF, it is the approximation error of \(Q^\pi\) by the span of all
+retained forest leaf features.
+\end{theorem}
+
+\begin{proposition}[Forest feature monotonicity]
+\label{prop:monotonicity}
+If \(\cV_{\psi_1}\subseteq \cV_{\psi_2}\), then
+\[
+  \|(I-\proj^\mu_{\psi_2})Q^\pi\|_{L^2(\mu)}
+  \le
+  \|(I-\proj^\mu_{\psi_1})Q^\pi\|_{L^2(\mu)}.
+\]
+Thus, after rank reduction, adding linearly independent forest leaf features
+cannot increase the population approximation term, although the finite-sample
+error depends on the resulting dimension and conditioning of \(A^\mu_\psi\).
+\end{proposition}
+
+\begin{theorem}[Projected Bellman perturbation]
+\label{thm:feature_perturbation}
+Let \(\theta=\theta^\mu_\psi\) and \(\hat\theta\) solve
+\(A^\mu_\psi\theta=b^\mu_\psi\) and
+\(\hatA_\psi\hat\theta=\hatb_\psi\). If
+\[
+  \|\hatA_\psi-A^\mu_\psi\|_{\mathrm{op}}\le \varepsilon_A<\kappa,
+  \qquad
+  \|\hatb_\psi-b^\mu_\psi\|_2\le \varepsilon_b,
+\]
+then
+\[
+  \|\hat\theta-\theta\|_2
+  \le
+  \frac{\varepsilon_b+\varepsilon_A\|\theta\|_2}{\kappa-\varepsilon_A},
+  \qquad
+  \|\hat Q_\psi-Q^\mu_\psi\|_{L^2(\mu)}
+  \le
+  K\frac{\varepsilon_b+\varepsilon_A\|\theta\|_2}{\kappa-\varepsilon_A}.
+\]
+\end{theorem}
+
+\begin{proposition}[A simple concentration consequence]
+\label{prop:concentration}
+Assume Assumptions~\ref{ass:coverage} and~\ref{ass:rank}, with oracle weights
+on the final estimation sample. Let
+\[
+  D_n=\frac1n\sum_{i=1}^n w_i,
+  \qquad
+  \tildeA_\psi=\frac1n\sum_{i=1}^n
+  w_i\psi_i(\psi_i-\gamma\bar\psi_i^+)^\top,
+  \qquad
+  \tildeb_\psi=\frac1n\sum_{i=1}^n w_i\psi_iR_i,
+\]
+and \(\hatA_\psi=\tildeA_\psi/D_n\),
+\(\hatb_\psi=\tildeb_\psi/D_n\). There is a universal constant \(C\) such
+that, if \(n\ge 2W^2\log(6/\delta)\), then with probability at least
+\(1-\delta\),
+\begin{align*}
+  \|\hatA_\psi-A^\mu_\psi\|_{\mathrm{op}}
+  \le
+  C WK^2(1+\gamma)
+  \left\{
+    \sqrt{\frac{d+\log(6/\delta)}{n}}
+    +
+    \frac{\log(6d/\delta)}{n}
+  \right\},\\
+  \|\hatb_\psi-b^\mu_\psi\|_2
+  \le
+  C WKR_{\max}
+  \sqrt{\frac{d+\log(6/\delta)}{n}} .
+\end{align*}
+This elementary bound is not intended to be sharp; it makes explicit the
+forest tradeoff between feature dimension, conditioning, and sample size.
+\end{proposition}
+
+\begin{corollary}[Tree aggregate special case]
+\label{cor:tree}
+For one-hot tree features, \(A^\mu_\psi=D_\mu(I-\gamma P^\mu)\) and
+\(b^\mu_\psi=D_\mu r^\mu\), where
+\(D_\mu=\diag(\mu_1,\ldots,\mu_L)\),
+\(\mu_\ell=\mu\{\phi_{\cT}(X)=\ell\}\), and
+\(\mu_{\min}=\min_\ell\mu_\ell>0\). Let
+\[
+  \hat\mu_\ell=\frac1n\sum_{i=1}^n
+  w_i\one\{\phi_{\cT}(X_i)=\ell\}.
+\]
+If \(\min_\ell\hat\mu_\ell\ge \mu_{\min}/2\), and
+\(\linf{\hatr^\mu-r^\mu}\le\varepsilon_r\),
+\(\|\hatP^\mu-P^\mu\|_\infty\le\varepsilon_P\), then
+\[
+  \linf{\hatq^\mu_{\cT}-q^\mu_{\cT}}
+  \le
+  \frac{\varepsilon_r}{1-\gamma}
+  +
+  \frac{\gamma R_{\max}\varepsilon_P}{(1-\gamma)^2}.
+\]
+The leaf-mass condition holds with probability at least \(1-\delta\) when
+\[
+  n\ge 2W^2\mu_{\min}^{-2}\log(2L/\delta).
+\]
+\end{corollary}
+
+\begin{proposition}[Estimated-weight perturbation]
+\label{prop:weight_perturbation}
+Let \(\theta^w\) and \(\theta^{\hat w}\) be the projected Bellman solutions
+obtained from two weighted moment systems \((A^w,b^w)\) and
+\((A^{\hat w},b^{\hat w})\). If
+\(\sigma_{\min}(A^w)\ge\kappa\),
+\(\|A^{\hat w}-A^w\|_{\mathrm{op}}\le\eta_A<\kappa\), and
+\(\|b^{\hat w}-b^w\|_2\le\eta_b\), then
+\[
+  \|\theta^{\hat w}-\theta^w\|_2
+  \le
+  \frac{\eta_b+\eta_A\|\theta^w\|_2}{\kappa-\eta_A}.
+\]
+Thus estimated or stabilized weights affect BAT/BAF only through the aggregate
+projected Bellman moments they induce.
+\end{proposition}
+
+\begin{proposition}[Validation pruning over a finite candidate set]
+\label{prop:validation}
+Let \(\mathfrak P\) be a finite set of candidate trees, forests, or feature
+maps selected independently of a validation sample of size \(n_{\mathrm{val}}\).
+For each \(\psi\in\mathfrak P\), let \(\delta_\psi\) be its validation
+residual after the provisional Bellman solve. Suppose
+\(|\delta_\psi|\le B_\delta\) and \(0\le w\le W\). If
+\(\hat\psi\) minimizes the empirical weighted residual plus
+\(\lambda\dim(\spann\psi)\) over \(\mathfrak P\), then with probability at
+least \(1-\delta\),
+\[
+  L_\mu(\hat\psi)+\lambda\dim(\spann\hat\psi)
+  \le
+  \min_{\psi\in\mathfrak P}
+  \{L_\mu(\psi)+\lambda\dim(\spann\psi)\}
+  +
+  2WB_\delta^2
+  \sqrt{\frac{\log(2|\mathfrak P|/\delta)}{2n_{\mathrm{val}}}},
+\]
+where \(L_\mu(\psi)=\E_\mu[\delta_\psi^2]\).
+Here the empirical risk is the unnormalized oracle-weight risk
+\[
+  \widehat L_{\mathrm{val}}(\psi)
+  =
+  \frac{1}{n_{\mathrm{val}}}
+  \sum_{i\in\cD_{\mathrm{val}}}w_i\delta_{\psi,i}^2 .
+\]
+The self-normalized validation score obeys the same comparison up to the
+standard denominator event for
+\(n_{\mathrm{val}}^{-1}\sum_{i\in\cD_{\mathrm{val}}}w_i\).
+\end{proposition}
+
+Combining the population and sample terms gives
+\[
+  \|\hat Q_\psi-Q^\pi\|_{L^2(\mu)}
+  \le
+  \underbrace{\|Q^\mu_\psi-Q^\pi\|_{L^2(\mu)}}_{\textnormal{projection bias}}
+  +
+  \underbrace{\|\hat Q_\psi-Q^\mu_\psi\|_{L^2(\mu)}}_{\textnormal{statistical error}}.
+\]
+Honesty lets this bound be read conditionally on the learned tree or forest.
+
+\section{Experimental Protocol}
+\label{sec:experiments}
+
+The empirical part of this manuscript remains a protocol rather than a
+completed results section. The protocol tests the mechanism: whether
+target-weighted Bellman-aware tree and forest features improve value accuracy
+per degree of freedom when supervised prediction boundaries and Bellman-relevant
+transition boundaries differ.
+
+\paragraph{Diagnostic MDP.}
+Use a small continuous-state MDP where immediate reward variation and
+continuation-value variation occur along different axes. A supervised tree or
+forest fit to Monte Carlo returns or one-step pseudo-labels can split on reward
+while merging states with different target-policy continuations. The diagnostic
+figure reports the true \(Q^\pi\), learned BAT partitions, forest-induced
+nearest-neighbor/feature weights, and scalar errors.
+
+\paragraph{Grid-auditable navigation.}
+Use a two-dimensional navigation task with discrete actions, nonlinear drift,
+and offline data whose behavior distribution under-samples regions important
+under \(\mu_\pi\). A fine grid solver supplies reference values and stationary
+norm diagnostics; the learning algorithms see only offline transitions.
+
+\paragraph{Baselines and ablations.}
+Compare BAT and BAF against CART on Monte Carlo returns, random-forest returns,
+Tree-FQE, RF-FQE, random tree partitions, and uniform grids. The main ablation
+compares supervised split scores with Bellman-aware split scores. A second
+ablation compares the joint BAF solve with bagged independently solved BATs,
+which tests whether the projected forest formulation matters.
+
+\paragraph{Metrics.}
+Report stationary \(L^2(\mu_\pi)\) value error, weighted Bellman residual,
+policy-value error, error versus number of leaves or retained features, and
+error versus number of trees. The target pattern is lower value error per
+degree of freedom and partitions or forest weights aligned with
+transition-induced value boundaries. Residuals are diagnostic, not a substitute
+for value error under \(\mu_\pi\).
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Tree-based fitted value methods.}
+Tree-based batch-mode reinforcement learning uses regression trees and tree
+ensembles inside fitted value iteration \citep{ernst2005tree}. The
+policy-evaluation analogue, Tree-FQE or RF-FQE, treats trees as supervised
+regressors for Bellman pseudo-labels. BATs and BAFs instead use trees to build
+aggregation features and compute values by a projected Bellman solve.
+
+\paragraph{Random forests and forest features.}
+Random forests average randomized trees to obtain adaptive nonparametric
+regressors \citep{breiman2001random}. Modern work also views forests through
+adaptive kernels, feature spans, and honesty
+\citep{wager2018estimation,athey2019generalized,scornet2016random}. BAF uses
+the forest as an adaptive Bellman feature map: the final estimate is not a
+supervised forest average, but the projected fixed point over all retained leaf
+features.
+
+\paragraph{State aggregation and projected Bellman equations.}
+State aggregation reduces dynamic programming to a finite abstract process
+\citep{van2006performance,bertsekas2011approximate}. Least-squares temporal
+difference methods solve projected Bellman equations under linear function
+approximation \citep{tsitsiklis1996analysis,lagoudakis2003least}. BAT is the
+tree-partition instance of this idea; BAF is the random-forest feature instance.
+
+\paragraph{Bellman residual and minimax methods.}
+Bellman residual minimization has a long history \citep{baird1995residual}.
+Modern offline RL methods use minimax or adversarial Bellman-error objectives
+to avoid strong completeness assumptions
+\citep{xie2020q,uehara2021finite,xie2021bellman}. BAT/BAF use residuals in a
+restricted way: residuals construct and prune features, while final values come
+from the projected Bellman equation.
+
+\section{Discussion and Limitations}
+\label{sec:discussion}
+
+BATs and BAFs answer a narrow question: how should tree and forest regressors
+be fit when the target is a Bellman fixed point and the evaluation distribution
+differs from the sampling distribution? The proposed answer is to use trees as
+target-weighted aggregation features and solve the induced projected Bellman
+equation. Single trees retain an interpretable partition; forests trade some
+of that direct interpretability for a richer approximation space.
+
+The paper focuses on fixed-policy evaluation. For optimal control, the Bellman
+equation contains a max over actions, so the final linear solve no longer
+applies. A second limitation is conditioning: rich forest feature spaces can
+reduce approximation bias while increasing variance and numerical
+ill-conditioning, which is why deterministic rank reduction is part of the
+estimator. Finally, this manuscript is evidence-incomplete. It specifies the
+experiments needed to test the mechanism, but does not yet report BAT/BAF
+results.
+
+\section*{Reproducibility Statement}
+
+The implementation uses deterministic data splits, including a rank-reduction
+split for the theorem-clean version, recorded random seeds for forest
+subsampling and feature subsampling, declared weight stabilization, minimum
+raw-count, weighted-mass and ESS thresholds, validation-based pruning, and
+deterministic rank reduction before the final solve. Experiments report the
+full tree-size and forest-size paths, not only the selected model.
+
+\bibliographystyle{plainnat}
+\bibliography{../../common/ref}
+
+\appendix
+
+\section{Proofs}
+\label{app:proofs}
+
+\paragraph{Standard facts used below.}
+We use the Hilbert-space projection theorem and Banach fixed-point theorem
+\citep{conway1994course}, Weyl's singular-value perturbation inequality
+\citep{horn2012matrix}, Hoeffding's inequality for bounded random variables
+\citep{hoeffding1963probability}, matrix Bernstein
+\citep{tropp2012user}, and standard vector concentration for bounded random
+vectors \citep{wainwright2019high}.
+
+\begin{proof}[Proof of Lemma~\ref{lem:stationary_contraction}]
+For any bounded \(f,g\), rewards cancel and
+\[
+  T^\pi f(X)-T^\pi g(X)
+  =
+  \gamma (P_\pi(f-g))(X).
+\]
+By Jensen's inequality,
+\[
+  \{P_\pi(f-g)(X)\}^2
+  \le
+  P_\pi\{(f-g)^2\}(X).
+\]
+Taking \(X\sim\mu_\pi\) and using stationarity of \(\mu_\pi\) for the
+target-policy chain gives
+\[
+  \|P_\pi(f-g)\|_{L^2(\mu_\pi)}^2
+  \le
+  \E_{\mu_\pi}[(f-g)^2(X^\pi_+)]
+  =
+  \|f-g\|_{L^2(\mu_\pi)}^2.
+\]
+Multiplying by \(\gamma^2\) proves the claim.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:projected}]
+Because \(\cV_\psi\) is finite dimensional, it is a closed subspace of
+\(L^2(\mu)\). The orthogonal projection
+\(\proj^\mu_\psi:L^2(\mu)\to\cV_\psi\) is therefore well defined,
+maps every function into \(\cV_\psi\), and is nonexpansive. For
+\(f,g\in\cV_\psi\),
+\[
+  \|\proj^\mu_\psi T^\pi f-\proj^\mu_\psi T^\pi g\|_{L^2(\mu)}
+  \le
+  \|T^\pi f-T^\pi g\|_{L^2(\mu)}
+  \le
+  \gamma\|f-g\|_{L^2(\mu)}.
+\]
+Thus \(\proj^\mu_\psi T^\pi\) is a contraction on the complete metric space
+\(\cV_\psi\), so Banach's theorem gives a unique fixed function
+\(Q^\mu_\psi\in\cV_\psi\).
+
+If \(Q(x)=\psi(x)^\top\theta\), the projected fixed-point equation is
+equivalent to the residual \(Q-T^\pi Q\) being orthogonal to every element of
+\(\cV_\psi\). Since the coordinates of \(\psi\) span \(\cV_\psi\), this is
+equivalent to
+\[
+  \E_\mu[\psi(X)\{Q(X)-R-\gamma Q(X^\pi_+)\}]=0,
+\]
+which is exactly \(A^\mu_\psi\theta=b^\mu_\psi\). The fixed function is unique
+by contraction. The coefficient vector is unique whenever
+\(A^\mu_\psi\) is nonsingular, which is enforced after rank reduction in
+Assumption~\ref{ass:rank}.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:aggregation_bias}]
+Using Proposition~\ref{prop:projected}, \(Q^\pi=T^\pi Q^\pi\), nonexpansiveness
+of \(\proj^\mu_\psi\), and Assumption~\ref{ass:l2contract},
+\[
+  \begin{aligned}
+  \|Q^\mu_\psi-Q^\pi\|_{L^2(\mu)}
+  &=
+  \|\proj^\mu_\psi T^\pi Q^\mu_\psi-T^\pi Q^\pi\|_{L^2(\mu)}\\
+  &\le
+  \|\proj^\mu_\psi(T^\pi Q^\mu_\psi-T^\pi Q^\pi)\|_{L^2(\mu)}
+  +
+  \|(I-\proj^\mu_\psi)Q^\pi\|_{L^2(\mu)}\\
+  &\le
+  \gamma\|Q^\mu_\psi-Q^\pi\|_{L^2(\mu)}
+  +
+  \|(I-\proj^\mu_\psi)Q^\pi\|_{L^2(\mu)}.
+  \end{aligned}
+\]
+Rearranging proves the bound.
+For one-hot tree features, \(\proj^\mu_{\cT}Q^\pi\) is the conditional mean
+\(\E_\mu[Q^\pi(X)\mid \phi_{\cT}(X)]\). The displayed variance identity is
+therefore the conditional-variance decomposition
+\[
+  \E_\mu\!\left[
+    \{Q^\pi(X)-\E_\mu[Q^\pi(X)\mid \phi_{\cT}(X)]\}^2
+  \right]
+  =
+  \E_\mu[\operatorname{Var}\{Q^\pi(X)\mid \phi_{\cT}(X)\}].
+\]
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:monotonicity}]
+Orthogonal projection onto a larger closed subspace cannot have larger
+least-squares approximation error. Since \(\cV_{\psi_1}\subseteq\cV_{\psi_2}\),
+the best approximation to \(Q^\pi\) in \(\cV_{\psi_2}\) is at least as good as
+the best approximation in \(\cV_{\psi_1}\).
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:feature_perturbation}]
+Write \(A=A^\mu_\psi\) and \(b=b^\mu_\psi\). Subtract
+\(A\theta=b\) from \(\hatA\hat\theta=\hatb\):
+\[
+  \hatA(\hat\theta-\theta)
+  =
+  \hatb-b-(\hatA-A)\theta .
+\]
+Weyl's inequality gives
+\(\sigma_{\min}(\hatA)\ge\kappa-\varepsilon_A\), hence
+\[
+  \|\hat\theta-\theta\|_2
+  \le
+  \frac{\varepsilon_b+\varepsilon_A\|\theta\|_2}{\kappa-\varepsilon_A}.
+\]
+The value-function bound follows from
+\(\|\psi^\top(\hat\theta-\theta)\|_{L^2(\mu)}
+\le \sup_x\|\psi(x)\|_2\|\hat\theta-\theta\|_2\).
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:concentration}]
+Condition on the fixed retained feature map. Define
+\[
+  Y_i^A=w_i\psi_i(\psi_i-\gamma\bar\psi_i^+)^\top,
+  \qquad
+  Y_i^b=w_i\psi_iR_i.
+\]
+Then \(\E_\nu Y_i^A=A^\mu_\psi\) and
+\(\E_\nu Y_i^b=b^\mu_\psi\). Moreover
+\[
+  \|Y_i^A\|_{\mathrm{op}}\le WK^2(1+\gamma),
+  \qquad
+  \|Y_i^b\|_2\le WKR_{\max}.
+\]
+Matrix Bernstein and vector Bernstein imply that, with probability at least
+\(1-2\delta/3\),
+\[
+  \|\tildeA_\psi-A^\mu_\psi\|_{\mathrm{op}}
+  \le
+  C_0 WK^2(1+\gamma)
+  \left\{
+    \sqrt{\frac{d+\log(6/\delta)}{n}}
+    +
+    \frac{\log(6d/\delta)}{n}
+  \right\},
+\]
+and
+\[
+  \|\tildeb_\psi-b^\mu_\psi\|_2
+  \le
+  C_0 WKR_{\max}
+  \sqrt{\frac{d+\log(6/\delta)}{n}} .
+\]
+Since \(0\le w_i\le W\) and \(\E_\nu w_i=1\), Hoeffding's inequality gives
+\[
+  \Pr\{|D_n-1|>t\}
+  \le
+  2\exp\{-2nt^2/W^2\}.
+\]
+With \(t_n=W\sqrt{\log(6/\delta)/(2n)}\), this event has probability at
+least \(1-\delta/3\). In particular,
+\[
+  \Pr\{|D_n-1|>1/2\}
+  \le
+  2\exp\{-n/(2W^2)\},
+\]
+and the assumed lower bound on \(n\) ensures \(t_n\le1/2\). On the event
+\(|D_n-1|\le t_n\le1/2\),
+\[
+  \|\hatA_\psi-A^\mu_\psi\|_{\mathrm{op}}
+  =
+  \left\|\frac{\tildeA_\psi}{D_n}-A^\mu_\psi\right\|_{\mathrm{op}}
+  \le
+  2\|\tildeA_\psi-A^\mu_\psi\|_{\mathrm{op}}
+  +
+  2|D_n-1|\,\|A^\mu_\psi\|_{\mathrm{op}}.
+\]
+The same argument gives
+\[
+  \|\hatb_\psi-b^\mu_\psi\|_2
+  \le
+  2\|\tildeb_\psi-b^\mu_\psi\|_2
+  +
+  2|D_n-1|\,\|b^\mu_\psi\|_2.
+\]
+Finally, \(\|A^\mu_\psi\|_{\mathrm{op}}\le K^2(1+\gamma)\) and
+\(\|b^\mu_\psi\|_2\le KR_{\max}\). Absorbing constants into a universal
+constant \(C\) proves the stated inequalities.
+\end{proof}
+
+\begin{proof}[Proof of Corollary~\ref{cor:tree}]
+For one-hot tree features, the normal equations are
+\[
+  D_\mu(I-\gamma P^\mu)q=D_\mu r^\mu,
+\]
+which reduces to \(q=r^\mu+\gamma P^\mu q\) on leaves with positive
+\(\mu\)-mass. The empirical equation is the same with
+\((\hatr^\mu,\hatP^\mu)\), where
+\[
+  \hatr^\mu_\ell
+  =
+  \frac{n^{-1}\sum_i w_i\one\{\phi_{\cT}(X_i)=\ell\}R_i}
+       {\hat\mu_\ell},
+  \qquad
+  \hatP^\mu_{\ell m}
+  =
+  \frac{n^{-1}\sum_i w_i\one\{\phi_{\cT}(X_i)=\ell\}
+    p_{\cT,m}(S'_i)}
+       {\hat\mu_\ell}.
+\]
+For illustration, let
+\[
+  N^r_\ell=\E_\nu[w\one\{\phi_{\cT}(X)=\ell\}R],
+  \qquad
+  \hat N^r_\ell=n^{-1}\sum_iw_i\one\{\phi_{\cT}(X_i)=\ell\}R_i.
+\]
+On \(\hat\mu_\ell\ge\mu_\ell/2\),
+\[
+  |\hatr^\mu_\ell-r^\mu_\ell|
+  =
+  \left|\frac{\hat N^r_\ell}{\hat\mu_\ell}
+  -\frac{N^r_\ell}{\mu_\ell}\right|
+  \le
+  \frac{2|\hat N^r_\ell-N^r_\ell|}{\mu_\ell}
+  +
+  \frac{2R_{\max}|\hat\mu_\ell-\mu_\ell|}{\mu_\ell}.
+\]
+The same ratio calculation applies entrywise to \(\hatP^\mu_{\ell m}\), with
+\(R_{\max}\) replaced by \(1\). Thus the displayed assumptions
+\(\linf{\hatr^\mu-r^\mu}\le\varepsilon_r\) and
+\(\|\hatP^\mu-P^\mu\|_\infty\le\varepsilon_P\) are the corresponding
+self-normalized leaf-moment errors.
+
+Subtracting the two Bellman equations and using
+\(\|(I-\gamma\hatP^\mu)^{-1}\|_\infty\le(1-\gamma)^{-1}\) and
+\(\linf{q}\le R_{\max}/(1-\gamma)\) gives the displayed bound. The leaf-mass
+condition follows because
+\[
+  \Pr\{|\hat\mu_\ell-\mu_\ell|>\mu_{\min}/2\}
+  \le
+  2\exp\{-n\mu_{\min}^2/(2W^2)\}
+\]
+for each leaf by Hoeffding, and a union bound over \(L\) leaves gives the
+claimed sample-size scaling.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:weight_perturbation}]
+Apply the same perturbation argument as in
+Theorem~\ref{thm:feature_perturbation} with
+\((A,b)=(A^w,b^w)\) and \((\hatA,\hatb)=(A^{\hat w},b^{\hat w})\).
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:validation}]
+Condition on the candidate set and on all non-validation data used to compute
+the provisional residual functions. For a fixed candidate,
+\(w_i\delta_{\psi,i}^2\in[0,WB_\delta^2]\).
+Hoeffding's inequality and a union bound over \(\mathfrak P\) imply a uniform
+deviation bound of
+\[
+  WB_\delta^2
+  \sqrt{\frac{\log(2|\mathfrak P|/\delta)}{2n_{\mathrm{val}}}}.
+\]
+Call this deviation \(\varepsilon_{\mathrm{val}}\). Let
+\(\psi^\star\) minimize the population penalized risk over \(\mathfrak P\).
+On the uniform event,
+\[
+  \begin{aligned}
+  L_\mu(\hat\psi)+\lambda\dim(\spann\hat\psi)
+  &\le
+  \widehat L_{\mathrm{val}}(\hat\psi)
+  +\lambda\dim(\spann\hat\psi)
+  +\varepsilon_{\mathrm{val}}\\
+  &\le
+  \widehat L_{\mathrm{val}}(\psi^\star)
+  +\lambda\dim(\spann\psi^\star)
+  +\varepsilon_{\mathrm{val}}\\
+  &\le
+  L_\mu(\psi^\star)
+  +\lambda\dim(\spann\psi^\star)
+  +2\varepsilon_{\mathrm{val}}.
+  \end{aligned}
+\]
+This proves the result. If the empirical score is divided by the validation
+denominator \(D_{\mathrm{val}}\), the same argument applies on the event
+\(|D_{\mathrm{val}}-1|\le 1/2\), with the displayed deviation multiplied by a
+universal constant.
+\end{proof}
+
+\section{Implementation Details}
+\label{app:implementation}
+
+\paragraph{Candidate splits.}
+For continuous variables, candidate thresholds are empirical quantiles inside
+each leaf after enforcing minimum raw count, weighted mass, and ESS. For
+categorical variables and finite actions, the implementation considers binary
+subsets when arity is small and one-vs-rest splits otherwise. The action is
+treated as part of the state-action feature vector.
+
+\paragraph{Rank reduction.}
+For the theorem-clean estimator, forest features are reduced on an independent
+rank fold by QR with column pivoting or SVD using a fixed tolerance. The
+retained feature map is then held fixed for final estimation. A practical
+implementation may run the same QR/SVD on the estimation design because it uses
+no rewards, but this should be reported as a data-dependent numerical
+preprocessing step. A ridge fallback is allowed only as a diagnostic because it
+changes the projected equation.
+
+\paragraph{Residual scoring.}
+The residual score in \eqref{eq:score} uses held-out weighted transitions. A
+candidate's provisional value is estimated on the growth-fit fold, then
+residuals are computed on growth-score or validation transitions by assigning
+current and next state-action pairs to candidate features and weighting by
+\(\hat w_i\).
+
+\section{Experiment Templates}
+\label{app:experiment_templates}
+
+\paragraph{Diagnostic MDP template.}
+Use a two-dimensional state \(S=(S_1,S_2)\in[-1,1]^2\) and two actions. Let one
+coordinate primarily determine immediate rewards and the other determine which
+high- or low-value region the target policy reaches next. Display true
+\(Q^\pi\), CART/RF supervised partitions or weights, Tree-FQE/RF-FQE behavior,
+BAT partitions, and BAF forest weights at matched feature budgets.
+
+\paragraph{Navigation template.}
+Use a grid-auditable continuous navigation task with five actions. Compute
+reference \(Q^\pi\) by dynamic programming on a fine grid. Draw offline
+transitions from behavior policies with increasing mismatch from the target
+stationary distribution. Report errors under both the target and behavior
+distributions to show when ordinary supervised criteria optimize the wrong
+geometry.
+
+\end{document}

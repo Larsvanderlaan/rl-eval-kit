@@ -15,15 +15,24 @@ from typing import Any
 
 import numpy as np
 
+from occupancy_ratio_benchmark.application_simulators import (
+    APPLICATION_SIMULATOR_SETTINGS,
+    make_application_simulator_dataset,
+)
 from occupancy_ratio_benchmark.config import OccupancyRatioBenchmarkConfig
 from occupancy_ratio_benchmark.diagnostics import summarize_rows
 from occupancy_ratio_benchmark.discrete import make_discrete_dataset
 from occupancy_ratio_benchmark.estimators import (
     EstimatorResult,
+    GoogleDICERLPreflight,
     GoogleDualDICEPreflight,
     run_estimator,
 )
-from occupancy_ratio_benchmark.external_baselines import preflight_google_dualdice, preflight_google_gridwalk
+from occupancy_ratio_benchmark.external_baselines import (
+    preflight_google_dice_rl,
+    preflight_google_dualdice,
+    preflight_google_gridwalk,
+)
 from occupancy_ratio_benchmark.gaussian import make_linear_gaussian_dataset
 from occupancy_ratio_benchmark.gym_control import GYM_CONTROL_SETTINGS, make_gym_control_dataset
 from occupancy_ratio_benchmark.io import write_csv, write_json
@@ -76,6 +85,14 @@ def run_benchmark(config: OccupancyRatioBenchmarkConfig) -> BenchmarkRunResult:
     )
     if config.stage in {"full", "overnight", "high_stakes"} and config.include_google_dual_dice and not google_preflight.available:
         raise RuntimeError(google_preflight.reason)
+    needs_dice_rl = _needs_dice_rl(config)
+    dice_rl_preflight = (
+        preflight_google_dice_rl(config.dice_rl_repo_path)
+        if needs_dice_rl and config.include_dice_rl
+        else GoogleDICERLPreflight(False, "Google DICE-RL disabled by config.", config.dice_rl_repo_path)
+    )
+    if config.stage in {"full", "overnight", "high_stakes"} and needs_dice_rl and not dice_rl_preflight.available:
+        raise RuntimeError(dice_rl_preflight.reason)
 
     rows: list[dict[str, Any]] = []
     tuning_rows: list[dict[str, Any]] = []
@@ -94,6 +111,7 @@ def run_benchmark(config: OccupancyRatioBenchmarkConfig) -> BenchmarkRunResult:
     diagnostics: dict[str, Any] = {
         "run_metadata": run_metadata,
         "google_dualdice_preflight": asdict(google_preflight),
+        "google_dice_rl_preflight": asdict(dice_rl_preflight),
         "google_gridwalk_preflight": asdict(gridwalk_preflight),
         "failures": [],
     }
@@ -243,7 +261,7 @@ def run_benchmark(config: OccupancyRatioBenchmarkConfig) -> BenchmarkRunResult:
                                     continue
                                 print(f"  estimator {estimator}", flush=True)
                                 try:
-                                    result = _run_estimator_maybe_timeout(estimator, dataset, config, google_preflight)
+                                    result = _run_estimator_maybe_timeout(estimator, dataset, config, google_preflight, dice_rl_preflight)
                                     rows.append(_row_from_result(config, dataset, result))
                                     tuning_rows.extend(result.tuning_rows)
                                     completed_keys.add(planned_key)
@@ -333,13 +351,21 @@ def make_dataset(
     policy_shift: float | None = None,
     dataset_variant: str | None = None,
 ):
-    if setting in {"discrete_chain", "discrete_grid"}:
+    if setting in {"discrete_chain", "discrete_grid", "random_tabular_mdp"}:
+        n_states = None
+        n_actions = None
+        if setting == "random_tabular_mdp" and dataset_variant:
+            parts = str(dataset_variant).lower().split("x", maxsplit=1)
+            if len(parts) == 2:
+                n_states, n_actions = int(parts[0]), int(parts[1])
         return make_discrete_dataset(
             setting=setting,
             gamma=gamma,
             sample_size=sample_size,
             seed=seed,
             policy_shift=policy_shift,
+            n_states=n_states,
+            n_actions=n_actions,
         )
     if setting == "linear_gaussian":
         shift = 1.0 if policy_shift is None else float(policy_shift)
@@ -358,6 +384,14 @@ def make_dataset(
             sample_size=sample_size,
             seed=seed,
             target_value_rollouts=int(config.gym_target_value_rollouts),
+        )
+    if setting in APPLICATION_SIMULATOR_SETTINGS:
+        return make_application_simulator_dataset(
+            setting=setting,
+            gamma=gamma,
+            sample_size=sample_size,
+            seed=seed,
+            target_value_rollouts=int(config.application_target_value_rollouts),
         )
     if setting == "openml_contextual_bandit":
         return make_openml_contextual_bandit_dataset(
@@ -395,7 +429,7 @@ def make_dataset(
 
 
 def _policy_shifts_for_setting(config: OccupancyRatioBenchmarkConfig, setting: str) -> tuple[float | None, ...]:
-    if setting in {"discrete_chain", "discrete_grid"}:
+    if setting in {"discrete_chain", "discrete_grid", "random_tabular_mdp"}:
         shifts = tuple(float(shift) for shift in config.discrete_policy_shifts)
         return shifts if shifts else (None,)
     if setting == "linear_gaussian":
@@ -411,6 +445,12 @@ def _dataset_variants_for_setting(config: OccupancyRatioBenchmarkConfig, setting
         return task_ids or (None,)
     if setting == "obp_logged_bandit":
         return tuple(str(campaign) for campaign in config.obp_campaigns) or (None,)
+    if setting == "random_tabular_mdp":
+        return tuple(
+            f"{int(n_states)}x{int(n_actions)}"
+            for n_states in config.random_tabular_state_counts
+            for n_actions in config.random_tabular_action_counts
+        )
     if setting == "minari_pointmaze":
         out = tuple(str(dataset_id) for dataset_id in config.minari_dataset_ids if "pointmaze" in str(dataset_id).lower())
         return out or (None,)
@@ -490,7 +530,7 @@ def make_winner_table(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Select the lowest-error successful non-oracle estimator per benchmark cell."""
     groups: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
     for row in rows:
-        if row.get("status") != "ok" or row.get("estimator") in {"oracle", "behavior"}:
+        if row.get("status") != "ok" or not _is_deployable_estimator(str(row.get("estimator", ""))):
             continue
         key = (
             row.get("profile", row.get("stage")),
@@ -675,10 +715,22 @@ def _to_float(value: Any) -> float:
 
 
 def _primary_metric_name(row: dict[str, Any]) -> str | None:
-    for name in ("ope_value_abs_error", "ratio_rel_mse", "absolute_error", "log_ratio_rmse"):
+    for name in ("ratio_normalized_l1", "ratio_l1", "ratio_rel_mse", "log_ratio_rmse", "ope_value_abs_error", "absolute_error"):
         if name in row and row[name] != "":
             return name
     return None
+
+
+def _is_deployable_estimator(estimator: str) -> bool:
+    if estimator in {"", "oracle", "behavior"}:
+        return False
+    if estimator == "dice_rl_best_regularized":
+        return False
+    return "oracle" not in estimator
+
+
+def _needs_dice_rl(config: OccupancyRatioBenchmarkConfig) -> bool:
+    return any(str(estimator).startswith("dice_rl_") for estimator in config.resolved_estimators())
 
 
 def _run_estimator_maybe_timeout(
@@ -686,10 +738,11 @@ def _run_estimator_maybe_timeout(
     dataset,
     config: OccupancyRatioBenchmarkConfig,
     google_preflight: GoogleDualDICEPreflight,
+    dice_rl_preflight: GoogleDICERLPreflight | None = None,
 ) -> EstimatorResult:
     timeout = config.estimator_timeout_sec
     if timeout is None:
-        return run_estimator(estimator, dataset, config, google_preflight)
+        return run_estimator(estimator, dataset, config, google_preflight, dice_rl_preflight)
     timeout = float(timeout)
     # Spawn is slower than fork, but avoids macOS ObjC/MPS crashes when a
     # timed estimator imports or trains with PyTorch/TensorFlow in the child.
@@ -698,13 +751,37 @@ def _run_estimator_maybe_timeout(
     result_queue = ctx.Queue(maxsize=1)
     process = ctx.Process(
         target=_estimator_worker,
-        args=(result_queue, estimator, dataset, config, google_preflight),
+        args=(result_queue, estimator, dataset, config, google_preflight, dice_rl_preflight),
     )
     process.daemon = True
     start = time.perf_counter()
     try:
         process.start()
-        process.join(timeout)
+        status_payload = None
+        deadline = start + timeout
+        while True:
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0.0:
+                break
+            try:
+                status_payload = result_queue.get(timeout=min(0.25, remaining))
+                break
+            except queue.Empty:
+                if not process.is_alive():
+                    break
+        if status_payload is not None:
+            process.join(5.0)
+            if process.is_alive():
+                process.terminate()
+                process.join(5.0)
+                if process.is_alive():
+                    process.kill()
+                    process.join(5.0)
+            status, payload = status_payload
+            if status == "ok":
+                return payload
+            raise RuntimeError(str(payload))
+        process.join(0.0)
         runtime = float(time.perf_counter() - start)
         if process.is_alive():
             process.terminate()
@@ -748,9 +825,10 @@ def _estimator_worker(
     dataset,
     config: OccupancyRatioBenchmarkConfig,
     google_preflight: GoogleDualDICEPreflight,
+    dice_rl_preflight: GoogleDICERLPreflight | None = None,
 ) -> None:
     try:
-        result_queue.put(("ok", run_estimator(estimator, dataset, config, google_preflight)))
+        result_queue.put(("ok", run_estimator(estimator, dataset, config, google_preflight, dice_rl_preflight)))
     except Exception:
         result_queue.put(("error", traceback.format_exc()))
 
@@ -904,6 +982,9 @@ def _manifest(config: OccupancyRatioBenchmarkConfig, *, run_metadata: dict[str, 
         "openml",
         "sklearn",
         "obp",
+        "scope-rl",
+        "rtbgym",
+        "recgym",
         "minari",
     ):
         try:

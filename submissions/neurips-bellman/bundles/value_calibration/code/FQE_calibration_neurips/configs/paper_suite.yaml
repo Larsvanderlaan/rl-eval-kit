@@ -1,0 +1,354 @@
+validation:
+  name: well_specified_debug
+  config: configs/well_specified_debug.yaml
+  gate:
+    bias_threshold: 2.0
+    mse_threshold: 8.0
+    degradation_factor: 4.0
+    degradation_abs_tolerance: 0.25
+    sample_trend_abs_tolerance: 0.05
+  mode_overrides:
+    debug:
+      replications: 1
+      sample_sizes: [120, 240]
+      test_transitions: 120
+      diagnostic_test_transitions: 160
+      true_q_rollouts_per_state: 1
+      calibration_error_bins: 8
+      calibration_error_min_bin_size: 5
+      calibration_error_folds: 3
+      initial_eval_states: 120
+      oracle_rollouts: 120
+      cross_folds: 3
+      baseline_learners: [linear_fqe]
+      calibrators: [linear, isotonic]
+      learner_params:
+        linear_fqe: {feature_type: linear, ridge: 0.0001, n_iters: 12}
+        neural_fqe: {hidden_dims: [12], n_iters: 2, epochs_per_iter: 1, batch_size: 32, lr: 0.002, device: cpu}
+    paper:
+      sample_sizes: [500, 1200]
+      reward_noise_settings: [0.0]
+      test_transitions: 800
+      diagnostic_test_transitions: 6000
+      true_q_rollouts_per_state: 2
+      calibration_error_bins: 50
+      calibration_error_min_bin_size: 50
+      calibration_error_folds: 5
+      initial_eval_states: 800
+      oracle_rollouts: 800
+      cross_folds: 2
+      calibration_protocols: [cross]
+      split_fractions: []
+      baseline_learners: [linear_fqe]
+      calibrators: [linear, isotonic]
+      learner_params:
+        linear_fqe: {feature_type: linear, ridge: 0.0001, n_iters: 80}
+        neural_fqe: {hidden_dims: [32, 32], n_iters: 12, epochs_per_iter: 4, batch_size: 128, lr: 0.001, weight_decay: 0.0001, target_tau: 0.3, device: cpu}
+
+suites:
+  - name: main_nonlinear
+    config: configs/main_nonlinear.yaml
+    mode_overrides:
+      debug: &debug_small
+        replications: 1
+        sample_sizes: [120]
+        state_dimensions: [4]
+        coverage_settings: [moderate]
+        reward_noise_settings: [0.1]
+        test_transitions: 100
+        diagnostic_test_transitions: 160
+        true_q_rollouts_per_state: 1
+        calibration_error_bins: 8
+        calibration_error_min_bin_size: 5
+        calibration_error_folds: 3
+        initial_eval_states: 100
+        oracle_rollouts: 80
+        cross_folds: 3
+        baseline_learners: [linear_fqe, neural_fqe]
+        calibration_protocols: [cross, split, no_split]
+        calibrators: [linear, isotonic]
+        split_fractions: [0.8]
+        split_comparators: [offset_correction]
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.0001, n_iters: 12}
+          neural_fqe: {hidden_dims: [12], n_iters: 2, epochs_per_iter: 1, batch_size: 32, lr: 0.002, device: cpu}
+      paper: &paper_quick
+        sample_sizes: [300]
+        state_dimensions: [6]
+        coverage_settings: [moderate]
+        reward_noise_settings: [0.2]
+        test_transitions: 400
+        diagnostic_test_transitions: 5000
+        true_q_rollouts_per_state: 2
+        calibration_error_bins: 50
+        calibration_error_min_bin_size: 50
+        calibration_error_folds: 5
+        initial_eval_states: 400
+        oracle_rollouts: 400
+        cross_folds: 2
+        baseline_learners: [random_feature_fqe]
+        calibration_protocols: [cross]
+        calibrators: [linear, isotonic]
+        split_fractions: []
+        split_comparators: []
+        calibrator_params: {n_bins: 8, bin_strategy: quantile, min_bin_size: 15}
+        learner_params:
+          random_feature_fqe: {n_components: 48, bandwidth: 0.7, ridge: 0.001, n_iters: 8}
+  - name: undertraining_sweep
+    config: configs/undertraining_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        gamma: 0.97
+        horizon: 16
+        baseline_learners: [random_feature_fqe_iter1, random_feature_fqe_well_tuned, neural_fqe_iter1, neural_fqe_well_tuned]
+        calibration_protocols: [cross, no_split]
+        calibrators: [linear, isotonic]
+        cross_folds: 2
+        split_fractions: []
+        learner_params:
+          random_feature_fqe: {n_components: 32, bandwidth: 0.7, ridge: 0.001, n_iters: 8}
+          neural_fqe: {hidden_dims: [12], n_iters: 4, epochs_per_iter: 1, batch_size: 32, lr: 0.002, device: cpu}
+      paper:
+        <<: *paper_quick
+        gamma: 0.985
+        horizon: 120
+        sample_sizes: [1200]
+        state_dimensions: [4]
+        reward_noise_settings: [0.05]
+        transition_noise: 0.04
+        misspecification: finite_iteration_scale
+        reference_shift_scale: 0.15
+        policy_shift: {good: 0.10, moderate: 0.45, severe: 1.15, extrapolation: 1.7}
+        baseline_learners: [random_feature_fqe_iter1, random_feature_fqe_iter2, random_feature_fqe_iter4, random_feature_fqe_well_tuned, neural_fqe_iter1, neural_fqe_iter2, neural_fqe_well_tuned]
+        calibration_protocols: [cross]
+        calibrators: [linear, isotonic]
+        value_calibration_iterations: 8
+        split_fractions: []
+        calibrator_params: {n_bins: 10, bin_strategy: quantile, min_bin_size: 15, value_calibration_iterations: 8}
+        learner_params:
+          random_feature_fqe: {feature_type: linear, ridge: 0.0005, n_iters: 50}
+          neural_fqe: {hidden_dims: [48, 48], n_iters: 24, epochs_per_iter: 5, batch_size: 128, lr: 0.001, weight_decay: 0.0001, target_tau: 0.3, device: cpu}
+  - name: bellman_incomplete_sweep
+    config: configs/bellman_incomplete_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        misspecification: bellman_incomplete
+        baseline_learners: [linear_fqe_restricted, random_feature_fqe_low_capacity, random_feature_fqe_well_tuned]
+        calibration_protocols: [cross, no_split]
+        calibrators: [linear, isotonic]
+        cross_folds: 2
+        split_fractions: []
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 10}
+          random_feature_fqe: {n_components: 32, bandwidth: 0.7, ridge: 0.001, n_iters: 10}
+      paper:
+        <<: *paper_quick
+        misspecification: bellman_incomplete
+        baseline_learners: [linear_fqe_restricted, random_feature_fqe_low_capacity, random_feature_fqe_well_tuned, neural_fqe_well_tuned]
+        calibration_protocols: [cross]
+        calibrators: [linear, isotonic, isotonic_histogram]
+        split_fractions: []
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 25}
+          random_feature_fqe: {n_components: 80, bandwidth: 0.8, ridge: 0.02, n_iters: 30}
+          neural_fqe: {hidden_dims: [24], n_iters: 5, epochs_per_iter: 2, batch_size: 64, lr: 0.0015, weight_decay: 0.0001, target_tau: 0.2, device: cpu}
+  - name: model_misspecification_sweep
+    config: configs/model_misspecification_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        misspecification_settings: [none, nonmonotone]
+        baseline_learners: [linear_fqe_misspecified, random_feature_fqe_restricted, random_feature_fqe_well_tuned]
+        calibration_protocols: [cross]
+        calibrators: [linear, isotonic]
+        split_fractions: []
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 10}
+          random_feature_fqe: {n_components: 32, bandwidth: 0.9, ridge: 0.001, n_iters: 10}
+      paper:
+        <<: *paper_quick
+        misspecification_settings: [none, affine, monotone_distortion, nonmonotone]
+        baseline_learners: [linear_fqe_misspecified, random_feature_fqe_restricted, random_feature_fqe_well_tuned, neural_fqe_small_overregularized]
+        calibration_protocols: [cross]
+        calibrators: [linear, isotonic, isotonic_histogram]
+        split_fractions: []
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 25}
+          random_feature_fqe: {n_components: 80, bandwidth: 0.9, ridge: 0.02, n_iters: 30}
+          neural_fqe: {hidden_dims: [12], n_iters: 5, epochs_per_iter: 2, batch_size: 64, lr: 0.0015, weight_decay: 0.02, target_tau: 0.15, device: cpu}
+  - name: calibration_quality_sweep
+    config: configs/calibration_quality_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        baseline_learners:
+          - neural_fqe_well_tuned
+          - neural_fqe_one_step_reward_fit
+          - neural_fqe_few_step_bootstrap
+          - random_feature_fqe_well_tuned
+          - random_feature_fqe_under_iterated
+          - random_feature_fqe_affine_distorted
+          - saddle_point_stabilized
+          - saddle_point_iterative_stable
+          - saddle_point_iterative_ill_conditioned
+        calibration_protocols: [cross, split, no_split]
+        calibrators: [linear, isotonic]
+        cross_folds: 2
+        calibrator_params: {n_bins: 4, bin_strategy: quantile, min_bin_size: 5, value_calibration_iterations: 2}
+        learner_params:
+          neural_fqe: {hidden_dims: [12], n_iters: 4, epochs_per_iter: 2, batch_size: 32, lr: 0.002, device: cpu}
+          random_feature_fqe: {n_components: 32, bandwidth: 0.7, ridge: 0.001, n_iters: 8}
+          saddle_point_bellman: {n_components: 32, bandwidth: 0.7, ridge: 0.01, critic_ridge: 0.01}
+          saddle_point_iterative: {n_components: 20, bandwidth: 0.7, q_ridge: 0.001, critic_ridge: 0.01, max_iters: 12, step_size: 0.005, averaging: true, gradient_clip: 20.0}
+        learner_variants:
+          neural_fqe_well_tuned:
+            params: {n_iters: 4, epochs_per_iter: 2}
+          neural_fqe_one_step_reward_fit:
+            params: {hidden_dims: [8], n_iters: 1, epochs_per_iter: 1, bootstrap_on_first_iter: false}
+          neural_fqe_few_step_bootstrap:
+            params: {hidden_dims: [12], n_iters: 2, epochs_per_iter: 1, target_tau: 0.05}
+          random_feature_fqe_well_tuned:
+            params: {n_iters: 8}
+          random_feature_fqe_under_iterated:
+            params: {n_iters: 1}
+          random_feature_fqe_affine_distorted:
+            params: {prediction_distortion: {kind: affine, intercept: 0.6, slope: 0.7}}
+          saddle_point_stabilized:
+            params: {ridge: 0.01, critic_ridge: 0.01}
+          saddle_point_iterative_stable:
+            params: {n_components: 20, max_iters: 12, step_size: 0.005, gradient_clip: 20.0}
+          saddle_point_iterative_ill_conditioned:
+            params: {n_components: 24, q_ridge: 0.00000001, critic_ridge: 0.00000001, max_iters: 16, step_size: 20.0, averaging: false, gradient_clip: 1000000000.0, divergence_threshold: 10000.0}
+      paper:
+        <<: *paper_quick
+        calibration_protocols: [cross, split, no_split]
+        split_fractions: [0.8]
+        split_comparators: []
+        sample_sizes: [300]
+        test_transitions: 500
+        initial_eval_states: 500
+        oracle_rollouts: 500
+        cross_folds: 2
+        baseline_learners:
+          - random_feature_fqe_under_iterated
+        misspecification_settings: [bellman_incomplete]
+        calibration_protocols: [cross]
+        calibrators: [linear]
+        split_fractions: []
+        split_comparators: []
+        calibrator_params: {n_bins: 8, bin_strategy: quantile, min_bin_size: 15, value_calibration_iterations: 3}
+        learner_params:
+          neural_fqe: {hidden_dims: [24], n_iters: 4, epochs_per_iter: 1, batch_size: 64, lr: 0.0015, weight_decay: 0.0001, target_tau: 0.2, device: cpu}
+          random_feature_fqe: {n_components: 48, bandwidth: 0.7, ridge: 0.001, n_iters: 8}
+          saddle_point_bellman: {n_components: 64, bandwidth: 0.7, ridge: 0.01, critic_ridge: 0.01}
+        learner_variants:
+          random_feature_fqe_under_iterated:
+            params: {n_iters: 1}
+  - name: mechanism_distortion_sweep
+    config: configs/mechanism_distortion_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        baseline_learners:
+          - random_feature_fqe_affine_distorted
+          - random_feature_fqe_monotone_saturation_distorted
+        calibration_protocols: [cross]
+        calibrators: [linear, histogram, isotonic, isotonic_histogram]
+        split_fractions: []
+        split_comparators: []
+        cross_folds: 2
+        calibrator_params: {n_bins: 4, bin_strategy: quantile, min_bin_size: 5}
+        learner_params:
+          random_feature_fqe: {n_components: 32, bandwidth: 0.7, ridge: 0.001, n_iters: 8}
+      paper:
+        test_transitions: 500
+        initial_eval_states: 500
+        oracle_rollouts: 500
+        cross_folds: 5
+  - name: coverage_sweep
+    config: configs/coverage_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        coverage_settings: [good, severe]
+      paper:
+        <<: *paper_quick
+        calibration_protocols: [cross, split, no_split]
+        split_fractions: [0.8]
+        split_comparators: []
+        coverage_settings: [good, moderate, severe]
+        calibration_protocols: [cross]
+        split_fractions: []
+        split_comparators: []
+  - name: sample_size_sweep
+    config: configs/sample_size_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        sample_sizes: [80, 140]
+      paper:
+        <<: *paper_quick
+        sample_sizes: [250, 500, 1000]
+        calibration_protocols: [cross]
+        split_fractions: []
+        split_comparators: []
+  - name: misspecification_sweep
+    config: configs/misspecification_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        misspecification_settings: [affine, monotone_distortion]
+      paper:
+        <<: *paper_quick
+        misspecification_settings: [affine, monotone_distortion, nonmonotone, bellman_incomplete]
+        calibration_protocols: [cross]
+        calibrators: [linear, isotonic, isotonic_histogram]
+        calibration_targets: [value_bellman]
+        split_fractions: []
+        split_comparators: []
+  - name: split_fraction_sweep
+    config: configs/split_fraction_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        split_fractions: [0.5, 0.8]
+        calibration_protocols: [split]
+        split_comparators: [offset_correction, residual_correction]
+      paper:
+        <<: *paper_quick
+        calibration_protocols: [split]
+        calibrators: [linear, isotonic]
+        split_fractions: [0.5, 0.7, 0.9]
+        split_comparators: [offset_correction, residual_correction]
+  - name: baseline_family_sweep
+    config: configs/baseline_family_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+        baseline_learners: [linear_fqe, neural_fqe]
+      paper:
+        <<: *paper_quick
+        baseline_learners: [linear_fqe, random_feature_fqe, neural_fqe, regularized_bellman, saddle_point_bellman, ensemble_fqe]
+        calibration_protocols: [cross]
+        calibrators: [linear, isotonic]
+        split_fractions: []
+        split_comparators: []
+        learner_params:
+          linear_fqe: {feature_type: linear, ridge: 0.001, n_iters: 20}
+          random_feature_fqe: {n_components: 64, bandwidth: 0.7, ridge: 0.001, n_iters: 12}
+          neural_fqe: {hidden_dims: [32], n_iters: 5, epochs_per_iter: 2, batch_size: 64, lr: 0.0015, weight_decay: 0.0001, target_tau: 0.2, device: cpu}
+          regularized_bellman: {n_components: 64, bandwidth: 0.7, ridge: 0.01}
+          saddle_point_bellman: {n_components: 64, bandwidth: 0.7, ridge: 0.01, critic_ridge: 0.01}
+          ensemble_fqe: {n_members: 3, n_components: 48, bandwidth: 0.7, ridge: 0.001, n_iters: 10}
+  - name: calibration_protocol_sweep
+    config: configs/calibration_protocol_sweep.yaml
+    mode_overrides:
+      debug:
+        <<: *debug_small
+      paper:
+        <<: *paper_quick
+        calibration_protocols: [cross, split, no_split]
+        split_fractions: [0.8]
+        split_comparators: []

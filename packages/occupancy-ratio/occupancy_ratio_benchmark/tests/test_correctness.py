@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 
@@ -12,11 +13,19 @@ from occupancy_ratio_benchmark.conservatism_audit import (
     render_conservatism_report,
     write_conservatism_audit,
 )
-from occupancy_ratio_benchmark.diagnostics import summarize_weights
+from occupancy_ratio_benchmark.diagnostics import summarize_rows, summarize_weights
 from occupancy_ratio_benchmark.defaults_report import generate_defaults_report
 from occupancy_ratio_benchmark.neural_default_ablation import (
     CANDIDATES,
+    DIAGNOSTIC_ONLY_NEURAL_ESTIMATORS,
+    ELIGIBLE_NEURAL_ESTIMATORS,
+    RECOMMENDED_64X64_SILU_STAGE_BUDGET,
+    _make_config,
     _tag_rows,
+    _write_config,
+    dualdice5000_matrix_specs,
+    evaluate_dualdice5000_default,
+    paired_dualdice5000_rows,
     render_ablation_report,
     summarize_ablation_rows,
 )
@@ -71,13 +80,30 @@ from occupancy_ratio.tuning import (
     CandidateResult,
     OccupancySearchSpace,
     OccupancyTuningConfig,
+    _bellman_gmm_selection_metrics,
     _FoldFeatureBuilder,
-    _should_fallback_to_baseline,
+    _heldout_moment_balance_metrics,
+    _score_candidates,
     tune_occupancy_ratio_auto,
 )
-from occupancy_ratio_benchmark.external_baselines import preflight_google_dualdice
+from occupancy_ratio_benchmark.external_baselines import (
+    DICE_RL_BEST_REGULARIZED_FLAGS,
+    DICE_RL_DUALDICE_RECOVERY_FLAGS,
+    GoogleDICERLPreflight,
+    preflight_google_dice_rl,
+    preflight_google_dualdice,
+)
+from occupancy_ratio_benchmark.application_simulators import (
+    make_application_simulator_dataset_from_env_factory,
+)
 from occupancy_ratio_benchmark.discrete import exact_ratio_table, make_chain_mdp, make_discrete_dataset
-from occupancy_ratio_benchmark.estimators import estimate_boosted_tree, estimate_neural_network, estimate_oracle
+from occupancy_ratio_benchmark.estimators import (
+    estimate_boosted_tree,
+    estimate_dice_rl_best_regularized,
+    estimate_dice_rl_dualdice_recovered,
+    estimate_neural_network,
+    estimate_oracle,
+)
 from occupancy_ratio_benchmark.gym_control import make_gym_control_dataset
 from occupancy_ratio_benchmark.io import write_csv
 from occupancy_ratio_benchmark import runner as runner_module
@@ -121,6 +147,45 @@ class _FakeRatioModel:
         del states, actions, clip
         self.state_ratio_calls += 1
         raise AssertionError("comparison must not use state-ratio predictions")
+
+
+class _FakeDiscreteActionSpace:
+    def __init__(self, n: int) -> None:
+        self.n = int(n)
+
+
+class _FakeApplicationSpec:
+    max_episode_steps = 5
+
+
+class _FakeApplicationEnv:
+    action_space = _FakeDiscreteActionSpace(3)
+    spec = _FakeApplicationSpec()
+
+    def __init__(self) -> None:
+        self._rng = np.random.default_rng(0)
+        self._t = 0
+        self._state = 0
+
+    def reset(self, *, seed: int | None = None):
+        self._rng = np.random.default_rng(0 if seed is None else int(seed))
+        self._t = 0
+        self._state = int(self._rng.integers(0, 7))
+        return self._obs(), {}
+
+    def step(self, action: int):
+        action_i = int(action)
+        self._t += 1
+        self._state = int((self._state + action_i + 1) % 7)
+        reward = float(0.2 * self._state - 0.1 * action_i)
+        terminated = self._t >= self.spec.max_episode_steps
+        return self._obs(), reward, terminated, False, {}
+
+    def close(self) -> None:
+        return None
+
+    def _obs(self) -> np.ndarray:
+        return np.asarray([self._state / 6.0, self._t / self.spec.max_episode_steps], dtype=np.float64)
 
 
 def test_boosted_public_prediction_matches_training_state_with_damping() -> None:
@@ -1214,6 +1279,23 @@ def test_invalid_occupancy_config_raises() -> None:
     assert OccupancyRatioBenchmarkConfig(automl_tuning="fast").automl_tuning == "fast"
     with pytest.raises(ValueError, match="automl_tuning"):
         OccupancyRatioBenchmarkConfig(automl_tuning="wide")
+    gmm_config = OccupancyRatioBenchmarkConfig(
+        cv_score_method="bellman_gmm",
+        cv_gmm_objective="ope",
+        cv_gmm_ope_broad_weight=0.0,
+        cv_gmm_refit_fraction=0.5,
+    )
+    assert gmm_config.cv_score_method == "bellman_gmm"
+    assert gmm_config.cv_gmm_ope_broad_weight == 0.0
+    assert gmm_config.cv_gmm_refit_fraction == 0.5
+    with pytest.raises(ValueError, match="cv_score_method"):
+        OccupancyRatioBenchmarkConfig(cv_score_method="rankish")
+    with pytest.raises(ValueError, match="cv_gmm_objective"):
+        OccupancyRatioBenchmarkConfig(cv_gmm_objective="reward_only")
+    with pytest.raises(ValueError, match="cv_gmm_ope_broad_weight"):
+        OccupancyRatioBenchmarkConfig(cv_gmm_ope_broad_weight=1.5)
+    with pytest.raises(ValueError, match="cv_gmm_refit_fraction"):
+        OccupancyRatioBenchmarkConfig(cv_gmm_refit_fraction=0.0)
     factored_benchmark = OccupancyRatioBenchmarkConfig(
         boosted_stabilization_presets=("stable_factored",),
         neural_stabilization_presets=("stable_factored",),
@@ -1326,6 +1408,247 @@ def test_discrete_policy_shift_sweeps_are_expanded_and_recorded() -> None:
     assert dataset.metadata["policy_shift"] == 1.5
     assert dataset.true_ratio is not None
     assert float(np.std(dataset.true_ratio)) > 0.0
+
+
+def test_random_tabular_mdp_has_exact_ratio_truth() -> None:
+    dataset = make_discrete_dataset(
+        setting="random_tabular_mdp",
+        gamma=0.9,
+        sample_size=80,
+        seed=123,
+        policy_shift=1.0,
+        n_states=7,
+        n_actions=3,
+    )
+    assert dataset.setting == "random_tabular_mdp"
+    assert dataset.metadata["n_states"] == 7
+    assert dataset.metadata["n_actions"] == 3
+    assert dataset.metadata["truth_source"] == "tabular_linear_solve"
+    assert dataset.true_ratio is not None
+    assert dataset.true_ratio.shape == (80,)
+    assert np.all(np.isfinite(dataset.true_ratio))
+
+
+def test_application_simulator_helper_is_ope_stress_test_without_ratio_truth() -> None:
+    dataset = make_application_simulator_dataset_from_env_factory(
+        setting="rtbgym_discrete",
+        env_id="FakeApplication-v0",
+        env_factory=_FakeApplicationEnv,
+        gamma=0.9,
+        sample_size=16,
+        seed=11,
+        target_value_rollouts=4,
+    )
+    assert dataset.setting == "rtbgym_discrete"
+    assert dataset.n == 16
+    assert dataset.action_dim == 3
+    assert dataset.true_ratio is None
+    assert dataset.true_action_ratio is not None
+    assert np.all(np.isfinite(dataset.true_action_ratio))
+    assert dataset.metadata["truth_source"] == "target_policy_mc_rollout"
+    assert dataset.metadata["has_ratio_truth"] == 0.0
+    assert dataset.metadata["target_value_rollouts"] == 4
+    assert np.isfinite(dataset.metadata["target_policy_value"])
+
+
+def test_iclr_configs_load_new_aliases() -> None:
+    config_dir = Path(__file__).resolve().parents[1] / "configs"
+    core = load_config_file(config_dir / "iclr_core.json")
+    fairness = load_config_file(config_dir / "iclr_dualdice_fairness.json")
+    gym = load_config_file(config_dir / "iclr_gym.json")
+    application = load_config_file(config_dir / "iclr_application.json")
+    assert "random_tabular_mdp" in core.settings
+    assert "rtbgym_discrete" in application.settings
+    assert "recgym_recommender" in application.settings
+    assert "neural_fori_cv_size" in fairness.estimators
+    assert "dualdice_gmm_tuned" in fairness.estimators
+    assert "dice_rl_dualdice_gmm_tuned" in application.estimators
+    assert "google_dualdice_published_default" in gym.estimators
+    assert "dice_rl_dualdice_recovered" in fairness.estimators
+    assert "dice_rl_dualdice_gmm_tuned" in fairness.estimators
+    assert "dice_rl_best_regularized" in gym.estimators
+    assert fairness.google_batch_sizes == (128, 256)
+    assert fairness.dice_rl_repo_path == Path("/tmp/dice_rl")
+    assert fairness.dice_rl_batch_sizes == (128, 256)
+    assert application.application_target_value_rollouts == 64
+
+
+def test_winner_table_excludes_oracle_tuned_diagnostics() -> None:
+    rows = [
+        {
+            "profile": "medium",
+            "stage": "medium",
+            "setting": "linear_gaussian",
+            "estimator": "neural_fori_oracle",
+            "status": "ok",
+            "gamma": 0.9,
+            "sample_size": 100,
+            "policy_shift": 1.0,
+            "ratio_normalized_l1": 0.01,
+            "runtime_sec": 5.0,
+        },
+        {
+            "profile": "medium",
+            "stage": "medium",
+            "setting": "linear_gaussian",
+            "estimator": "dice_rl_best_regularized",
+            "status": "ok",
+            "gamma": 0.9,
+            "sample_size": 100,
+            "policy_shift": 1.0,
+            "ratio_normalized_l1": 0.015,
+            "runtime_sec": 4.0,
+        },
+        {
+            "profile": "medium",
+            "stage": "medium",
+            "setting": "linear_gaussian",
+            "estimator": "neural_fori_default_stable",
+            "status": "ok",
+            "gamma": 0.9,
+            "sample_size": 100,
+            "policy_shift": 1.0,
+            "ratio_normalized_l1": 0.2,
+            "runtime_sec": 2.0,
+        },
+    ]
+    winners = make_winner_table(rows)
+    assert winners[0]["winning_estimator"] == "neural_fori_default_stable"
+
+
+def test_google_dualdice_aliases_skip_cleanly_without_preflight(tmp_path: Path) -> None:
+    config = OccupancyRatioBenchmarkConfig(
+        profile="smoke",
+        output_root=tmp_path,
+        settings=("discrete_chain",),
+        estimators=("google_dualdice_default", "dualdice_gmm_tuned", "dualdice_oracle"),
+        seeds=(0,),
+        sample_sizes=(40,),
+        gammas=(0.9,),
+        include_google_dual_dice=True,
+        external_repo_path=tmp_path / "missing_google_research",
+        google_update_grid=(1,),
+        google_batch_sizes=(16,),
+        google_learning_rates=(1e-3,),
+        google_weight_decays=(1e-5,),
+        google_hidden_dims=(16,),
+        estimator_timeout_sec=None,
+        write_plots=False,
+    )
+    result = run_benchmark(config)
+    statuses = {row["estimator"]: row["status"] for row in result.rows}
+    assert statuses["google_dualdice_default"] == "skipped"
+    assert statuses["dualdice_gmm_tuned"] == "skipped"
+    assert statuses["dualdice_oracle"] == "skipped"
+
+
+def test_google_dice_rl_preflight_missing_source(tmp_path: Path) -> None:
+    preflight = preflight_google_dice_rl(tmp_path / "missing_dice_rl")
+    assert not preflight.available
+    assert "Missing DICE-RL source" in preflight.reason
+
+
+def test_google_dice_rl_preflight_import_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    package = tmp_path / "dice_rl"
+    (package / "estimators").mkdir(parents=True)
+    (package / "networks").mkdir()
+    (package / "data").mkdir()
+    for directory in (package, package / "estimators", package / "networks", package / "data"):
+        (directory / "__init__.py").write_text("", encoding="utf-8")
+    (package / "estimators" / "neural_dice.py").write_text("raise RuntimeError('boom')\n", encoding="utf-8")
+    (package / "networks" / "value_network.py").write_text("class ValueNetwork: pass\n", encoding="utf-8")
+    (package / "data" / "dataset.py").write_text("", encoding="utf-8")
+    for name in tuple(sys.modules):
+        if name == "dice_rl" or name.startswith("dice_rl."):
+            monkeypatch.delitem(sys.modules, name, raising=False)
+    preflight = preflight_google_dice_rl(package)
+    assert not preflight.available
+    assert "import failed" in preflight.reason
+
+
+def test_google_dice_rl_preflight_success_with_fake_package(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    package = tmp_path / "dice_rl"
+    (package / "estimators").mkdir(parents=True)
+    (package / "networks").mkdir()
+    (package / "data").mkdir()
+    for directory in (package, package / "estimators", package / "networks", package / "data"):
+        (directory / "__init__.py").write_text("", encoding="utf-8")
+    (package / "estimators" / "neural_dice.py").write_text("class NeuralDice: pass\n", encoding="utf-8")
+    (package / "networks" / "value_network.py").write_text("class ValueNetwork: pass\n", encoding="utf-8")
+    (package / "data" / "dataset.py").write_text("", encoding="utf-8")
+    for name in tuple(sys.modules):
+        if name == "dice_rl" or name.startswith("dice_rl."):
+            monkeypatch.delitem(sys.modules, name, raising=False)
+    preflight = preflight_google_dice_rl(package)
+    assert preflight.available
+
+
+def test_dice_rl_aliases_skip_cleanly_without_preflight(tmp_path: Path) -> None:
+    config = OccupancyRatioBenchmarkConfig(
+        profile="smoke",
+        output_root=tmp_path,
+        settings=("discrete_chain",),
+        estimators=("dice_rl_dualdice_recovered", "dice_rl_dualdice_gmm_tuned", "dice_rl_dualdice_oracle", "dice_rl_best_regularized"),
+        seeds=(0,),
+        sample_sizes=(40,),
+        gammas=(0.9,),
+        include_dice_rl=True,
+        dice_rl_repo_path=tmp_path / "missing_dice_rl",
+        dice_rl_update_grid=(1,),
+        dice_rl_batch_sizes=(16,),
+        dice_rl_learning_rates=(1e-3,),
+        dice_rl_hidden_dim_grid=(16,),
+        estimator_timeout_sec=None,
+        write_plots=False,
+    )
+    result = run_benchmark(config)
+    statuses = {row["estimator"]: row["status"] for row in result.rows}
+    assert statuses["dice_rl_dualdice_recovered"] == "skipped"
+    assert statuses["dice_rl_dualdice_gmm_tuned"] == "skipped"
+    assert statuses["dice_rl_dualdice_oracle"] == "skipped"
+    assert statuses["dice_rl_best_regularized"] == "skipped"
+
+
+def test_dice_rl_aliases_pass_exact_readme_flags(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    dataset = make_discrete_dataset(setting="discrete_chain", gamma=0.9, sample_size=30, seed=3)
+    seen: list[dict[str, float | bool]] = []
+
+    def fake_estimate_google_dice_rl_neural(_dataset, **kwargs):
+        seen.append(dict(kwargs["flags"]))
+        weights = np.ones(dataset.n, dtype=np.float64)
+        return {
+            "estimator": kwargs["estimator_name"],
+            "status": "ok",
+            "weights": weights,
+            "raw_weights": weights,
+            "runtime_sec": 0.01,
+            "diagnostics": {
+                "dice_rl_num_steps": kwargs["num_steps"],
+                "dice_rl_batch_size": kwargs["batch_size"],
+                "dice_rl_learning_rate": kwargs["learning_rate"],
+                "dice_rl_hidden_dims": "x".join(str(width) for width in kwargs["hidden_dims"]),
+            },
+            "skip_reason": "",
+        }
+
+    monkeypatch.setattr(
+        "occupancy_ratio_benchmark.estimators.estimate_google_dice_rl_neural",
+        fake_estimate_google_dice_rl_neural,
+    )
+    config = OccupancyRatioBenchmarkConfig(
+        output_root=tmp_path,
+        dice_rl_num_steps=7,
+        dice_rl_batch_size=11,
+        dice_rl_learning_rate=3e-4,
+        dice_rl_hidden_dims=(16, 16),
+    )
+    preflight = GoogleDICERLPreflight(True, "", tmp_path / "dice_rl")
+    recovered = estimate_dice_rl_dualdice_recovered(dataset, config, preflight)
+    regularized = estimate_dice_rl_best_regularized(dataset, config, preflight)
+    assert recovered.status == "ok"
+    assert regularized.status == "ok"
+    assert seen[0] == DICE_RL_DUALDICE_RECOVERY_FLAGS
+    assert seen[1] == DICE_RL_BEST_REGULARIZED_FLAGS
 
 
 def test_conservatism_audit_flags_uniform_collapse_and_google_delta(tmp_path) -> None:
@@ -1710,6 +2033,40 @@ def test_weight_diagnostics_separate_postprocessing_from_clipping() -> None:
     clipped = summarize_weights(np.array([0.0, 1.0, 2.0]), raw_weights=np.array([-1.0, 1.0, 2.0]))
     assert clipped["clipping_fraction"] == pytest.approx(1.0 / 3.0)
     assert clipped["negative_raw_fraction"] == pytest.approx(1.0 / 3.0)
+
+
+def test_summarize_rows_skips_blank_optional_metrics() -> None:
+    rows = [
+        {
+            "profile": "smoke",
+            "stage": "smoke",
+            "setting": "gym_pendulum",
+            "policy_shift": "",
+            "estimator": "neural_network_auto",
+            "gamma": 0.9,
+            "sample_size": 64,
+            "status": "ok",
+            "ope_value_abs_error": 1.0,
+            "log_ratio_rmse": "",
+        },
+        {
+            "profile": "smoke",
+            "stage": "smoke",
+            "setting": "gym_pendulum",
+            "policy_shift": "",
+            "estimator": "neural_network_auto",
+            "gamma": 0.9,
+            "sample_size": 64,
+            "status": "ok",
+            "ope_value_abs_error": 3.0,
+            "log_ratio_rmse": 0.25,
+        },
+    ]
+
+    summary = summarize_rows(rows)
+
+    assert summary[0]["ope_value_abs_error_mean"] == pytest.approx(2.0)
+    assert summary[0]["log_ratio_rmse_mean"] == pytest.approx(0.25)
 
 
 def test_high_stakes_guardrail_uses_final_clipping_not_normalization() -> None:
@@ -2320,19 +2677,179 @@ def test_product_automl_grouped_folds_and_source_candidates() -> None:
                 },
             ),
         ),
-        config=OccupancyTuningConfig(families=("boosted",), cv_folds=2, max_candidates=1, promotion_candidates=1, seed=12),
+        config=OccupancyTuningConfig(
+            families=("boosted",),
+            cv_folds=2,
+            max_candidates=1,
+            promotion_candidates=1,
+            seed=12,
+            initial_ratio_mode_candidates=("joint", "factored"),
+            one_step_ratio_mode_candidates=("direct", "factored"),
+        ),
     )
     assert result.candidates[0].overrides["source_state_ratio"]
     assert {fold.fold for fold in result.folds} == {0, 1}
     assert result.model.diagnostics["source_state_ratio_enabled"]
+    assert result.first_stage["boosted"]["selected"]["initial_ratio_mode"] == "factored"
+    assert any(
+        row["task"] == "source_state_ratio"
+        for row in result.first_stage["boosted"]["candidate_rows"]
+    )
+    assert any(row["reason"] == "missing_initial_actions" for row in result.first_stage["boosted"]["skipped"])
+    assert any(row["reason"] == "missing_target_next_actions" for row in result.first_stage["boosted"]["skipped"])
+
+
+def test_product_automl_stagewise_joint_and_direct_first_stage_rows() -> None:
+    dataset = make_discrete_dataset(setting="discrete_chain", gamma=0.5, sample_size=36, seed=124)
+    tiny_lgbm = {"min_data_in_leaf": 1, "num_leaves": 7, "verbose": -1}
+    result = tune_occupancy_ratio_auto(
+        states=dataset.states,
+        actions=dataset.actions,
+        next_states=dataset.next_states,
+        target_actions=dataset.target_actions,
+        target_next_actions=dataset.next_target_actions,
+        gamma=float(dataset.gamma),
+        initial_states=dataset.initial_states,
+        initial_actions=dataset.initial_actions,
+        search_space=OccupancySearchSpace(
+            boosted_occupancy=OccupancyRegressionConfig(
+                num_iterations=1,
+                mcmc_samples=1,
+                batch_size=32,
+                show_progress=False,
+                lgb_params=tiny_lgbm,
+            ),
+            boosted_action_ratio=ActionRatioConfig(
+                num_boost_round=1,
+                early_stopping_rounds=0,
+                refit_on_all_data=False,
+                show_progress=False,
+                lgb_params=tiny_lgbm,
+            ),
+            boosted_source_state_ratio=SourceStateRatioConfig(
+                num_boost_round=1,
+                early_stopping_rounds=0,
+                refit_on_all_data=False,
+                show_progress=False,
+                lgb_params=tiny_lgbm,
+            ),
+            boosted_transition_ratio=TransitionRatioConfig(
+                num_boost_round=1,
+                permutation_samples=1,
+                early_stopping_rounds=0,
+                refit_on_all_data=False,
+                show_progress=False,
+                lgb_params=tiny_lgbm,
+            ),
+        ),
+        config=OccupancyTuningConfig(
+            families=("boosted",),
+            cv_folds=2,
+            max_candidates=1,
+            promotion_candidates=1,
+            seed=124,
+            refit=False,
+            initial_ratio_mode_candidates=("auto", "factored"),
+            one_step_ratio_mode_candidates=("auto", "factored"),
+        ),
+    )
+    first_stage = result.first_stage["boosted"]
+    source_modes = {row["mode"] for row in first_stage["candidate_rows"] if row["task"] == "source_state_ratio"}
+    one_step_modes = {row["mode"] for row in first_stage["candidate_rows"] if row["task"] == "one_step_ratio"}
+    assert "joint" in source_modes
+    assert "direct" in one_step_modes
+    assert first_stage["refit_diagnostics"]["initial_ratio_mode"] in {"joint", "factored"}
+    assert first_stage["refit_diagnostics"]["one_step_ratio_mode"] in {"direct", "factored"}
+    assert first_stage["refit_diagnostics"]["action_density_ratio_loss"] == "lsif"
+    assert first_stage["refit_diagnostics"]["transition_density_ratio_loss"] == "lsif"
+    assert first_stage["refit_diagnostics"]["action_ratio_updates"] >= 1.0
+    assert first_stage["refit_diagnostics"]["transition_ratio_updates"] >= 1.0
+    assert all("update_count_mean" in row for row in first_stage["candidate_rows"])
+    assert all("update_count" in row for row in first_stage["fold_rows"])
+    assert any(
+        row["task"] == "source_state_ratio" and row["mode"] == "joint" and float(row["update_count_mean"]) >= 1.0
+        for row in first_stage["candidate_rows"]
+    )
+    assert any(
+        row["task"] == "one_step_ratio" and row["mode"] == "direct" and float(row["update_count_mean"]) >= 1.0
+        for row in first_stage["candidate_rows"]
+    )
+
+
+def test_product_automl_stagewise_passes_prefit_nuisance_to_occupancy(monkeypatch) -> None:
+    import occupancy_ratio._tuning_impl as tuning_impl
+
+    dataset = make_discrete_dataset(setting="discrete_chain", gamma=0.5, sample_size=36, seed=123)
+    calls = []
+
+    class FakeModel:
+        history = [{"risk_new": 0.1}]
+        diagnostics = {"stop_iter": 1}
+
+        def predict_state_action_ratio(self, states, actions, *, clip=True):
+            return np.ones(np.asarray(states).shape[0], dtype=np.float64)
+
+    def fake_fit_family(**kwargs):
+        calls.append(kwargs)
+        assert kwargs["prefit_nuisance"] is not None
+        assert kwargs["prefit_nuisance"]["action_fit"] is not None
+        assert kwargs["prefit_nuisance"]["transition_fit"] is not None
+        return FakeModel()
+
+    monkeypatch.setattr(tuning_impl, "_fit_family", fake_fit_family)
+    space = OccupancySearchSpace(
+        boosted_occupancy=OccupancyRegressionConfig(
+            num_iterations=1,
+            mcmc_samples=1,
+            batch_size=32,
+            show_progress=False,
+            lgb_params={"min_data_in_leaf": 1, "num_leaves": 7, "verbose": -1},
+        ),
+        boosted_action_ratio=ActionRatioConfig(
+            num_boost_round=1,
+            early_stopping_rounds=0,
+            refit_on_all_data=False,
+            show_progress=False,
+            lgb_params={"min_data_in_leaf": 1, "num_leaves": 7, "verbose": -1},
+        ),
+        boosted_transition_ratio=TransitionRatioConfig(
+            num_boost_round=1,
+            permutation_samples=1,
+            early_stopping_rounds=0,
+            refit_on_all_data=False,
+            show_progress=False,
+            lgb_params={"min_data_in_leaf": 1, "num_leaves": 7, "verbose": -1},
+        ),
+    )
+    result = tune_occupancy_ratio_auto(
+        states=dataset.states,
+        actions=dataset.actions,
+        next_states=dataset.next_states,
+        target_actions=dataset.target_actions,
+        gamma=float(dataset.gamma),
+        search_space=space,
+        config=OccupancyTuningConfig(
+            families=("boosted",),
+            cv_folds=2,
+            max_candidates=2,
+            promotion_candidates=2,
+            seed=19,
+        ),
+    )
+    assert calls
+    assert result.first_stage["boosted"]["selected"]["action_ratio"]
+    assert all(call["initial_ratio_mode"] == "factored" for call in calls)
+    assert any(row["reason"] == "missing_initial_states" for row in result.first_stage["boosted"]["skipped"])
 
 
 def test_product_automl_fast_budget_and_stable_fallback_policy() -> None:
     from occupancy_ratio.tuning import (
+        _budget_promotion_limit,
         _final_refit_penalty,
         _make_candidates,
         _near_uniform_penalty,
         _should_fallback_to_baseline,
+        _stagewise_occupancy_candidates,
         _weak_moment_instability_fallback,
         _weight_quality_from_values,
     )
@@ -2341,6 +2858,7 @@ def test_product_automl_fast_budget_and_stable_fallback_policy() -> None:
     fast_cfg = OccupancyTuningConfig(budget="fast", max_candidates=16, promotion_candidates=4)
     candidates = _make_candidates(OccupancySearchSpace(), fast_cfg, has_initial_states=False)
     assert len(candidates) == 8
+    assert _budget_promotion_limit(fast_cfg) == 3
     assert not any(row["overrides"].get("backend", {}).get("name") == "google_dualdice" for row in candidates)
     google_candidates = _make_candidates(
         OccupancySearchSpace(),
@@ -2374,6 +2892,26 @@ def test_product_automl_fast_budget_and_stable_fallback_policy() -> None:
         and row["overrides"].get("modes", {}).get("one_step_ratio_mode") == "factored"
         for row in source_candidates
     )
+    assert any(
+        row["candidate_label"] == "neural_factored_source"
+        for row in _stagewise_occupancy_candidates(source_candidates)
+    )
+    legacy_source_candidates = _make_candidates(
+        OccupancySearchSpace(),
+        OccupancyTuningConfig(max_candidates=32, promotion_candidates=4, stagewise=False),
+        has_initial_states=True,
+    )
+    assert any(
+        row["overrides"].get("modes", {}).get("initial_ratio_mode") == "factored"
+        and row["overrides"].get("modes", {}).get("one_step_ratio_mode") == "factored"
+        for row in legacy_source_candidates
+    )
+    nuisance_only_candidates = [
+        {"candidate_id": "a", "family": "boosted", "overrides": {"occupancy": {}, "action_ratio": {"prediction_max": 25.0}}},
+        {"candidate_id": "b", "family": "boosted", "overrides": {"occupancy": {}, "action_ratio": {"prediction_max": 100.0}}},
+        {"candidate_id": "c", "family": "boosted", "overrides": {"occupancy": {"fixed_point_damping": 0.75}}},
+    ]
+    assert [row["candidate_id"] for row in _stagewise_occupancy_candidates(nuisance_only_candidates)] == ["a", "c"]
     boosted_candidates = _make_candidates(
         OccupancySearchSpace(),
         OccupancyTuningConfig(families=("boosted",), budget="fast", max_candidates=16, promotion_candidates=4),
@@ -2654,6 +3192,300 @@ def test_moment_evaluator_ablation_pairs_against_current() -> None:
     assert "support" in render_evaluator_report(summary, deltas)
 
 
+def test_product_bellman_gmm_score_is_finite_and_scale_invariant() -> None:
+    rng = np.random.default_rng(310)
+    n = 40
+    n0 = 12
+    weights = rng.lognormal(mean=0.0, sigma=0.2, size=n)
+    eval_features = rng.normal(size=(n, 3))
+    next_features = rng.normal(size=(n, 3))
+    initial_features = rng.normal(size=(n0, 3))
+    blocks = {"geometry": (eval_features, next_features, initial_features)}
+    score = _bellman_gmm_selection_metrics(
+        weights=weights,
+        gamma=0.9,
+        blocks=blocks,
+        cfg=OccupancyTuningConfig(gmm_objective="ratio", gmm_complexity_weight=0.0),
+    )
+    scaled = _bellman_gmm_selection_metrics(
+        weights=weights,
+        gamma=0.9,
+        blocks={"geometry": (10.0 * eval_features, 10.0 * next_features, 10.0 * initial_features)},
+        cfg=OccupancyTuningConfig(gmm_objective="ratio", gmm_complexity_weight=0.0),
+    )
+    assert np.isfinite(score["selection_risk"])
+    assert score["selection_risk"] == pytest.approx(scaled["selection_risk"], rel=1e-10, abs=1e-10)
+
+
+def test_product_bellman_gmm_complexity_penalty_tracks_effective_dimension() -> None:
+    rng = np.random.default_rng(311)
+    n = 50
+    n0 = 16
+    weights = np.ones(n)
+    one_dim = (
+        rng.normal(size=(n, 1)),
+        rng.normal(size=(n, 1)),
+        rng.normal(size=(n0, 1)),
+    )
+    five_dim = (
+        rng.normal(size=(n, 5)),
+        rng.normal(size=(n, 5)),
+        rng.normal(size=(n0, 5)),
+    )
+    low = _bellman_gmm_selection_metrics(
+        weights=weights,
+        gamma=0.7,
+        blocks={"geometry": one_dim},
+        cfg=OccupancyTuningConfig(gmm_objective="ratio", gmm_complexity_weight=0.05),
+    )
+    high = _bellman_gmm_selection_metrics(
+        weights=weights,
+        gamma=0.7,
+        blocks={"geometry": five_dim},
+        cfg=OccupancyTuningConfig(gmm_objective="ratio", gmm_complexity_weight=0.05),
+    )
+    assert high["selection_effective_dim"] > low["selection_effective_dim"]
+    assert high["selection_complexity_penalty"] > low["selection_complexity_penalty"]
+
+
+def test_product_bellman_gmm_safety_constraints_exclude_collapse() -> None:
+    collapsed = CandidateResult(
+        candidate_id="collapsed",
+        family="neural",
+        budget_stage="full",
+        overrides={},
+        fold_results=[object()],
+        metrics={
+            "selection_risk": 0.01,
+            "ess_fraction": 0.9995,
+            "clipped_fraction": 0.0,
+            "norm_error": 0.0,
+            "action_shift": 0.2,
+            "weight_cv": 0.001,
+        },
+    )
+    noncollapsed = CandidateResult(
+        candidate_id="noncollapsed",
+        family="neural",
+        budget_stage="full",
+        overrides={},
+        fold_results=[object()],
+        metrics={
+            "selection_risk": 0.02,
+            "ess_fraction": 0.8,
+            "clipped_fraction": 0.0,
+            "norm_error": 0.0,
+            "action_shift": 0.2,
+            "weight_cv": 0.4,
+        },
+    )
+    _score_candidates(
+        [collapsed, noncollapsed],
+        OccupancyTuningConfig(score_method="bellman_gmm", gmm_use_safety_constraints=True),
+    )
+    assert collapsed.score == float("inf")
+    assert collapsed.metrics["constraint_near_uniform_collapse"] == 1.0
+    assert noncollapsed.score == pytest.approx(0.02)
+
+
+def test_product_bellman_gmm_objectives_use_fixed_blocks() -> None:
+    rng = np.random.default_rng(312)
+    n = 36
+    n0 = 10
+    weights = rng.lognormal(mean=0.0, sigma=0.1, size=n)
+
+    def block(width: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return (
+            rng.normal(size=(n, width)),
+            rng.normal(size=(n, width)),
+            rng.normal(size=(n0, width)),
+        )
+
+    ratio_blocks = {
+        "mass": (np.ones((n, 1)), np.ones((n, 1)), np.ones((n0, 1))),
+        "geometry": block(2),
+        "rff": block(4),
+    }
+    all_blocks = {
+        **ratio_blocks,
+        "reward": block(1),
+        "value": block(1),
+        "value_strata": block(3),
+    }
+    ratio_without_reward = _bellman_gmm_selection_metrics(
+        weights=weights,
+        gamma=0.9,
+        blocks=ratio_blocks,
+        cfg=OccupancyTuningConfig(gmm_objective="ratio", gmm_complexity_weight=0.0),
+    )
+    ratio_with_reward = _bellman_gmm_selection_metrics(
+        weights=weights,
+        gamma=0.9,
+        blocks=all_blocks,
+        cfg=OccupancyTuningConfig(gmm_objective="ratio", gmm_complexity_weight=0.0),
+    )
+    targeted_ope = _bellman_gmm_selection_metrics(
+        weights=weights,
+        gamma=0.9,
+        blocks=all_blocks,
+        cfg=OccupancyTuningConfig(gmm_objective="ope", gmm_complexity_weight=0.0, gmm_ope_broad_weight=0.0),
+    )
+    guarded_ope = _bellman_gmm_selection_metrics(
+        weights=weights,
+        gamma=0.9,
+        blocks=all_blocks,
+        cfg=OccupancyTuningConfig(gmm_objective="ope", gmm_complexity_weight=0.0, gmm_ope_broad_weight=0.10),
+    )
+    ope_without_rewards = _bellman_gmm_selection_metrics(
+        weights=weights,
+        gamma=0.9,
+        blocks=ratio_blocks,
+        cfg=OccupancyTuningConfig(gmm_objective="ope", gmm_complexity_weight=0.0, gmm_ope_broad_weight=0.10),
+    )
+    assert ratio_with_reward["selection_risk"] == pytest.approx(ratio_without_reward["selection_risk"])
+    assert ratio_with_reward["selection_block_count"] == 3.0
+    assert targeted_ope["selection_block_count"] == 4.0
+    assert guarded_ope["selection_block_count"] == 6.0
+    assert guarded_ope["selection_ope_broad_weight"] == pytest.approx(0.10)
+    assert ope_without_rewards["selection_risk"] == pytest.approx(ratio_without_reward["selection_risk"])
+
+
+def test_product_bellman_gmm_reuses_fold_moment_blocks_and_skips_unused_blocks() -> None:
+    dataset = make_discrete_dataset(setting="discrete_chain", gamma=0.7, sample_size=42, seed=313)
+    valid = np.arange(0, 14, dtype=np.int64)
+    train = np.arange(14, 42, dtype=np.int64)
+    ratio_cfg = OccupancyTuningConfig(score_method="bellman_gmm", gmm_objective="ratio")
+    cache = {}
+    weights = np.ones(valid.shape[0], dtype=np.float64)
+    first = _heldout_moment_balance_metrics(
+        weights=weights,
+        train_idx=train,
+        valid_idx=valid,
+        S=dataset.states,
+        A=dataset.actions,
+        S_next=dataset.next_states,
+        A_pi=dataset.target_actions,
+        A_pi_next=dataset.next_target_actions,
+        S_initial=None,
+        A_initial=None,
+        rewards=dataset.rewards,
+        gamma=float(dataset.gamma),
+        seed=313,
+        cfg=ratio_cfg,
+        fold_id=0,
+        moment_block_cache=cache,
+    )
+    assert np.isfinite(first["selection_risk"])
+    assert len(cache) == 1
+    cached_blocks = next(iter(cache.values()))
+    assert set(cached_blocks).issubset({"mass", "geometry", "rff"})
+
+    second = _heldout_moment_balance_metrics(
+        weights=np.linspace(0.8, 1.2, valid.shape[0]),
+        train_idx=train,
+        valid_idx=valid,
+        S=dataset.states,
+        A=dataset.actions,
+        S_next=dataset.next_states,
+        A_pi=dataset.target_actions,
+        A_pi_next=dataset.next_target_actions,
+        S_initial=None,
+        A_initial=None,
+        rewards=dataset.rewards,
+        gamma=float(dataset.gamma),
+        seed=313,
+        cfg=ratio_cfg,
+        fold_id=0,
+        moment_block_cache=cache,
+    )
+    assert np.isfinite(second["selection_risk"])
+    assert len(cache) == 1
+
+    ope_cache = {}
+    _heldout_moment_balance_metrics(
+        weights=weights,
+        train_idx=train,
+        valid_idx=valid,
+        S=dataset.states,
+        A=dataset.actions,
+        S_next=dataset.next_states,
+        A_pi=dataset.target_actions,
+        A_pi_next=dataset.next_target_actions,
+        S_initial=None,
+        A_initial=None,
+        rewards=dataset.rewards,
+        gamma=float(dataset.gamma),
+        seed=313,
+        cfg=OccupancyTuningConfig(score_method="bellman_gmm", gmm_objective="ope", gmm_ope_broad_weight=0.0),
+        fold_id=0,
+        moment_block_cache=ope_cache,
+    )
+    ope_blocks = next(iter(ope_cache.values()))
+    assert {"reward", "value"}.issubset(set(ope_blocks))
+
+
+def test_product_automl_bellman_gmm_ratio_and_ope_smoke() -> None:
+    dataset = make_discrete_dataset(setting="discrete_chain", gamma=0.5, sample_size=36, seed=32)
+    space = OccupancySearchSpace(
+        boosted_occupancy=OccupancyRegressionConfig(
+            num_iterations=1,
+            mcmc_samples=1,
+            batch_size=32,
+            show_progress=False,
+            lgb_params={"min_data_in_leaf": 1, "num_leaves": 7, "verbose": -1},
+        ),
+        boosted_action_ratio=ActionRatioConfig(
+            num_boost_round=1,
+            early_stopping_rounds=0,
+            refit_on_all_data=False,
+            show_progress=False,
+            lgb_params={"min_data_in_leaf": 1, "num_leaves": 7, "verbose": -1},
+        ),
+        boosted_source_state_ratio=SourceStateRatioConfig(
+            num_boost_round=1,
+            early_stopping_rounds=0,
+            refit_on_all_data=False,
+            show_progress=False,
+            lgb_params={"min_data_in_leaf": 1, "num_leaves": 7, "verbose": -1},
+        ),
+        boosted_transition_ratio=TransitionRatioConfig(
+            num_boost_round=1,
+            permutation_samples=1,
+            early_stopping_rounds=0,
+            refit_on_all_data=False,
+            show_progress=False,
+            lgb_params={"min_data_in_leaf": 1, "num_leaves": 7, "verbose": -1},
+        ),
+        boosted_candidates=(
+            {"occupancy": {"fixed_point_damping": 0.5}},
+            {"occupancy": {"fixed_point_damping": 0.75}},
+        ),
+    )
+    for objective in ("ratio", "ope"):
+        result = tune_occupancy_ratio_auto(
+            states=dataset.states,
+            actions=dataset.actions,
+            next_states=dataset.next_states,
+            target_actions=dataset.target_actions,
+            gamma=float(dataset.gamma),
+            rewards=dataset.rewards,
+            search_space=space,
+            config=OccupancyTuningConfig(
+                families=("boosted",),
+                cv_folds=2,
+                max_candidates=2,
+                promotion_candidates=1,
+                seed=33,
+                score_method="bellman_gmm",
+                gmm_objective=objective,
+            ),
+        )
+        assert result.model is not None
+        assert result.config.score_method == "bellman_gmm"
+        assert any(np.isfinite(row.metrics.get("selection_risk", np.nan)) for row in result.candidates)
+        assert all("truth" not in key for row in result.candidates for key in row.metrics)
+
+
 def test_product_automl_can_tune_google_dualdice_as_neural_candidate(monkeypatch) -> None:
     import occupancy_ratio.tuning as tuning
 
@@ -2799,6 +3631,17 @@ def test_runner_gym_smoke_writes_ope_rows_without_ratio_truth(tmp_path) -> None:
 
 def test_neural_default_ablation_tags_rows_by_candidate_id() -> None:
     candidate = next(candidate for candidate in CANDIDATES if candidate.candidate_id == "stage_budget")
+    assert candidate is RECOMMENDED_64X64_SILU_STAGE_BUDGET
+    assert candidate.neural_hidden_dims == (64, 64)
+    assert candidate.neural_activation == "silu"
+    assert candidate.neural_num_iterations == 60
+    assert candidate.neural_gradient_steps_per_iteration == 6
+    assert candidate.neural_mcmc_samples == 24
+    assert candidate.neural_action_steps == 800
+    assert candidate.neural_source_steps == 800
+    assert candidate.neural_transition_steps == 1_000
+    assert candidate.neural_direct_one_step_steps == 1_000
+    assert candidate.neural_direct_adjoint_steps == 128
     rows = _tag_rows(
         [
             {
@@ -2830,6 +3673,143 @@ def test_neural_default_ablation_tags_rows_by_candidate_id() -> None:
     assert summary[0]["estimator"] == "neural_network_stable"
     assert summary[0]["controlled_rows"] == 1
     assert "stage_budget" in render_ablation_report(summary)
+
+
+def test_neural_default_dualdice5000_matrix_and_candidate_serialization(tmp_path) -> None:
+    specs = dualdice5000_matrix_specs()
+    assert specs
+    assert {spec.google_num_updates for spec in specs} == {5_000}
+    assert next(spec for spec in specs if spec.matrix_id == "dualdice5000_gym").sample_sizes == (1_000,)
+
+    candidate = next(candidate for candidate in CANDIDATES if candidate.candidate_id == "stage_budget_heavy")
+    assert candidate.neural_hidden_dims == (64, 64)
+    assert candidate.neural_activation == "silu"
+    assert candidate.neural_num_iterations == 120
+    assert candidate.neural_gradient_steps_per_iteration == 10
+    assert candidate.neural_mcmc_samples == 32
+    assert candidate.neural_action_steps == 2_000
+    assert candidate.neural_source_steps == 2_000
+    assert candidate.neural_transition_steps == 3_000
+    assert candidate.neural_direct_one_step_steps == 3_000
+    assert candidate.neural_direct_adjoint_steps == 128
+
+    config = _make_config(
+        candidate=candidate,
+        spec=specs[0],
+        output_root=tmp_path,
+        include_google_dualdice=True,
+        external_repo_path="/tmp/google-research",
+        resume=True,
+        write_plots=False,
+        estimator_timeout_sec=3600.0,
+    )
+    assert config.google_num_updates == 5_000
+    assert config.neural_mcmc_samples == 32
+    assert set(ELIGIBLE_NEURAL_ESTIMATORS) <= set(config.estimators)
+    assert set(DIAGNOSTIC_ONLY_NEURAL_ESTIMATORS) <= set(config.estimators)
+
+    config_path = _write_config(tmp_path, candidate, specs[0], config)
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    assert payload["candidate"]["neural_mcmc_samples"] == 32
+    assert payload["candidate"]["neural_action_steps"] == 2_000
+    assert payload["candidate"]["neural_transition_steps"] == 3_000
+    assert payload["overrides"]["google_num_updates"] == 5_000
+    assert payload["overrides"]["neural_mcmc_samples"] == 32
+
+
+def test_neural_default_dualdice5000_pairs_exact_cells_and_gate() -> None:
+    def row(
+        *,
+        candidate_id: str,
+        estimator: str,
+        setting: str,
+        seed: int,
+        score: float,
+        status: str = "ok",
+        policy_shift: float | str = "",
+        runtime_sec: float = 10.0,
+        google_updates: int | str = "",
+        timeout_sec: float | str = "",
+        collapse: bool = False,
+    ) -> dict:
+        out = {
+            "candidate_id": candidate_id,
+            "profile": "high_stakes",
+            "setting": setting,
+            "policy_shift": policy_shift,
+            "gamma": 0.9,
+            "sample_size": 1000,
+            "seed": seed,
+            "estimator": estimator,
+            "status": status,
+            "runtime_sec": runtime_sec,
+            "effective_sample_size_fraction": 0.99 if collapse else 0.6,
+            "true_effective_sample_size_fraction": 0.5,
+            "weight_cv": 0.01 if collapse else 0.4,
+            "true_weight_cv": 0.5,
+            "weight_q99": 3.0,
+            "weight_max": 4.0,
+            "nonfinite_raw_fraction": 0.0,
+            "negative_raw_fraction": 0.0,
+            "clipping_fraction": 0.0,
+            "timeout_sec": timeout_sec,
+        }
+        if google_updates != "":
+            out["google_num_updates"] = google_updates
+        if setting in {"discrete_chain", "discrete_grid", "linear_gaussian", "nonlinear_monte_carlo"}:
+            out["ratio_normalized_l1"] = score
+            out["log_ratio_rmse"] = 0.0
+            out["ope_value_abs_error"] = 0.0
+            out["ratio_truth_available"] = 1.0
+        else:
+            out["ope_value_abs_error_se_units"] = score
+            out["ope_value_abs_error"] = score
+            out["ratio_truth_available"] = 0.0
+        return out
+
+    rows = [
+        row(candidate_id="stage_budget_heavy", estimator="google_dualdice_neural", setting="discrete_chain", seed=0, score=1.0, policy_shift=0.65, runtime_sec=12.0, google_updates=5000),
+        row(candidate_id="stage_budget_heavy", estimator="neural_network_stable", setting="discrete_chain", seed=0, score=1.0, policy_shift=0.65, runtime_sec=10.0),
+        row(candidate_id="stage_budget_heavy", estimator="google_dualdice_neural", setting="gym_pendulum", seed=0, score=1.0, runtime_sec=12.0, google_updates=5000),
+        row(candidate_id="stage_budget_heavy", estimator="neural_network_stable", setting="gym_pendulum", seed=0, score=0.8, runtime_sec=10.0),
+        row(candidate_id="stage_budget_heavy", estimator="google_dualdice_neural", setting="gym_pendulum", seed=1, score=0.1, runtime_sec=12.0, google_updates=5000),
+        row(candidate_id="stage_budget_heavy", estimator="neural_network_stable", setting="gym_pendulum", seed=2, score=0.1, runtime_sec=10.0),
+        row(candidate_id="stage_budget_heavy", estimator="neural_network_google_parity", setting="discrete_chain", seed=0, score=0.1, policy_shift=0.65, runtime_sec=10.0),
+        row(candidate_id="stage_budget_heavy", estimator="neural_network_google_parity", setting="gym_pendulum", seed=0, score=0.1, runtime_sec=10.0),
+        row(candidate_id="stage_budget_mid", estimator="google_dualdice_neural", setting="discrete_chain", seed=0, score=1.0, policy_shift=0.65, runtime_sec=10.0, google_updates=5000),
+        row(candidate_id="stage_budget_mid", estimator="neural_network_relaxed_tail", setting="discrete_chain", seed=0, score=1.0, policy_shift=0.65, runtime_sec=10.0),
+        row(candidate_id="stage_budget_mid", estimator="google_dualdice_neural", setting="gym_pendulum", seed=0, score=1.0, runtime_sec=10.0, google_updates=5000),
+        row(candidate_id="stage_budget_mid", estimator="neural_network_relaxed_tail", setting="gym_pendulum", seed=0, score=0.8, runtime_sec=10.0),
+        row(candidate_id="stage_budget_mid", estimator="neural_network_relaxed_tail", setting="gym_hopper", seed=0, score=0.8, status="timeout", timeout_sec=1.0),
+        row(candidate_id="stage_budget", estimator="google_dualdice_neural", setting="discrete_chain", seed=0, score=1.0, policy_shift=0.65, runtime_sec=10.0, google_updates=5000),
+        row(candidate_id="stage_budget", estimator="neural_network_stable_logistic_nuisance", setting="discrete_chain", seed=0, score=1.0, policy_shift=0.65, runtime_sec=10.0, collapse=True),
+        row(candidate_id="stage_budget", estimator="google_dualdice_neural", setting="gym_pendulum", seed=0, score=1.0, runtime_sec=10.0, google_updates=5000),
+        row(candidate_id="stage_budget", estimator="neural_network_stable_logistic_nuisance", setting="gym_pendulum", seed=0, score=0.8, runtime_sec=10.0),
+    ]
+    paired = paired_dualdice5000_rows(rows, audit_rows=[])
+    by_key = {(item["candidate_id"], item["estimator"]): item for item in paired}
+
+    stable = by_key[("stage_budget_heavy", "neural_network_stable")]
+    assert stable["comparison_cells"] == 2
+    assert stable["passes_final_gate"] == 1.0
+
+    diagnostic = by_key[("stage_budget_heavy", "neural_network_google_parity")]
+    assert diagnostic["selection_role"] == "diagnostic_only"
+    assert diagnostic["passes_final_gate"] == 0.0
+    assert "diagnostic_only" in diagnostic["gate_failures"]
+
+    timeout = by_key[("stage_budget_mid", "neural_network_relaxed_tail")]
+    assert timeout["passes_final_gate"] == 0.0
+    assert "timeout_rate_ge_0.05" in timeout["gate_failures"]
+
+    collapse = by_key[("stage_budget", "neural_network_stable_logistic_nuisance")]
+    assert collapse["passes_final_gate"] == 0.0
+    assert "controlled_collapse" in collapse["gate_failures"]
+
+    decision = evaluate_dualdice5000_default(paired)
+    assert decision["decision"] == "promote_neural_default"
+    assert decision["candidate_id"] == "stage_budget_heavy"
+    assert decision["estimator"] == "neural_network_stable"
 
 
 def test_defaults_report_selects_from_generated_csv(tmp_path) -> None:
@@ -3031,5 +4011,39 @@ def test_runner_cv_tuning_writes_tuning_rows(tmp_path) -> None:
         and float(row.get("selected", 0.0)) == 1.0
     ]
     assert selected_rows
+    assert any(
+        row.get("tuning_stage") == "automl_first_stage_candidate"
+        and row.get("ratio_task") == "action_ratio"
+        and "update_count_mean" in row
+        for row in result.tuning_rows
+    )
+    assert any(
+        row.get("tuning_stage") == "automl_first_stage_fold"
+        and "update_count" in row
+        for row in result.tuning_rows
+    )
     assert float(selected_rows[0]["promoted"]) == 1.0
     assert result.rows[0]["profile"] == "smoke"
+
+
+def test_staged_cv_benchmark_flags_and_aliases_are_registered() -> None:
+    from occupancy_ratio_benchmark.config import (
+        BOOSTED_ESTIMATOR_PRESETS,
+        DIRECT_ESTIMATORS,
+        NEURAL_ESTIMATOR_PRESETS,
+    )
+
+    assert "staged_cv" in BOOSTED_ESTIMATOR_PRESETS
+    assert "staged_cv" in NEURAL_ESTIMATOR_PRESETS
+    assert "naive_final_bellman_cv" in NEURAL_ESTIMATOR_PRESETS
+    assert "boosted_tree_staged_cv" in DIRECT_ESTIMATORS
+    assert "neural_network_staged_cv" in DIRECT_ESTIMATORS
+    assert "neural_network_naive_final_bellman_cv" in DIRECT_ESTIMATORS
+
+    config = OccupancyRatioBenchmarkConfig(
+        estimators=("boosted_tree_staged_cv", "neural_network_staged_cv"),
+        staged_bootstrap_cv=True,
+        staged_cv_iterations=3,
+    )
+    assert config.resolved_estimators() == ("boosted_tree_staged_cv", "neural_network_staged_cv")
+    assert config.staged_cv_iterations == 3

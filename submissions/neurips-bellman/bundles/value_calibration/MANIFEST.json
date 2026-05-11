@@ -1,0 +1,1785 @@
+{
+  "bundle": "value_calibration",
+  "created_utc": "2026-05-07T02:01:09+00:00",
+  "description": "Value-space Bellman/FQE calibration reproducibility bundle",
+  "exclusion_policy": [
+    "exclude author/local-machine identifiers from text files",
+    "exclude manuscripts unless explicitly part of reproducibility artifacts",
+    "exclude caches, bytecode, notebook checkpoints, LaTeX build files, archives, hidden metadata, and broad exploratory outputs",
+    "preserve binary figure/table artifacts byte-for-byte where copied from final outputs"
+  ],
+  "files": [
+    {
+      "anonymized_text": true,
+      "path": "MANIFEST.json",
+      "role": "machine-readable manifest for this bundle",
+      "sha256": null,
+      "source": "generated for anonymous submission bundle"
+    },
+    {
+      "anonymized_text": true,
+      "path": "README.md",
+      "role": "bundle instructions",
+      "sha256": "2cd98396df48750bdd2665af7eaba75e23f934717e9be9014dbe4059c3224080",
+      "source": "generated for anonymous submission bundle"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/README.md",
+      "role": "calibration package documentation/dependencies",
+      "sha256": "f7ee77b5724f18fa0455ac5ae03b1f18b35d335cbf016960f65a6a6b20f1b34f",
+      "source": "experiments/calibration/FQE_calibration_neurips/README.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/baseline_family_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "a5082430ce7dc9932df6bf73d8a67fdf1c07c3e08667f3f224d0cda4e9411c7d",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/baseline_family_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/baseline_learner_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "cbb69f2d11f55e79e36208dee47c4a121595fa72609722b61d5b8163f3345105",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/baseline_learner_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/bellman_incomplete_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "c02f2496d64e21bf86359bcc3f4191e41fc2b216caca8bb91908d314e01457c2",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/bellman_incomplete_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/calibration_protocol_debug.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "cafd97eaea05a0478a6a2c0cc4af2ca83049b10af97c2f1b32ec1a9d8b6505e6",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/calibration_protocol_debug.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/calibration_protocol_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "4cc32184172d106d598464a7ddfa078ad7313c743ea3a41e2b04b534fb4583fc",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/calibration_protocol_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/calibration_quality_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "90935abee8ce67025c0b55638baaf8499b870e4fefd16e04caf66e727262ae55",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/calibration_quality_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/calibration_target_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "6303c2eadc3dc2dda2eb0dd7d2d53c2aa8a9b2c3dd709d36a8a9096ca8ea7c22",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/calibration_target_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/calibrator_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "1378c5ee43de775fbe2c65d9cf8aa7f69dc75b40bc4e3f19bd73b6071a423983",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/calibrator_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/coverage_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "9f4ab81af3b1a6cf81afb97326160c2eed4f4c96d89e18c37ad93cc36c2d4669",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/coverage_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/default.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "df3ba3d10d38084ccc7eb03d457af46a78e8422764621631c795aa6e61021974",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/default.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/dimension_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "ac9ff5505f044dacd9d811a74e0475529b83c5f0e84d80e910c9e1579635597f",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/dimension_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/focused_neurips_suite.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "f2c7e98a1cadef33290db5a5cf309c94b11fc9b6de4d77b8955eb3e15f5ae2d6",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/focused_neurips_suite.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/main_nonlinear.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "db6d392c2f627feb89de610a295ded748ed0d98290ba2b3bf2f4a28e78b25e57",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/main_nonlinear.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/mechanism_distortion_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "6f276436a0c16f9244a89603b4e7c44c6a75877294fc4cdf5708ec6b4a7afdc4",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/mechanism_distortion_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/misspecification_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "27849e0819407a58d617294fc02b39652d4566ad7ac6b292f67dea33b8e22a97",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/misspecification_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/model_misspecification_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "fe72f3ade6b38666c12c4f06a63f8cf522cc76adbda2140bbb4e406fd0cfa989",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/model_misspecification_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/paper_suite.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "1cf6adacf61366a4d5138c6acf03dbb08f3af559c28073d73b027f6bc3a02c91",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/paper_suite.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/rescue_neurips_suite.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "c54f3834ae44e146d409977ae8bc0cc13d3e039856ba6bdea2ffdb4535602a52",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/rescue_neurips_suite.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/sample_size_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "af072ef00589ba0ae288b95af596559dc91025624eb25d411a45cf6627a17438",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/sample_size_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/split_fraction_debug.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "f1bbeb174afdfbc1bcb576507cfb79126fdba2dd7d74288143dcacc620c2192e",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/split_fraction_debug.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/split_fraction_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "598ef4fcdda276e1a0e36083650ee9ce2126b89df3c7c2152851d1d82822bf4e",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/split_fraction_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/strict_cross_submission_suite.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "eb27a39438a634850c2073a5b90704f0a75f254e2fe9196f6d020048f84d522c",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/strict_cross_submission_suite.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/temporal_reward_shift_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "bbc4d53fd0b42ad22b1785a5791deca5cd464f6132022fe532ec51830c943e0f",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/temporal_reward_shift_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/undertraining_sweep.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "11d3067a11c76261893079e956989dd725ea436b26f1ff84dc7a2908559231c1",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/undertraining_sweep.yaml"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/configs/well_specified_debug.yaml",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "b430ad82d9aaaf16b20a180652d3a32f9257c33556f6b5a4bc835e5eab601845",
+      "source": "experiments/calibration/FQE_calibration_neurips/configs/well_specified_debug.yaml"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/baseline_family_comparison.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "4987fe4b49fb4bf9fefed706415a76c1af0609986fb0ef9ae4f9fde76f75f2c8",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/baseline_family_comparison.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/baseline_family_comparison.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "a89862a8a4c9f88ad4ec410370bffb2108df3063978384105f866cd725d4fd0d",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/baseline_family_comparison.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/bias_variance_decomposition.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "b4b0bf96be671bc6f32f4f1ca61cfe9c5a25e36754aa3101e50ca0a6ec4d661b",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/bias_variance_decomposition.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/bias_variance_decomposition.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "000d0e7a5b5e8a31cfad834618d4c8c238749a040549272d43e312aafb512a11",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/bias_variance_decomposition.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/calibration_error_vs_value_error.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "af90abc625a2faa48f795d6fbfcf10bb21bd9dbf788914bef7abf9728a36d1ff",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/calibration_error_vs_value_error.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/calibration_error_vs_value_error.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "d5f0a24ab775fa587213de81342936ef656a6628ad598e461b1106e4fa4ddb32",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/calibration_error_vs_value_error.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/calibration_protocol_comparison.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "54e2b9fcae644180abd50accb6544cfa295139a6097b9f80fee9b242b77c4790",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/calibration_protocol_comparison.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/calibration_protocol_comparison.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "0c795b87877ef30d2617f9392577c286986bb322010015cfc439bb64bb390bb7",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/calibration_protocol_comparison.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/calibrator_comparison.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "09b59abe81556e24aa46f30d29307a0648c0abdd5ab0e7dc2d7a8c5b6fc5e4f4",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/calibrator_comparison.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/calibrator_comparison.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "aadb7bacdf8cdad55898f009419c4695e46ae6f03f77a4b6e754bad8b728ab4c",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/calibrator_comparison.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/coverage_stratified_error.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "155f3859d0fda53fbbe19697295a04ad1c5945e735f09d72e062cf4db38ec307",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/coverage_stratified_error.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/coverage_stratified_error.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "616a309ff34072d46447069239a047eddae3596d04fb732b9fca4063bfec3b56",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/coverage_stratified_error.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/failure_rate_by_learner_quality.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "fe0e8ca53189ccc722dec65d954292803af778f4f7b56b18f7dde7ef0ac41ed8",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/failure_rate_by_learner_quality.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/failure_rate_by_learner_quality.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "f1a800ce6aea98a4b8b955efc5a559b3137c08b2b955637c2dd80fbb2f3f3f99",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/failure_rate_by_learner_quality.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/failure_rate_comparison.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "e2c94811c68f35366b7d70ed1ead5ed947efa58aab8d0208761dbd4f05240550",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/failure_rate_comparison.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/failure_rate_comparison.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "5eac446c01f24b95c71f0a464a6a35840405759c4353ee6fa2e445565d725d54",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/failure_rate_comparison.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/focused_neurips_calibration_story.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "7f81843a97105996e0ad1ad84a82fa8de287ec6cd12e1310b09bfbfb0db8608d",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/focused_neurips_calibration_story.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/focused_neurips_calibration_story.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "278c4740bac4bad8f05e291e79482e158b1296662a6879d508496715904b1534",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/focused_neurips_calibration_story.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/misspecification_sweep.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "d67643de7a5003c11cb921f9528225a20e7a2e77378ca27d5bd7efa4f55c7b6a",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/misspecification_sweep.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/misspecification_sweep.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "e950128307b02a0368644333e63f22399d2c05173eacc3bce07e1acd65553aed",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/misspecification_sweep.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/mse_by_learner_quality.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "0d2437219812ed0557e0f8f9141f538ff88910d2877725680dd1ee89093c369a",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/mse_by_learner_quality.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/mse_by_learner_quality.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "31e6bb6d2eb3a3133dabd4ddf0a96360a2fdb9cf6fd194ee373b2df38e0cc666",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/mse_by_learner_quality.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/mse_vs_calibration_error_improvement.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "9c2255f113bdaf811213804bd296c2ee30aed0e405a147bd55f65aef667ecc91",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/mse_vs_calibration_error_improvement.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/mse_vs_calibration_error_improvement.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "e9de3b5f5318d0f97c445ccffd3b13a3da4c82bf0a81a5537eddb76ecb621f07",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/mse_vs_calibration_error_improvement.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/mse_vs_policy_shift.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "49c62bd05bd24b0b2070e3a9bdd1b4cb3610141d891e82544ca4b2e280b53f13",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/mse_vs_policy_shift.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/mse_vs_policy_shift.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "50b99ac64d0779d695c074e3c119dc4b8391894d3347778424634d0eecb9d313",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/mse_vs_policy_shift.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/mse_vs_sample_size.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "6b3bcb66437aef1df73a9a5aaf1a85c1c9232dbb11e1f38a272a41577c7267fd",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/mse_vs_sample_size.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/mse_vs_sample_size.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "e7be97231e8b23c89d7e08fc0eb8af2dfe66401053d6f64c7b34134da743e477",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/mse_vs_sample_size.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/relative_mse_by_calibration_difficulty.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "6bb90c5491951796946581dfa5f5415f70418b16df69f270824390d791025c84",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/relative_mse_by_calibration_difficulty.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/relative_mse_by_calibration_difficulty.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "d2b85f2541311ea95ea1549afd1cec5054dedc845fe27bf177cb05194a2c229b",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/relative_mse_by_calibration_difficulty.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/relative_mse_vs_policy_shift.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "240f915e443c26130153d7fe962915dc640abde02b7ee4aa4d54ba83b3e19351",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/relative_mse_vs_policy_shift.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/relative_mse_vs_policy_shift.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "6dfd5927ee2f1d3004a626474c68cf530bc7345e8dc1808146c49218094e1c4d",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/relative_mse_vs_policy_shift.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/relative_mse_vs_sample_size.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "913835014bcbd0e37177a445ade23ba1fbfb5bb1290218b86ab3ecb498a0c5ce",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/relative_mse_vs_sample_size.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/relative_mse_vs_sample_size.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "b991815c62cb78d4da4299df4fca11cf2568a13434417017ef4f86b14e89cd88",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/relative_mse_vs_sample_size.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/runtime_comparison.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "4de31904bd3bd4f23c10de7656ccfe98c04e434418f827f807f9cc88d9e1e7b9",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/runtime_comparison.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/runtime_comparison.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "630b11ced8c8c392a033b60d311b7cd1ac8d369410925cc57a82f55de4fb81fb",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/runtime_comparison.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/split_fraction_comparison.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "398cf9c939b7e78e73fe41a892f1a71943566cc9d3cd59a559c196b46b288754",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/split_fraction_comparison.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/split_fraction_comparison.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "c8e798c3f15b8f778da5f48c969d7547228e6da7ed42874718ab440cca306e3b",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/split_fraction_comparison.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/undertraining_iteration_sweep.pdf",
+      "role": "audited final calibration figure artifact",
+      "sha256": "215a07773ef1c81db33137b8cc2278e38cfde39f73e67df72e8c9899de936094",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/undertraining_iteration_sweep.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/figures/rescue_final/undertraining_iteration_sweep.png",
+      "role": "audited final calibration figure artifact",
+      "sha256": "b3c59447a6df33d14d6dd6725b3028b45620e5382f17237eb9ca0516d3070a6b",
+      "source": "experiments/calibration/FQE_calibration_neurips/figures/rescue_final/undertraining_iteration_sweep.png"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/README.md",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "4d75b06107221c724effc86aafc4515b10fd3b632f404b351a8419ef2c345855",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/README.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/experiments_appendix.tex",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "fac18b4df76f9dc892a1ab2a18b612c4c779b147c34ebd7b6c3e69b93689ad0a",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/experiments_appendix.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/experiments_section.tex",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "7ed1428323d5f3c6e3649bdb1bc348437020894435f6b13808dd8dee3eb16040",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/experiments_section.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figure_table_manifest.md",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "7bff581fe47e651fa0c2e756e6226f58176672b747462c7e0d12f1447838d2b3",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figure_table_manifest.md"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/calibration_story_compact.pdf",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "35b0e145f74d5668d5adf41f497022c815b2b5999e287ccb16ec2cbbacb9beda",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/calibration_story_compact.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/calibration_story_compact.png",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "d0579951a4eea4e93653f814b5ae63fc3323c827aa51d18e37d5de60e05fbb29",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/calibration_story_compact.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_full_audit.pdf",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "5e9a44d4e8e9f9769a310be99dc4a165adf94e9756370d8e530a3a04cbe9c2dc",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_full_audit.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_full_audit.png",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "2c0951b6274902c569c63f32a91cf883a980c1be91f210159340055a2b5bcaa4",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_full_audit.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_main_neural_fqe.pdf",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "c4cf3f3ff85c43e360f34bb84a00a0b44074f2645c0bbdf103d9a32cab3ad320",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_main_neural_fqe.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_main_neural_fqe.png",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "9a5db4a00f0e05d6fc749f620afef674e8c656be2cbcad60bd6207c86e7ce497",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_main_neural_fqe.png"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_main_numbers.csv",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "be438b7403fd1a5d66ced19ca728d02f27f7c9424b54737f27d18f11cfdfacdb",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_main_numbers.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_main_numbers.tex",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "d808564e9b85b206778fe39206020a0be97862ced000e4cf8cd0dbac505b7ffe",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_main_numbers.tex"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_seed_sample_robustness.pdf",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "acdb049be9167211fb9c48da6567475c1f70e3e1da3074840cf5924afe8b021c",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_seed_sample_robustness.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_seed_sample_robustness.png",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "f414bedba3528c430dbfe4572b1dee04923300294aa00e233df6be32e33005e6",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/hopper_q_seed_sample_robustness.png"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/rlu_cheetah_policy_calibration_compact.pdf",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "787787fc5bfcec6ae73645220f1775534e7ffca6f27a8cb94be370c31e89d63f",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/rlu_cheetah_policy_calibration_compact.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/FQE_calibration_neurips/paper_import_bundle/figures/rlu_cheetah_policy_calibration_compact.png",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "175640ec1fdc7c6c325ff5b08b1212d524b38e607918bfb4e24a6e38d224f551",
+      "source": "experiments/calibration/FQE_calibration_neurips/paper_import_bundle/figures/rlu_cheetah_policy_calibration_compact.png"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/requirements.txt",
+      "role": "calibration package documentation/dependencies",
+      "sha256": "e3f70cd65e493e271e2afb23ae5dc9755551f66f131cd08bf58738c46988d106",
+      "source": "experiments/calibration/FQE_calibration_neurips/requirements.txt"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/hopper_benchmark_search_protocol.md",
+      "role": "study design or benchmark protocol documentation",
+      "sha256": "91211edce0f0ff5e0c9e6dc5f0564a12cdc4972da86921ce5eaa4f2dda4a1a4e",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/hopper_benchmark_search_protocol.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/calibration_evidence_audit.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "525883e1f3c01d8025a932f79d735f45daeed30a2037141034844ac7023858d7",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/calibration_evidence_audit.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/combined_raw_results.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "44a3684813f35095b6678a37e3a27272bf6d74dc1369d3c2cde6f650224ed02d",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/combined_raw_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/coverage_stratified_error.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "298a34571b15316be8661850364df3c0cbe08118caed5a7b21d5cfd29f26ed20",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/coverage_stratified_error.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/coverage_stratified_error_raw.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "73f63d3924b2a4bac70ff08908be19c78fd50bbe9465c9e44c2db66da8677f4a",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/coverage_stratified_error_raw.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/do_not_claim_manifest.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "3c97d248bae749a2843b774b30f52abb210e1561ac5031f6839e9c6ec57630f0",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/do_not_claim_manifest.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/eligible_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "5997ffbefdafaa77df33b53386d652d0b10eedb22d3a4527292cf9a2e7ded253",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/eligible_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/paper_draft_readout.md",
+      "role": "audited final calibration result artifact",
+      "sha256": "baee88002ceb6bbac583c06720e17209b4b7d9d7200cb6f68e3d8c6754964230",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/paper_draft_readout.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/mechanism_distortion_sweep/config.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "740f238a8797643700ca07989c86b2c9daa66e01db010950a885d0e135cd22c6",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/mechanism_distortion_sweep/config.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/mechanism_distortion_sweep/raw_results.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "c8dcd1ac64d0d7802a6d38f71433e97db9d947ab3213e36f42da7abd76472a1c",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/mechanism_distortion_sweep/raw_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/mechanism_distortion_sweep/suite_metadata.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "2f5cccab01f096fdef4d2a06892544d94e3da7e6f56dc1c7da0fc8c2a1347899",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/mechanism_distortion_sweep/suite_metadata.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/model_misspecification_sweep/config.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "c0b478583e81793562d6a20bf3caf4f129c38ef2bd60a383a3e4662ac3c1cfca",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/model_misspecification_sweep/config.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/model_misspecification_sweep/raw_results.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "b1dabff9f99e6e45a124130999658f82cb16444b8e282abda164a7dfe07b258b",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/model_misspecification_sweep/raw_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/model_misspecification_sweep/suite_metadata.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "838ade46e40b2596a933531d1227e43631e82898b8be847865bc30937e7b6834",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/model_misspecification_sweep/suite_metadata.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/temporal_reward_shift_sweep/config.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "46b37f83ff5896a7b51275d557d00188aec12e78e96cac4a0b9f36f8b5fa7312",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/temporal_reward_shift_sweep/config.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/temporal_reward_shift_sweep/raw_results.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "6e5f1a0d81d7494f0b8458082fa64ad45efeaec7d6978feed14e3cd8d996e253",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/temporal_reward_shift_sweep/raw_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/temporal_reward_shift_sweep/suite_metadata.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "851f59e82b0f012d900368efbce655e32dd4e2d56a07beca9d379b060836a1ab",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/temporal_reward_shift_sweep/suite_metadata.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/undertraining_sweep/config.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "ca3d663a6660801de05535338e30c7f79f182440d2225451abaa035c4e6c59dc",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/undertraining_sweep/config.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/undertraining_sweep/raw_results.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "ab95e09e416532c2e4a01df02846668198faa4922aa979e913a95418c99038de",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/undertraining_sweep/raw_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/undertraining_sweep/suite_metadata.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "465900ab9e205e961965aafd64f2911cf1bdf0dc11e598be038b843da43de240",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/undertraining_sweep/suite_metadata.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/well_specified_debug/config.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "ce6285bc0c36f5520c8c739b95411914b04e379d1d7f4eab299146309b7ab98d",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/well_specified_debug/config.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/well_specified_debug/raw_results.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "89b93022bc23ea73c9ce360c431b83fe1828ec182053f91f59d913109b31c150",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/well_specified_debug/raw_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/raw/well_specified_debug/suite_metadata.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "ce1347b0c408f99d7d4cafb2be101024e710785239e54fcecae30df4d1126972",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/raw/well_specified_debug/suite_metadata.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/rescue_audit_summary.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "70d9b41b267b8958144921fa785988895918381adbcbaf2b0d96125821ba7c9c",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/rescue_audit_summary.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/rescue_promotion_audit.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "9fd2be0fa83edcbc158cc0c55bd7202fe5275e525a3540af90f4c70c990fdf42",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/rescue_promotion_audit.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/rescue_readout.md",
+      "role": "audited final calibration result artifact",
+      "sha256": "08939e9e5a596fa0661bf48e8fca5ed56a347585b724d939433b93a257a3cff3",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/rescue_readout.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/scalar_cancellation_audit.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "5694a1aac19c2d2699a298c592ac721c85e2de38a3031e4e1ed9e9d0997d3c38",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/scalar_cancellation_audit.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/submission_experiment_text.md",
+      "role": "audited final calibration result artifact",
+      "sha256": "5ce05d2dc914dd25ec70146f3ce68aa1ea7678e2d4a8c5b746a059de8f67c8fb",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/submission_experiment_text.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "5997ffbefdafaa77df33b53386d652d0b10eedb22d3a4527292cf9a2e7ded253",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/all_eligible_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "9e1312805d56c5b78b4f9fbf0453278abbca60fb70cec2b52ff9c834c609c731",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/all_eligible_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/all_eligible_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "f69b17154e8387bba25943e05ad0a0fb6d5d15d5bed9046fcb480cf5648b45fc",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/all_eligible_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/baseline_family_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4c41e38cfb8e9e6afb95fe9a528f7db157132faa9847a5899729ff1b34e324c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/baseline_family_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/baseline_family_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "12561d1c50943c4150a91155075f3c3822f59478de298f89461b96d8391806cd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/baseline_family_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/bellman_incomplete_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4c41e38cfb8e9e6afb95fe9a528f7db157132faa9847a5899729ff1b34e324c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/bellman_incomplete_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/bellman_incomplete_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "12561d1c50943c4150a91155075f3c3822f59478de298f89461b96d8391806cd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/bellman_incomplete_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/calibration_protocol_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4c41e38cfb8e9e6afb95fe9a528f7db157132faa9847a5899729ff1b34e324c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/calibration_protocol_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/calibration_protocol_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "12561d1c50943c4150a91155075f3c3822f59478de298f89461b96d8391806cd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/calibration_protocol_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/calibration_quality_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4c41e38cfb8e9e6afb95fe9a528f7db157132faa9847a5899729ff1b34e324c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/calibration_quality_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/calibration_quality_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "12561d1c50943c4150a91155075f3c3822f59478de298f89461b96d8391806cd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/calibration_quality_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/coverage_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4c41e38cfb8e9e6afb95fe9a528f7db157132faa9847a5899729ff1b34e324c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/coverage_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/coverage_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "12561d1c50943c4150a91155075f3c3822f59478de298f89461b96d8391806cd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/coverage_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/focused_neurips_main_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "e877ab43d75db442d8bb5297ccb6030d0954bdb69f9a5c9e33e288a0d6817798",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/focused_neurips_main_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/focused_neurips_main_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "3450da057a2ff1dd1ef34ef64130a6a5fbb239cba467902f7e7f74fef28a5a47",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/focused_neurips_main_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/main_nonlinear_results.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4c41e38cfb8e9e6afb95fe9a528f7db157132faa9847a5899729ff1b34e324c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/main_nonlinear_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/main_nonlinear_results.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "12561d1c50943c4150a91155075f3c3822f59478de298f89461b96d8391806cd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/main_nonlinear_results.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/mechanism_distortion_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "d939aca1fedab99676dde2dc277249bb00c7e96cfa63a3553ef62971f866fc90",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/mechanism_distortion_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/mechanism_distortion_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "0235581b89cec171fdbda699632551dfd67dc2616f5af60976f4491d8acc7dcb",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/mechanism_distortion_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/misspecification_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4c41e38cfb8e9e6afb95fe9a528f7db157132faa9847a5899729ff1b34e324c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/misspecification_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/misspecification_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "12561d1c50943c4150a91155075f3c3822f59478de298f89461b96d8391806cd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/misspecification_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/model_misspecification_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "5941daebb2578d910d5cf023e9c0ad91b9304224b6bd123ea52010ad798fdc19",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/model_misspecification_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/model_misspecification_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "01b571a4936ad3ff4976f4720d9a892a89d490912c49114eca16ec22d72bff3d",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/model_misspecification_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/sample_size_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4c41e38cfb8e9e6afb95fe9a528f7db157132faa9847a5899729ff1b34e324c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/sample_size_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/sample_size_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "12561d1c50943c4150a91155075f3c3822f59478de298f89461b96d8391806cd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/sample_size_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/split_fraction_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4c41e38cfb8e9e6afb95fe9a528f7db157132faa9847a5899729ff1b34e324c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/split_fraction_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/split_fraction_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "12561d1c50943c4150a91155075f3c3822f59478de298f89461b96d8391806cd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/split_fraction_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/temporal_reward_shift_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "54bdf118154b5ef18ff31c933d1db57a1e57c3b67d8cf760f7aed7f78798fd46",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/temporal_reward_shift_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/temporal_reward_shift_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "9c7c44d290c071283132bfd6c52a109f98f59034fa75db200b18d4eb6f2cbcfd",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/temporal_reward_shift_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/undertraining_sweep_summary.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "e1f09ade301a7c65e213387e7b1b44f951d321bf5b9eb81b4c43c6947118870a",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/undertraining_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/undertraining_sweep_summary.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "ab1ec9bd3fcce5c52a62dbfbe637974292e265ddde7e76e585482ec41a742ec3",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/undertraining_sweep_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/well_specified_debug_results.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "f859c47a46bdcea7b51de615cdfb8f0ace023f6c2384b45f34db544c722d2004",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/well_specified_debug_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/tables/well_specified_debug_results.tex",
+      "role": "audited final calibration result artifact",
+      "sha256": "1953aed61f7165f64cad19337d805d36b552d30d7e7a6550e30dd7c27bc8299a",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/tables/well_specified_debug_results.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/validation/audit_notes.md",
+      "role": "audited final calibration result artifact",
+      "sha256": "f3b91d9c43424566f072b569fcd3b195977d3f1c15af6ed048ddd219bf70f349",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/validation/audit_notes.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/validation/well_specified_gate.csv",
+      "role": "audited final calibration result artifact",
+      "sha256": "4afd8200e3900831127bec39e48d8781ce78aca14457f7e601e24f049a0b4e57",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/validation/well_specified_gate.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rescue_final/validation/well_specified_gate.json",
+      "role": "audited final calibration result artifact",
+      "sha256": "489f55fca6ba2e5e6aacf804308a3b8e20a8d440e49a96b432c7f2c92d4368f2",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rescue_final/validation/well_specified_gate.json"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/rlu_cheetah_benchmark_protocol.md",
+      "role": "study design or benchmark protocol documentation",
+      "sha256": "8317aa944d899ce205af7605a1fb59a35e74521db77452d99a0425374c4e4856",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/rlu_cheetah_benchmark_protocol.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/results/simulation_study_design.md",
+      "role": "study design or benchmark protocol documentation",
+      "sha256": "a9fae773ec0e2e2bc4093c10e3c17054a012eca309f64f4a9a4fdd2b2f80b33f",
+      "source": "experiments/calibration/FQE_calibration_neurips/results/simulation_study_design.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/aggregate_results.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "cf763cb9c78d6082dd2252274a36a567b2f1a014938a01a2e88d288ba9241056",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/aggregate_results.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/audit_rescue_submission.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "df6d2ed50f291abdda34b26eaa90a712ccea3b4905d8ea79e691518bb86f9104",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/audit_rescue_submission.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/audit_strict_submission.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "2a67887d1e22fc5caaddb7477b9d2b2c472ee48ea29a26308d93d2f433530e4c",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/audit_strict_submission.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/inspect_paper_draft.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "af0ccc1afbdfbbc48ce55d5fa3910e24157c5420c89ffae2eccb3ef1f87b53c5",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/inspect_paper_draft.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/make_hopper_q_paper_figures.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "80477f5aff774680197b59d449c98f4a5fc6c7675aca0b918ceead495f3dc7b0",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/make_hopper_q_paper_figures.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/make_import_figures.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "293bcd0593b8f9157aebc6258baaafbc2a05fe30789abf37e58e03316c9f0c1a",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/make_import_figures.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/make_plots.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "3fcda9922356b8f47436750fa7938251d1d51080844e91daa46faa8ba80f0cec",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/make_plots.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/make_rlu_cheetah_policy_value_figure.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "bb5fd74386390c5d1199105f05ad54acec43110518781be206132eed9a37b211",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/make_rlu_cheetah_policy_value_figure.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_all.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "cdb420aacb6819b53f81b70e4d797c6fd22925060c74d09c101f836f20a88302",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_all.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_debug.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "e9a3952f329c1366f2a37058a23a562a60bb599631bc2819b8c0dcfaceaa2ff6",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_debug.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_experiment.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "461812db4651b66275ea943cb38fedd4cd9607f0e9e187aa1028f282cdc2e19e",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_calibration_benchmark.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "a47a0a2283b9066b01e2ae247430f135b5f34adebb7823dccfd281597c466e66",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_calibration_benchmark.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_q_calibration_benchmark.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "e34c30d89109905c3fa0da1f83434418da68952fa1e306a3bb9c47be80ecb45f",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_q_calibration_benchmark.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_q_calibration_deadline_extend50_nonlin.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "855f95d650d7b3c873e352f45cd9dee9087385a9ee82676b34e041451b0828b1",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_q_calibration_deadline_extend50_nonlin.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_q_calibration_deadline_final_nonlin.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "e51e257089ff93098d4560128c71b66d412e2b9cafc690a1ad728621f9282774",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_q_calibration_deadline_final_nonlin.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_q_calibration_deadline_parallel.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "3c5901992bf41300bae50b64dd249bd0e27daae3deaadb36a90e99c05a0afa73",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_q_calibration_deadline_parallel.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_q_calibration_deadline_sample512_nonlin.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "cd0063aa2a5aba879baad74680c3cac25ad608b562bab948cc65e41f23b8d959",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_q_calibration_deadline_sample512_nonlin.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_q_calibration_final_pipeline.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "a00ace376809046febb1ddbe9b48a9863a431c5041c02503069843447fd78655",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_q_calibration_final_pipeline.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_q_calibration_hour_nonlin.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "e2f5c2ed664058e5258a06588049676879883a7f91373df07a7aedc8e91c2247",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_q_calibration_hour_nonlin.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_q_calibration_papernow_neural20_mps.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "b33d8fd3d0eab89b2c3f602efe7ed3b9572efe4c460980e3d2d55028456174e8",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_q_calibration_papernow_neural20_mps.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_hopper_q_calibration_realistic_fast_nonlin.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "89111fe4de082d948498924405608d8fe5e1b5d3d73a00dc24bb917f10b6dffb",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_hopper_q_calibration_realistic_fast_nonlin.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_paper_suite.sh",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "e580a6c9729aeab9fda8cf1ee308cada27f79600581e5cdd2bc79ae0663451e1",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_paper_suite.sh"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_rescue_stage.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "27d2878465f461209cc6ce28f7a9bddb594bec9a52b6d4997aa6093a64f99cd9",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_rescue_stage.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_rlu_cheetah_benchmark.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "7d5b8c2a8f896378349f3e0e2594b8878f659701f7f029800af89ea213bcd8bb",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_rlu_cheetah_benchmark.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_rlu_cheetah_fqe_reproduction.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "1b5bfbed60f5adc3c0f73ce9cd824efe968e8dfa8080239548cb9c903c4bdad1",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_rlu_cheetah_fqe_reproduction.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_rlu_cheetah_policy_value_benchmark.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "e7fb0a74c50361d005feb7212a4a210b177e42969aa1705624b104f786bb49d5",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_rlu_cheetah_policy_value_benchmark.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_suite.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "1188866bb6cccaa81b0e1173cb63c3ebd250e57ba7e22631dd8f37114e88d61d",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_suite.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/run_well_specified_diagnostic.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "19758064adf409f6c66167a49488854f0407c1cd641e98545e5844f7cbc2ed1f",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/run_well_specified_diagnostic.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/screen_deep_ope_value_calibration.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "e08085f6842e0bad5fa2c84d4c43f96d8c6ce50b3a430eba28fe2595f7e22a07",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/screen_deep_ope_value_calibration.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/scripts/validate_hopper_q_calibration_run.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "fb4e048bc76ffb929a1d842cf41b007ca937b620879241908dce7d6a8d678288",
+      "source": "experiments/calibration/FQE_calibration_neurips/scripts/validate_hopper_q_calibration_run.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/__init__.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "2983ea3286975fd7f3e40dfd2d0e3283a3bd4f64eb990a197030742fc41ebff0",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/__init__.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/aggregation.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "c2d8bc25f7ef595455a14505f4fdfcd4d90b4fcee5808b17eeb7389b791d5863",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/aggregation.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/calibration/__init__.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "d79038bf43ff3d534ec241d2fe7aa473d3f5da646dcca93e2c3864cdcfeaee66",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/calibration/__init__.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/calibration/calibrators.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "0b55fb1eb556b309183847a0245002efba2359308a64949f4678056c0d0e172a",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/calibration/calibrators.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/calibration/cross_calibration.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "12b5282be1083bcb088b9c4ac2f15fcd04b22942391df0743cee14dfe7fb8855",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/calibration/cross_calibration.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/calibration/no_split_calibration.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "a5c67f9d28a6320c0afe37838f109731ac732f0c00996a00680f7ca4f9e9c497",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/calibration/no_split_calibration.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/calibration/protocols.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "383de2bc54fa509d3095ad9e8874a6504024a7ffbf66af9113459e5f66b9699d",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/calibration/protocols.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/calibration/split_calibration.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "26b36c901a4d9ee405135c4728c1b9eb082afe46e354728a67dd48330ab76d87",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/calibration/split_calibration.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/calibration/targets.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "ae620053c3d70cfba1d9d1e50619319679f635f9d1f7d3decb1efdd0a37bef42",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/calibration/targets.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/comparison/__init__.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "5da3932d419af86f0dff6755db0c69550dbc7d2c9ca3699b902a8138a9a60f65",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/comparison/__init__.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/comparison/baselines.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "1850f979ff70d73b641033300e29ed8a9eaa364488c793ff53224951294748a1",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/comparison/baselines.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/comparison/finetuning.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "af0fa6762489a740a948b422b92b1cbfce2e56d60b9894cb5662e6a29ecd5a0b",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/comparison/finetuning.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/comparison/offset_correction.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "6c2da46fd18d2c041fee0b020e130024c2ccd727731fa7f51d6b43546ee590f5",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/comparison/offset_correction.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/comparison/regularized_toward_first_stage.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "a950145ae9f45bb8f3d4f0b326d0e38b153c72f6f6316c99526297f2eea18ef2",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/comparison/regularized_toward_first_stage.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/comparison/residual_correction.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "cfa1da8601efb13f1f971e29965891ce96f92004abc11f2deecaaea29b73c730",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/comparison/residual_correction.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/data.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "f636981d865bea349f0884bd823bfc135ae19ab3de2bf0c2582ea6cafa3a49bd",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/data.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/environments.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "568560bfb144149693a2628475357371bf1d55cded69601023a5259a6b14bab6",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/environments.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/estimators/__init__.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "69675da38a89f7cced7d83a92e40e81401dd62acfce1818d29380fda6a3de07b",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/estimators/__init__.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/estimators/baselines.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "fef940f1fdfecfd93dcd0243bc14d4bc98eaef86f0ffb1489fecfca2b239b514",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/estimators/baselines.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/estimators/ensemble_fqe.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "a99aea29c970b317c57fb0ec38dd4843cd2ff564721e3cfdcc4a9a53318d1e16",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/estimators/ensemble_fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/estimators/model_wrappers.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "ba1eb677260a58fa6fc3e38bf79c3e784cacff78c67870b246984f4762334ac1",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/estimators/model_wrappers.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/estimators/neural_fqe.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "792c81a1411f987b3169cfbc2c79d9918c13d63288606a7a80ce15b7d56eae48",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/estimators/neural_fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/estimators/random_feature_fqe.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "8930e67efa0de0022e86763b588ad5f6f326bf7dfd93d158655f33c8321fc4bf",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/estimators/random_feature_fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/estimators/regularized_bellman.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "4393a3b9502a14d9ea9c620e5acf26393fdfda07beedbe2d449387308af989bc",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/estimators/regularized_bellman.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/estimators/saddle_point_bellman.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "7d7faf1ec99b54cde15d3472f92ec8ff975840bd0cae72ffee5ea7fcd4c4adcf",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/estimators/saddle_point_bellman.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/evaluation.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "aa8cf28084c885c67b7d34af8e90807f8f86173cdcd3b6b1ada89e2c4852b77c",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/evaluation.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/plotting.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "49a621e94501d837228aba5a7479175e40420ebe6013f3c3573cc7ed6a150df1",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/plotting.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/policies.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "76df8f92c83fa11817dcd270742e769fe72c55447dafa0e0018016c20cdf125c",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/policies.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/tables.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "c5a644ff616cbb1ea756df0a6251433c922616cf9db55fd8a94018f27133075d",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/tables.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/utils.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "f22f49c70f009231d2717a9bfefc79a5ff36f8c02616fe8e02c8236367a9d4db",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/utils.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/src/validation.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "5be61496cf62e6be9f1289dd7363d58a64e1a26a1c5f52e25bbfdc45111b6e9b",
+      "source": "experiments/calibration/FQE_calibration_neurips/src/validation.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/tests/test_correctness.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "547829826e6371964e1ec2284e0c173127a4d2b0b2f61e240f5bbd6bbd6a09c9",
+      "source": "experiments/calibration/FQE_calibration_neurips/tests/test_correctness.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/tests/test_hopper_appendix.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "43859e5aac788b186174a94e4a00a8fd6ec318e5f1944f34045512c467b78acf",
+      "source": "experiments/calibration/FQE_calibration_neurips/tests/test_hopper_appendix.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/tests/test_pipeline.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "12d23016a2599e9ae9976619aab407251bc070cb3898e52ca97070e808131547",
+      "source": "experiments/calibration/FQE_calibration_neurips/tests/test_pipeline.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/tests/test_rlu_cheetah_benchmark.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "eae4b7e28c6dfce0bb9b0c12fbbdee69b6d20d57b3515b17aee1085d4f4ab804",
+      "source": "experiments/calibration/FQE_calibration_neurips/tests/test_rlu_cheetah_benchmark.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_calibration_neurips/tests/test_smoke.py",
+      "role": "value calibration source, configs, tests, scripts, and import snippets",
+      "sha256": "7f8a84d13d37cefa08777590ea42f12c7cea835074aeec7cfae2d517f2baa25d",
+      "source": "experiments/calibration/FQE_calibration_neurips/tests/test_smoke.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/__init__.py",
+      "role": "minimal FQE weighting support required by bundled Hopper calibration support package",
+      "sha256": "f9f892498581f1d2a79dfad2aae592b4f10b1580e7718234accbf13fdc8151be",
+      "source": "experiments/fqe/FQE_neurips/__init__.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/fqe.py",
+      "role": "minimal FQE weighting support required by bundled Hopper calibration support package",
+      "sha256": "8b78a1c241da7e960f7900f28ecbf43ae24518b63715421fe7daa128c6ad579b",
+      "source": "experiments/fqe/FQE_neurips/fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/fqe_linear.py",
+      "role": "minimal FQE weighting support required by bundled Hopper calibration support package",
+      "sha256": "4c74533df873bff1b5b5c83095ab08b60cdb6f202e8ad476b21c51cd81618508",
+      "source": "experiments/fqe/FQE_neurips/fqe_linear.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/neural_rkhs_weights.py",
+      "role": "minimal FQE weighting support required by bundled Hopper calibration support package",
+      "sha256": "8853e23064ac9392f7bcad885abc0ca804c03ff682f0b1c248fe17e03e0b3b2c",
+      "source": "experiments/fqe/FQE_neurips/neural_rkhs_weights.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/ratio_estimation.py",
+      "role": "minimal FQE weighting support required by bundled Hopper calibration support package",
+      "sha256": "2c4c39ed8806cfe02943636e7ed51d4be6a0226aad09bf7ebce8f60a8b9203e5",
+      "source": "experiments/fqe/FQE_neurips/ratio_estimation.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/saddle_optim.py",
+      "role": "minimal FQE weighting support required by bundled Hopper calibration support package",
+      "sha256": "c50ada155a48c478868ab4fc2b257fbc9565f5699469e6c6cb3ab5960a7195a5",
+      "source": "experiments/fqe/FQE_neurips/saddle_optim.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/sw_fqe.py",
+      "role": "minimal FQE weighting support required by bundled Hopper calibration support package",
+      "sha256": "12724a73fc95dcf1e8474946ec74998bcd42ae5939e4d8d71aa69c5ca9f24a41",
+      "source": "experiments/fqe/FQE_neurips/sw_fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/utils.py",
+      "role": "minimal FQE weighting support required by bundled Hopper calibration support package",
+      "sha256": "ad524c03491fca6e883e6039dd537bbb1ee88315897dbadbea47d126d48847a3",
+      "source": "experiments/fqe/FQE_neurips/utils.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/README.md",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "3247bc6cfba2b79744bf65aff4a8d2d0a9901b10d1f4919666a6e16702a88c0d",
+      "source": "experiments/calibration/hopper_fqe_benchmark/README.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/__init__.py",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "464bdb3abaeb9e545b9527cc988162d4aecd6dbab1810e510cbe29ee47424c4f",
+      "source": "experiments/calibration/hopper_fqe_benchmark/__init__.py"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_dice.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "0d8fe7595611f90442f97293529dceadd09114cb5aedbe05303073ebd9da2fd2",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_dice.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_dr.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "ecd4abc220b97ff88168986dc0f47578817709f8f14a9ea44c41bd933afd03f4",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_dr.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_fqel2.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "1049ca88d330b89f7fb8257e874dc40ab98c148577a261291eb76a99cb1b21dd",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_fqel2.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_gt.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "41b26964eacaae6be19e6ef629a11f8fa1345cc744e8a149c6fe6b4bded11740",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_gt.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_is.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "1e64ecf617a49955b7f8e3c0ec59c0e99d9bd9d80d6cace30ee990945b25369b",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_is.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_policys.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "5185180f5ee123e7d7851346a3f088e6a26ec6f229815eb4653365247b76ee27",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_policys.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_vpm.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "8b3c6996044510259ccd8a804d27d55d2f81e885b9b4050c2589a428aba74515",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/d4rl_vpm.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_dice.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "c6bf856bd21572cac4f45913992a0bf5da281f10b062cc5a2256e6e59606f927",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_dice.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_dr.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "7c0425bdc0610e6cec53f640382c72e966be39b234b3610bd755579463d5a91e",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_dr.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_fqed.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "c69b58b1ddbf82ae8edd187579706e58fdff4486bfe26051f5b68d38842984f2",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_fqed.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_fqel2.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "6d32d45b38bdf7e90302246246df9a91a2ff223dbeb2198d87291998fe3650f3",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_fqel2.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_gt.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "645dcba3a9e919c30720c0d2b5386e7e178307c3ed060be10da8603cfe3cb53f",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_gt.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_is.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "f89a05f250d3f06dff41eba6821bc7bc9e7d348c392831b63fc24241a8533431",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_is.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_mb_ar.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "84f79fa3d04d94acd00c08a24b42867481e97be6debaf7cd0a16414f4394e5e6",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_mb_ar.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_mb_ff.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "21182c3b8b5ba3c7f680e80b71b4026a0d7acb62b022a4f7dd35216b7e91e4aa",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_mb_ff.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_policys.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "bf82d73dc513c1effcf7a5f693d0407fa2949b15258af373469bafa7eedbf1d4",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_policys.pkl"
+    },
+    {
+      "anonymized_text": false,
+      "path": "code/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_vpm.pkl",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "8e8125d66c825c767f44602d25e018cacdc62b790f2bcf05c0c568da52808e9d",
+      "source": "experiments/calibration/hopper_fqe_benchmark/artifacts/benchmark/dope/rlunplugged_vpm.pkl"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/data.py",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "28d4597a7630798a2d4d1a53428e7260ddc057f995178a584911d4da8997d866",
+      "source": "experiments/calibration/hopper_fqe_benchmark/data.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/dice.py",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "08f13fa3fd1334acffac8a0a60e724a92adb0a67ae14376fc7d242d1d0305691",
+      "source": "experiments/calibration/hopper_fqe_benchmark/dice.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/features.py",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "69dfae4106c415c34464353478f77866562e44db3af7f894ace59804bceaf5b9",
+      "source": "experiments/calibration/hopper_fqe_benchmark/features.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/fqe.py",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "9fe1ede5ec342e53dc635c895bc984131e111b6c427e86440f70fb914eeda016",
+      "source": "experiments/calibration/hopper_fqe_benchmark/fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/official_tf_baselines.py",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "48a83c5aa53f266aab111b99a7109f18ba42066375494b97493918ca049380aa",
+      "source": "experiments/calibration/hopper_fqe_benchmark/official_tf_baselines.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/policies.py",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "50411e1e6f752831a77b465ca6569189fe16b2d59fe9102718b85c6a5a889c01",
+      "source": "experiments/calibration/hopper_fqe_benchmark/policies.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/runner.py",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "86bd4c7294c3cbfb27e6590b68ebba6dbb0f9ded32e1087c295bdc0e3e71862d",
+      "source": "experiments/calibration/hopper_fqe_benchmark/runner.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/hopper_fqe_benchmark/study.py",
+      "role": "support package for calibration Hopper/RLU tests and appendix scripts",
+      "sha256": "064b0d10a0dbd95ba2faf4be06289ea1b96c5fc82894879124d9117af16ae9ed",
+      "source": "experiments/calibration/hopper_fqe_benchmark/study.py"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/calibration_story_compact.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "35b0e145f74d5668d5adf41f497022c815b2b5999e287ccb16ec2cbbacb9beda",
+      "source": "papers/calibration/figures/calibration_story_compact.pdf"
+    }
+  ],
+  "source_root": "neurips_bellman canonical paper/experiment tree"
+}

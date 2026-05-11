@@ -1,0 +1,104 @@
+seed: 61011
+replications: 10
+gamma: 0.985
+horizon: 120
+n_actions: 3
+sample_sizes: [1200]
+state_dimensions: [4]
+coverage_settings: [moderate]
+reward_noise_settings: [0.05]
+transition_noise: 0.04
+test_transitions: 2000
+diagnostic_test_transitions: 5000
+true_q_rollouts_per_state: 2
+calibration_error_bins: 50
+calibration_error_min_bin_size: 50
+calibration_error_folds: 5
+interval_bootstrap_reps: 200
+initial_eval_states: 2000
+oracle_rollouts: 2000
+policy_shift: {good: 0.10, moderate: 0.45, severe: 1.15, extrapolation: 1.7}
+environment_tier: nonlinear_synthetic
+misspecification: finite_iteration_scale
+reference_shift_scale: 0.15
+shifted_initial_eval_states: true
+baseline_learners:
+  - random_feature_fqe_iter1
+  - random_feature_fqe_iter2
+  - random_feature_fqe_iter4
+  - random_feature_fqe_well_tuned
+  - neural_fqe_iter1
+  - neural_fqe_iter2
+  - neural_fqe_well_tuned
+  - ensemble_fqe_weak_members
+  - ensemble_fqe_well_tuned
+calibration_protocols: [cross, no_split]
+calibrators: [linear, isotonic, isotonic_histogram]
+calibration_targets: [value_bellman]
+importance_weight_scheme: action_ratio
+importance_weight_clip: 20.0
+normalize_importance_weights: true
+value_calibration_iterations: 8
+cross_folds: 5
+split_fractions: []
+split_comparators: []
+calibrator_params: {n_bins: 10, bin_strategy: quantile, min_bin_size: 20, value_calibration_iterations: 8}
+learner_params:
+  random_feature_fqe: {feature_type: linear, ridge: 0.0005, n_iters: 35}
+  neural_fqe: {hidden_dims: [48, 48], n_iters: 18, epochs_per_iter: 4, batch_size: 128, lr: 0.001, weight_decay: 0.0001, target_tau: 0.25, device: cpu}
+  ensemble_fqe: {n_members: 5, feature_type: linear, ridge: 0.0005, n_iters: 30}
+learner_variants:
+  random_feature_fqe_iter1:
+    base_learner: random_feature_fqe
+    learner_quality_regime: under_iterated
+    calibration_difficulty: finite_iteration_bias
+    main_figure_role: main
+    params: {n_iters: 1}
+  random_feature_fqe_iter2:
+    base_learner: random_feature_fqe
+    learner_quality_regime: under_iterated
+    calibration_difficulty: finite_iteration_bias
+    main_figure_role: main
+    params: {n_iters: 2}
+  random_feature_fqe_iter4:
+    base_learner: random_feature_fqe
+    learner_quality_regime: under_iterated
+    calibration_difficulty: finite_iteration_bias
+    main_figure_role: appendix
+    params: {n_iters: 4}
+  random_feature_fqe_well_tuned:
+    base_learner: random_feature_fqe
+    learner_quality_regime: well_tuned
+    calibration_difficulty: finite_iteration_bias
+    main_figure_role: main
+    params: {n_iters: 70}
+  neural_fqe_iter1:
+    base_learner: neural_fqe
+    learner_quality_regime: under_iterated
+    calibration_difficulty: finite_iteration_bias
+    main_figure_role: main
+    params: {hidden_dims: [24], n_iters: 1, epochs_per_iter: 1, bootstrap_on_first_iter: false, target_tau: 0.0}
+  neural_fqe_iter2:
+    base_learner: neural_fqe
+    learner_quality_regime: under_iterated
+    calibration_difficulty: finite_iteration_bias
+    main_figure_role: main
+    params: {hidden_dims: [32], n_iters: 2, epochs_per_iter: 1, target_tau: 0.05, weight_decay: 0.0}
+  neural_fqe_well_tuned:
+    base_learner: neural_fqe
+    learner_quality_regime: well_tuned
+    calibration_difficulty: finite_iteration_bias
+    main_figure_role: main
+    params: {hidden_dims: [48, 48], n_iters: 30, epochs_per_iter: 5, target_tau: 0.3}
+  ensemble_fqe_weak_members:
+    base_learner: ensemble_fqe
+    learner_quality_regime: weak_ensemble
+    calibration_difficulty: finite_iteration_bias
+    main_figure_role: appendix
+    params: {n_members: 2, n_components: 32, n_iters: 2}
+  ensemble_fqe_well_tuned:
+    base_learner: ensemble_fqe
+    learner_quality_regime: well_tuned
+    calibration_difficulty: finite_iteration_bias
+    main_figure_role: appendix
+    params: {n_iters: 60}

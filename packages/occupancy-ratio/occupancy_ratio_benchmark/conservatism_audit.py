@@ -243,7 +243,6 @@ def _family_default_decision(rows: list[dict[str, Any]], family: str) -> dict[st
     if not family_rows:
         return {"decision": "no-data", "candidate": "", "reason": "no successful rows"}
     current_name = f"{family_to_estimator_prefix(family)}_stable"
-    current_rows = [row for row in family_rows if row.get("estimator") == current_name]
     candidates = _candidate_summary(family_rows)
     passing = [row for row in candidates if row["fail"] == 0]
     if not passing:

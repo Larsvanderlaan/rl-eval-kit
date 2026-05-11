@@ -1,0 +1,21 @@
+\begin{table}[t]
+\centering
+\caption{Representative direct low-temperature soft-FQI diagnostics. Entries are median [IQR] across 200 offline datasets.}
+\label{tab:soft-fqi-main}
+\small
+\begin{tabular}{lllll}
+\toprule
+Regime & Method & Projected Bellman & Stationary advantage error $\times 10^3$ & ESS fraction \\
+\midrule
+On-policy & Unweighted & 0.526 [0.491, 0.587] & 4.11 [3.72, 4.71] & 1 [1, 1] \\
+On-policy & Stab. oracle & 0.516 [0.478, 0.578] & 4.06 [3.61, 4.68] & 0.999 [0.999, 0.999] \\
+On-policy & Estimated & 0.533 [0.482, 0.584] & 4.19 [3.68, 4.9] & 0.994 [0.993, 0.995] \\
+Mild shift & Unweighted & 0.822 [0.711, 0.964] & 7.49 [6.91, 8.09] & 1 [1, 1] \\
+Mild shift & Stab. oracle & 0.51 [0.455, 0.576] & 3.98 [3.55, 4.56] & 0.43 [0.427, 0.434] \\
+Mild shift & Estimated & 0.584 [0.538, 0.636] & 4.87 [4.64, 5.17] & 0.686 [0.678, 0.692] \\
+Severe shift & Unweighted & 0.798 [0.77, 0.826] & 9.56 [8.68, 10.4] & 1 [1, 1] \\
+Severe shift & Stab. oracle & 0.804 [0.625, 0.951] & 21.2 [17.7, 24.3] & 0.0837 [0.0803, 0.0881] \\
+Severe shift & Estimated & 0.839 [0.618, 1.15] & 3.67 [2.27, 7.45] & 0.391 [0.359, 0.411] \\
+\bottomrule
+\end{tabular}
+\end{table}

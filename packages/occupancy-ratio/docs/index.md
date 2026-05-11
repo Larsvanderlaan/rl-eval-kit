@@ -18,6 +18,10 @@ It also includes optional Google DualDICE integration for apples-to-apples
 comparison with the Google Research implementation and a benchmark CLI for
 controlled and realistic evaluation suites.
 
+For DICE-style and minimax comparators, `fit_minimax_weight(...)` exposes one
+common interface over the official Google `policy_eval` DualDICE wrapper,
+Google DICE-RL NeuralDice variants, and SCOPE-RL minimax weight learners.
+
 ## The Object Being Estimated
 
 The main fitted model predicts the discounted state-action occupancy ratio

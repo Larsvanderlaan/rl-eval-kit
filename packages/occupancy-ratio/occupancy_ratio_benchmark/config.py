@@ -22,6 +22,7 @@ BOOSTED_ESTIMATOR_PRESETS = (
     "crossfit2_calibrated",
     "bellman_moment_calibrated",
     "auto",
+    "staged_cv",
 )
 NEURAL_ESTIMATOR_PRESETS = (
     "squared",
@@ -38,6 +39,8 @@ NEURAL_ESTIMATOR_PRESETS = (
     "crossfit2_calibrated",
     "bellman_moment_calibrated",
     "auto",
+    "staged_cv",
+    "naive_final_bellman_cv",
 )
 DIRECT_ESTIMATORS = {
     "oracle",
@@ -45,6 +48,17 @@ DIRECT_ESTIMATORS = {
     "neural_network",
     "google_dualdice",
     "google_dualdice_neural",
+    "neural_fori_default_stable",
+    "neural_fori_cv_size",
+    "neural_fori_oracle",
+    "google_dualdice_published_default",
+    "google_dualdice_default",
+    "dualdice_gmm_tuned",
+    "dualdice_oracle",
+    "dice_rl_dualdice_recovered",
+    "dice_rl_dualdice_gmm_tuned",
+    "dice_rl_dualdice_oracle",
+    "dice_rl_best_regularized",
     "google_tabular_dualdice_gridwalk",
     *(f"boosted_tree_{preset}" for preset in BOOSTED_ESTIMATOR_PRESETS),
     *(f"neural_network_{preset}" for preset in NEURAL_ESTIMATOR_PRESETS),
@@ -72,6 +86,8 @@ class OccupancyRatioBenchmarkConfig:
     gammas: Sequence[float] = field(default_factory=lambda: (0.5, 0.9))
     discrete_policy_shifts: Sequence[float] = field(default_factory=tuple)
     linear_gaussian_policy_shifts: Sequence[float] = field(default_factory=lambda: (1.0,))
+    random_tabular_state_counts: Sequence[int] = field(default_factory=lambda: (20, 50))
+    random_tabular_action_counts: Sequence[int] = field(default_factory=lambda: (2, 5))
     settings: Sequence[str] = field(
         default_factory=lambda: ("discrete_chain", "linear_gaussian", "nonlinear_monte_carlo")
     )
@@ -81,9 +97,11 @@ class OccupancyRatioBenchmarkConfig:
     boosted_estimator_presets: Sequence[str] = field(default_factory=lambda: ("stable",))
     neural_estimator_presets: Sequence[str] = field(default_factory=lambda: ("stable",))
     include_google_dual_dice: bool = True
+    include_dice_rl: bool = True
     include_dualdice_gridwalk: bool = False
     gridwalk_alphas: Sequence[float] = field(default_factory=lambda: (0.0, 0.5))
     external_repo_path: Path = Path("/tmp/google-research")
+    dice_rl_repo_path: Path = Path("/tmp/dice_rl")
     n_jobs: int = 1
 
     boosted_num_iterations: int = 60
@@ -144,10 +162,19 @@ class OccupancyRatioBenchmarkConfig:
     neural_device: str = "cpu"
     google_num_updates: int = 50
     google_batch_size: int = 128
+    google_batch_sizes: Sequence[int] = field(default_factory=lambda: (128,))
     google_learning_rates: Sequence[float] = field(default_factory=lambda: (1e-4, 3e-4, 1e-3))
     google_weight_decays: Sequence[float] = field(default_factory=lambda: (1e-6, 1e-5, 1e-4))
     google_hidden_dims: Sequence[int] = field(default_factory=lambda: (64, 128))
     google_update_grid: Sequence[int] = field(default_factory=lambda: (250, 1_000, 5_000))
+    dice_rl_num_steps: int = 1_000
+    dice_rl_batch_size: int = 128
+    dice_rl_learning_rate: float = 1e-4
+    dice_rl_hidden_dims: Sequence[int] = field(default_factory=lambda: (64, 64))
+    dice_rl_update_grid: Sequence[int] = field(default_factory=lambda: (250, 1_000, 5_000))
+    dice_rl_batch_sizes: Sequence[int] = field(default_factory=lambda: (128, 256))
+    dice_rl_learning_rates: Sequence[float] = field(default_factory=lambda: (1e-4, 3e-4, 1e-3))
+    dice_rl_hidden_dim_grid: Sequence[int] = field(default_factory=lambda: (64, 128))
     tune_cv: bool = False
     automl_tuning: str = "off"
     cv_folds: int = 3
@@ -161,8 +188,18 @@ class OccupancyRatioBenchmarkConfig:
     cv_moment_extra_blocks: Sequence[str] = field(default_factory=tuple)
     cv_moment_multiscale_rff_scales: Sequence[float] = field(default_factory=lambda: (0.5, 2.0))
     cv_moment_strata_quantiles: Sequence[float] = field(default_factory=lambda: (0.25, 0.50, 0.75))
+    cv_score_method: str = "legacy_rank"
+    cv_gmm_objective: str = "ratio"
+    cv_gmm_cov_ridge: float = 0.10
+    cv_gmm_complexity_weight: float = 0.05
+    cv_gmm_ope_broad_weight: float = 0.10
+    cv_gmm_refit_fraction: float = 1.0
+    staged_bootstrap_cv: bool = False
+    staged_cv_iterations: int = 3
+    staged_cv_n_bootstrap: int = 200
     mc_truth_samples: int = 8_000
     gym_target_value_rollouts: int = 24
+    application_target_value_rollouts: int = 24
     openml_task_ids: Sequence[int] = field(default_factory=lambda: (31, 37, 54, 1464))
     openml_max_tasks: int | None = 2
     tabular_state_cap: int | None = None
@@ -193,6 +230,7 @@ class OccupancyRatioBenchmarkConfig:
         object.__setattr__(self, "stage", profile)
         object.__setattr__(self, "output_root", Path(self.output_root))
         object.__setattr__(self, "external_repo_path", Path(self.external_repo_path))
+        object.__setattr__(self, "dice_rl_repo_path", Path(self.dice_rl_repo_path))
         if self.config_path is not None:
             object.__setattr__(self, "config_path", Path(self.config_path))
         if self.n_jobs <= 0:
@@ -206,6 +244,12 @@ class OccupancyRatioBenchmarkConfig:
         for shift in self.linear_gaussian_policy_shifts:
             if float(shift) < 0.0:
                 raise ValueError("linear_gaussian_policy_shifts must be nonnegative.")
+        for count in self.random_tabular_state_counts:
+            if int(count) <= 1:
+                raise ValueError("random_tabular_state_counts must contain values greater than 1.")
+        for count in self.random_tabular_action_counts:
+            if int(count) <= 1:
+                raise ValueError("random_tabular_action_counts must contain values greater than 1.")
         for alpha in self.gridwalk_alphas:
             if not (0.0 <= float(alpha) <= 1.0):
                 raise ValueError("gridwalk_alphas must be in [0, 1].")
@@ -245,6 +289,7 @@ class OccupancyRatioBenchmarkConfig:
             "crossfit2_calibrated",
             "bellman_moment_calibrated",
             "auto",
+            "staged_cv",
             "huber_projection",
             "huber_projection_damping",
             "huber_projection_damping_transition_norm",
@@ -358,9 +403,28 @@ class OccupancyRatioBenchmarkConfig:
         for quantile in self.cv_moment_strata_quantiles:
             if not (0.0 < float(quantile) < 1.0):
                 raise ValueError("cv_moment_strata_quantiles entries must be in (0, 1).")
+        if str(self.cv_score_method) not in {"legacy_rank", "bellman_gmm", "validation_loss"}:
+            raise ValueError("cv_score_method must be 'legacy_rank', 'bellman_gmm', or 'validation_loss'.")
+        if str(self.cv_gmm_objective) not in {"ratio", "ope"}:
+            raise ValueError("cv_gmm_objective must be 'ratio' or 'ope'.")
+        if float(self.cv_gmm_cov_ridge) < 0.0:
+            raise ValueError("cv_gmm_cov_ridge must be nonnegative.")
+        if float(self.cv_gmm_complexity_weight) < 0.0:
+            raise ValueError("cv_gmm_complexity_weight must be nonnegative.")
+        if not (0.0 <= float(self.cv_gmm_ope_broad_weight) <= 1.0):
+            raise ValueError("cv_gmm_ope_broad_weight must be in [0, 1].")
+        if not (0.0 < float(self.cv_gmm_refit_fraction) <= 1.0):
+            raise ValueError("cv_gmm_refit_fraction must be in (0, 1].")
+        if not (1 <= int(self.staged_cv_iterations) <= 5):
+            raise ValueError("staged_cv_iterations must be in [1, 5].")
+        if int(self.staged_cv_n_bootstrap) < 0:
+            raise ValueError("staged_cv_n_bootstrap must be nonnegative.")
         for value in self.google_learning_rates:
             if float(value) <= 0.0:
                 raise ValueError("google_learning_rates must be positive.")
+        for value in self.google_batch_sizes:
+            if int(value) <= 0:
+                raise ValueError("google_batch_sizes must be positive.")
         for value in self.google_weight_decays:
             if float(value) < 0.0:
                 raise ValueError("google_weight_decays must be nonnegative.")
@@ -370,8 +434,30 @@ class OccupancyRatioBenchmarkConfig:
         for value in self.google_update_grid:
             if int(value) <= 0:
                 raise ValueError("google_update_grid must be positive.")
+        if int(self.dice_rl_num_steps) <= 0:
+            raise ValueError("dice_rl_num_steps must be positive.")
+        if int(self.dice_rl_batch_size) <= 0:
+            raise ValueError("dice_rl_batch_size must be positive.")
+        if float(self.dice_rl_learning_rate) <= 0.0:
+            raise ValueError("dice_rl_learning_rate must be positive.")
+        if not tuple(self.dice_rl_hidden_dims) or any(int(width) <= 0 for width in self.dice_rl_hidden_dims):
+            raise ValueError("dice_rl_hidden_dims must contain positive widths.")
+        for value in self.dice_rl_update_grid:
+            if int(value) <= 0:
+                raise ValueError("dice_rl_update_grid must be positive.")
+        for value in self.dice_rl_batch_sizes:
+            if int(value) <= 0:
+                raise ValueError("dice_rl_batch_sizes must be positive.")
+        for value in self.dice_rl_learning_rates:
+            if float(value) <= 0.0:
+                raise ValueError("dice_rl_learning_rates must be positive.")
+        for value in self.dice_rl_hidden_dim_grid:
+            if int(value) <= 0:
+                raise ValueError("dice_rl_hidden_dim_grid must be positive.")
         if int(self.gym_target_value_rollouts) <= 0:
             raise ValueError("gym_target_value_rollouts must be positive.")
+        if int(self.application_target_value_rollouts) <= 0:
+            raise ValueError("application_target_value_rollouts must be positive.")
         for task_id in self.openml_task_ids:
             if int(task_id) <= 0:
                 raise ValueError("openml_task_ids must contain positive task ids.")
@@ -670,5 +756,19 @@ class OccupancyRatioBenchmarkConfig:
     def resolved_estimators(self) -> tuple[str, ...]:
         estimators = tuple(self.estimators)
         if not self.include_google_dual_dice:
-            estimators = tuple(name for name in estimators if "dualdice" not in str(name))
+            estimators = tuple(
+                name
+                for name in estimators
+                if str(name)
+                not in {
+                    "google_dualdice",
+                    "google_dualdice_neural",
+                    "google_dualdice_default",
+                    "google_dualdice_published_default",
+                    "dualdice_gmm_tuned",
+                    "dualdice_oracle",
+                }
+            )
+        if not self.include_dice_rl:
+            estimators = tuple(name for name in estimators if not str(name).startswith("dice_rl_"))
         return estimators

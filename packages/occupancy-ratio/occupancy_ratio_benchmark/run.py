@@ -23,7 +23,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--profile", choices=profiles, default=None)
     parser.add_argument("--output-root", default=None)
     parser.add_argument("--external-repo-path", default=None)
+    parser.add_argument("--dice-rl-repo-path", default=None)
     parser.add_argument("--no-google-dualdice", action="store_true")
+    parser.add_argument("--no-dice-rl", action="store_true")
     parser.add_argument("--include-dualdice-gridwalk", action="store_true")
     parser.add_argument("--gridwalk-alphas", nargs="*", type=float, default=None)
     parser.add_argument("--tune-cv", action="store_true")
@@ -38,6 +40,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--cv-moment-multiscale-rff-scales", nargs="*", type=float, default=None)
     parser.add_argument("--cv-moment-strata-quantiles", nargs="*", type=float, default=None)
+    parser.add_argument("--cv-score-method", choices=("legacy_rank", "bellman_gmm"), default=None)
+    parser.add_argument("--cv-gmm-objective", choices=("ratio", "ope"), default=None)
+    parser.add_argument("--cv-gmm-cov-ridge", type=float, default=None)
+    parser.add_argument("--cv-gmm-complexity-weight", type=float, default=None)
+    parser.add_argument("--cv-gmm-ope-broad-weight", type=float, default=None)
+    parser.add_argument("--cv-gmm-refit-fraction", type=float, default=None)
+    parser.add_argument("--staged-cv", action="store_true")
+    parser.add_argument("--staged-cv-iterations", type=int, default=None)
+    parser.add_argument("--staged-cv-n-bootstrap", type=int, default=None)
     parser.add_argument("--settings", nargs="*", default=None)
     parser.add_argument("--estimators", nargs="*", default=None)
     parser.add_argument("--boosted-estimator-presets", nargs="*", default=None, choices=BOOSTED_ESTIMATOR_PRESETS)
@@ -47,6 +58,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gammas", nargs="*", type=float, default=None)
     parser.add_argument("--discrete-policy-shifts", nargs="*", type=float, default=None)
     parser.add_argument("--linear-gaussian-policy-shifts", nargs="*", type=float, default=None)
+    parser.add_argument("--random-tabular-state-counts", nargs="*", type=int, default=None)
+    parser.add_argument("--random-tabular-action-counts", nargs="*", type=int, default=None)
     parser.add_argument("--boosted-losses", nargs="*", default=None, choices=("squared", "huber"))
     parser.add_argument("--boosted-num-iterations", type=int, default=None)
     parser.add_argument("--boosted-mcmc-samples", type=int, default=None)
@@ -74,6 +87,7 @@ def parse_args() -> argparse.Namespace:
             "stable_logistic_nuisance",
             "google_parity",
             "auto",
+            "staged_cv",
             "huber_projection",
             "huber_projection_damping",
             "huber_projection_damping_transition_norm",
@@ -99,6 +113,7 @@ def parse_args() -> argparse.Namespace:
             "logistic_nuisance",
             "stable_logistic_nuisance",
             "auto",
+            "staged_cv",
             "huber_projection",
             "huber_projection_damping",
             "huber_projection_damping_transition_norm",
@@ -137,10 +152,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-resume", action="store_true")
     parser.add_argument("--google-num-updates", type=int, default=None)
     parser.add_argument("--google-batch-size", type=int, default=None)
+    parser.add_argument("--google-batch-sizes", nargs="*", type=int, default=None)
+    parser.add_argument("--google-learning-rates", nargs="*", type=float, default=None)
+    parser.add_argument("--google-weight-decays", nargs="*", type=float, default=None)
+    parser.add_argument("--google-hidden-dims", nargs="*", type=int, default=None)
+    parser.add_argument("--google-update-grid", nargs="*", type=int, default=None)
+    parser.add_argument("--dice-rl-num-steps", type=int, default=None)
+    parser.add_argument("--dice-rl-batch-size", type=int, default=None)
+    parser.add_argument("--dice-rl-learning-rate", type=float, default=None)
+    parser.add_argument("--dice-rl-hidden-dims", nargs="*", type=int, default=None)
+    parser.add_argument("--dice-rl-update-grid", nargs="*", type=int, default=None)
+    parser.add_argument("--dice-rl-batch-sizes", nargs="*", type=int, default=None)
+    parser.add_argument("--dice-rl-learning-rates", nargs="*", type=float, default=None)
+    parser.add_argument("--dice-rl-hidden-dim-grid", nargs="*", type=int, default=None)
     parser.add_argument("--huber-delta", type=float, default=None)
     parser.add_argument("--huber-delta-scale", type=float, default=None)
     parser.add_argument("--mc-truth-samples", type=int, default=None)
     parser.add_argument("--gym-target-value-rollouts", type=int, default=None)
+    parser.add_argument("--application-target-value-rollouts", type=int, default=None)
     parser.add_argument("--openml-task-ids", nargs="*", type=int, default=None)
     parser.add_argument("--openml-max-tasks", type=int, default=None)
     parser.add_argument("--tabular-state-cap", type=int, default=None)
@@ -184,7 +213,7 @@ def load_config_file(path: str | Path) -> OccupancyRatioBenchmarkConfig:
 def _coerce_config_updates(updates: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in updates.items():
-        if key in {"output_root", "external_repo_path", "config_path"} and value is not None:
+        if key in {"output_root", "external_repo_path", "dice_rl_repo_path", "config_path"} and value is not None:
             out[key] = Path(value)
         elif isinstance(value, list):
             out[key] = tuple(value)
@@ -211,6 +240,7 @@ def main() -> None:
         ("profile", args.profile),
         ("output_root", Path(args.output_root) if args.output_root is not None else None),
         ("external_repo_path", Path(args.external_repo_path) if args.external_repo_path is not None else None),
+        ("dice_rl_repo_path", Path(args.dice_rl_repo_path) if args.dice_rl_repo_path is not None else None),
         ("settings", args.settings),
         ("estimators", args.estimators),
         ("boosted_estimator_presets", args.boosted_estimator_presets),
@@ -220,6 +250,8 @@ def main() -> None:
         ("gammas", args.gammas),
         ("discrete_policy_shifts", args.discrete_policy_shifts),
         ("linear_gaussian_policy_shifts", args.linear_gaussian_policy_shifts),
+        ("random_tabular_state_counts", args.random_tabular_state_counts),
+        ("random_tabular_action_counts", args.random_tabular_action_counts),
         ("gridwalk_alphas", args.gridwalk_alphas),
         ("boosted_losses", args.boosted_losses),
         ("boosted_num_iterations", args.boosted_num_iterations),
@@ -263,6 +295,19 @@ def main() -> None:
         ("estimator_timeout_sec", args.estimator_timeout_sec),
         ("google_num_updates", args.google_num_updates),
         ("google_batch_size", args.google_batch_size),
+        ("google_batch_sizes", args.google_batch_sizes),
+        ("google_learning_rates", args.google_learning_rates),
+        ("google_weight_decays", args.google_weight_decays),
+        ("google_hidden_dims", args.google_hidden_dims),
+        ("google_update_grid", args.google_update_grid),
+        ("dice_rl_num_steps", args.dice_rl_num_steps),
+        ("dice_rl_batch_size", args.dice_rl_batch_size),
+        ("dice_rl_learning_rate", args.dice_rl_learning_rate),
+        ("dice_rl_hidden_dims", args.dice_rl_hidden_dims),
+        ("dice_rl_update_grid", args.dice_rl_update_grid),
+        ("dice_rl_batch_sizes", args.dice_rl_batch_sizes),
+        ("dice_rl_learning_rates", args.dice_rl_learning_rates),
+        ("dice_rl_hidden_dim_grid", args.dice_rl_hidden_dim_grid),
         ("huber_delta", args.huber_delta),
         ("automl_tuning", args.automl_tuning),
         ("cv_folds", args.cv_folds),
@@ -270,8 +315,17 @@ def main() -> None:
         ("cv_moment_extra_blocks", args.cv_moment_extra_blocks),
         ("cv_moment_multiscale_rff_scales", args.cv_moment_multiscale_rff_scales),
         ("cv_moment_strata_quantiles", args.cv_moment_strata_quantiles),
+        ("cv_score_method", args.cv_score_method),
+        ("cv_gmm_objective", args.cv_gmm_objective),
+        ("cv_gmm_cov_ridge", args.cv_gmm_cov_ridge),
+        ("cv_gmm_complexity_weight", args.cv_gmm_complexity_weight),
+        ("cv_gmm_ope_broad_weight", args.cv_gmm_ope_broad_weight),
+        ("cv_gmm_refit_fraction", args.cv_gmm_refit_fraction),
+        ("staged_cv_iterations", args.staged_cv_iterations),
+        ("staged_cv_n_bootstrap", args.staged_cv_n_bootstrap),
         ("mc_truth_samples", args.mc_truth_samples),
         ("gym_target_value_rollouts", args.gym_target_value_rollouts),
+        ("application_target_value_rollouts", args.application_target_value_rollouts),
         ("openml_task_ids", args.openml_task_ids),
         ("openml_max_tasks", args.openml_max_tasks),
         ("tabular_state_cap", args.tabular_state_cap),
@@ -288,7 +342,13 @@ def main() -> None:
         updates["include_dualdice_gridwalk"] = True
     if args.no_google_dualdice:
         updates["include_google_dual_dice"] = False
+    if args.no_dice_rl:
+        updates["include_dice_rl"] = False
     if args.tune_cv:
+        updates["tune_cv"] = True
+        updates.setdefault("automl_tuning", "balanced")
+    if args.staged_cv:
+        updates["staged_bootstrap_cv"] = True
         updates["tune_cv"] = True
         updates.setdefault("automl_tuning", "balanced")
     if args.no_plots:

@@ -210,6 +210,14 @@ def estimator_diagnostics_optional(
     return out
 
 
+def _finite_float_or_none(value: Any) -> float | None:
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return out if np.isfinite(out) else None
+
+
 def summarize_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
     keys = ("profile", "stage", "setting", "policy_shift", "estimator", "gamma", "sample_size", "status")
@@ -225,11 +233,19 @@ def summarize_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
                 key
                 for row in group_rows
                 for key, value in row.items()
-                if isinstance(value, (int, float, np.integer, np.floating)) and np.isfinite(float(value))
+                if _finite_float_or_none(value) is not None
             }
         )
         for key in numeric_keys:
-            vals = np.asarray([float(row[key]) for row in group_rows if key in row and np.isfinite(float(row[key]))])
+            vals = np.asarray(
+                [
+                    numeric
+                    for row in group_rows
+                    if key in row
+                    for numeric in (_finite_float_or_none(row[key]),)
+                    if numeric is not None
+                ]
+            )
             if vals.size == 0:
                 continue
             out[f"{key}_mean"] = float(np.mean(vals))

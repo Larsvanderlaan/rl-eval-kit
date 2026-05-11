@@ -1,0 +1,180 @@
+name: minimax_tuning_fairness
+base_seed: 20260501
+output_dir: results/minimax_tuning_fairness
+checkpoint_every: 10
+
+grid: {n_x: 25, n_y: 25}
+environment: {process_noise: 0.075, teleport_prob: 0.002}
+algorithm:
+  gamma: 0.97
+  tau_final: 0.001
+  n_iters: 60
+  ridge: 0.0001
+  metrics_stride: 5
+  value_iteration_tol: 0.0000000001
+  value_iteration_max_iter: 16000
+  anneal_taus: [0.2, 0.05, 0.01, 0.003, 0.001]
+behavior: {decoy_tau: 0.02}
+regimes:
+  shift_27: {target: 0.73, decoy: 0.17, uniform: 0.10}
+  shift_45: {target: 0.55, decoy: 0.35, uniform: 0.10}
+  shift_72: {target: 0.28, decoy: 0.62, uniform: 0.10}
+  shift_80: {target: 0.20, decoy: 0.70, uniform: 0.10}
+data: {n_samples: 5000}
+weights:
+  gamma_weights: [0.95]
+  n_state_centers: 36
+  bandwidth_scale: 0.65
+minimax:
+  q_ridge: 0.0001
+  critic_ridge: 0.0001
+  damping: 0.5
+  max_inner_iter: 1
+  cv_ridge: false
+stages:
+  - name: minimax_ridge_1e-6
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.000001
+      critic_ridge: 0.000001
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_3e-6
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.000003
+      critic_ridge: 0.000003
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_1e-5
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.00001
+      critic_ridge: 0.00001
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_3e-5
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.00003
+      critic_ridge: 0.00003
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_1e-4
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.0001
+      critic_ridge: 0.0001
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_3e-4
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.0003
+      critic_ridge: 0.0003
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_1e-3
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.001
+      critic_ridge: 0.001
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_3e-3
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.003
+      critic_ridge: 0.003
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_1e-2
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.01
+      critic_ridge: 0.01
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_3e-2
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.03
+      critic_ridge: 0.03
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_ridge_1e-1
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      q_ridge: 0.1
+      critic_ridge: 0.1
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: false
+    seeds: {start: 0, stop: 150}
+  - name: minimax_cv_one_se
+    learners: [linear]
+    regimes: [shift_27, shift_45, shift_72, shift_80]
+    schedules: [direct]
+    methods: [minimax]
+    minimax:
+      damping: 0.5
+      max_inner_iter: 1
+      cv_ridge: true
+      cv_ridge_grid: [0.0000001, 0.0000003, 0.000001, 0.000003, 0.00001, 0.00003, 0.0001, 0.0003, 0.001, 0.003, 0.01]
+      cv_folds: 3
+      cv_seed: 20260517
+      cv_selection_rule: one_se
+    seeds: {start: 0, stop: 150}

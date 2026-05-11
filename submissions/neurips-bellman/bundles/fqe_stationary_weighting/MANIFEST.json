@@ -1,0 +1,504 @@
+{
+  "bundle": "fqe_stationary_weighting",
+  "created_utc": "2026-05-07T02:01:03+00:00",
+  "description": "Stationary/discouted-occupancy weighted FQE reproducibility bundle",
+  "exclusion_policy": [
+    "exclude author/local-machine identifiers from text files",
+    "exclude manuscripts unless explicitly part of reproducibility artifacts",
+    "exclude caches, bytecode, notebook checkpoints, LaTeX build files, archives, hidden metadata, and broad exploratory outputs",
+    "preserve binary figure/table artifacts byte-for-byte where copied from final outputs"
+  ],
+  "files": [
+    {
+      "anonymized_text": true,
+      "path": "MANIFEST.json",
+      "role": "machine-readable manifest for this bundle",
+      "sha256": null,
+      "source": "generated for anonymous submission bundle"
+    },
+    {
+      "anonymized_text": true,
+      "path": "README.md",
+      "role": "bundle instructions",
+      "sha256": "1b45f73762a395ac832eb404e6db5b6f375af49ffe38bbdf99ead64f7e365858",
+      "source": "generated for anonymous submission bundle"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/README.md",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "e244039a120518e95c8a59085f073ffbe0fec535888cf8152a3044d70dd4c43e",
+      "source": "experiments/fqe/FQE_neurips/README.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/__init__.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "f9f892498581f1d2a79dfad2aae592b4f10b1580e7718234accbf13fdc8151be",
+      "source": "experiments/fqe/FQE_neurips/__init__.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/baird_exact_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "69b2d148da009036242fb0b79b03c473a87b43aa1329633baf08e40ada6430d0",
+      "source": "experiments/fqe/FQE_neurips/baird_exact_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/baird_like_benchmark.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "bae194cecc7c7036ccd1d8fee0917ff69e4e38f80eaf58cb2ef870d0d82d6556",
+      "source": "experiments/fqe/FQE_neurips/baird_like_benchmark.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/compare_ratio_targets_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "d2372df282bc450e9bdbea84db9842c40e00c672b81787ad998b193ca1ae09b6",
+      "source": "experiments/fqe/FQE_neurips/compare_ratio_targets_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/README.md",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "6a06083a1da42f2bf0a183618227da642ab0ee6983d14aa14fc9170b2e72d81c",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/README.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/__init__.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "99fd73057c7baf4a8cf4e1f27c3014e7a77f1fc1fbd6616681a4e69f57a1b6e6",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/__init__.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/configs.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "de58222eddfd52b16a3978f7e64b5e0c363fd5984f8dcbb7669db07bfb35415d",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/configs.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/data.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "edcfc08b2fd8e924f9d6e88c5ae84506f6ea88ca7fb16fc9b1c133faa59b1ecf",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/data.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/envs.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "1b25dbde23ae9b6c17ad2e607de3a3558f2090bc7dbfef15290ab4fbf93f353d",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/envs.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/features.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "f2cf4914387de08a5578556c3ba65de2c4a411cf953b4d1e82ce2c9ab3162d27",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/features.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/fqe.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "73e21b861adc5def1a27110949c63b9cd32999c70231819f3e7a5f141ff715ff",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/metrics.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "d0e38bd9b071b43a8fabb3335b74d57aa31eebaecd906946347dd4eff0e00ed7",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/metrics.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/minimax_q.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "c3a773d7b271db87e672b902067c34b3b5d700048b358ad0bed29d8d4a3fe955",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/minimax_q.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/neural_fqe.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "4c4c56f5c352440ec4d79daf9043f0d5d8b4236b73ece1a354b5cb70d1a34b95",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/neural_fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/plot_results.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "504be82bf4bfff2f77cebbdd5ce0d1118f68b72df58ffcb1492fcc422065ac68",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/plot_results.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/policies.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "0a145fa079292312c69493ef3ea50249f4ccae6568df9ae48d94883fcf1c06ae",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/policies.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/run_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "7f1969bcc6197513c9977a1e3558b748ddbee64e947535629d7c48fe4dbb8d55",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/run_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/run_stationary_shift_sweep.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "c5a2c6b6b7aeed4a56c6d195874731abc5ac32d21d64be9783a6f3a01c1ab8d9",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/run_stationary_shift_sweep.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/truth.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "f6a72394c1263dd9261b93d4c2b2679d168801cf895a0eb07c8d24f501ebff75",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/truth.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/controlled_discounted_benchmark/weights.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "63027b2ba1ea63b9ed889561c196e0048c4c3e89248278e955e07a53e5cdf18a",
+      "source": "experiments/fqe/FQE_neurips/controlled_discounted_benchmark/weights.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/coverage_sweep_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "861ed604f3bdb0e1d474e4be6369413e613cc56073e9bfe2280a7658b3defbb1",
+      "source": "experiments/fqe/FQE_neurips/coverage_sweep_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "a002621cb5d3cd7141ace1d8b18282e801d4b521a0ccb460425e20f76866ad03",
+      "source": "experiments/fqe/FQE_neurips/experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/fqe.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "8b78a1c241da7e960f7900f28ecbf43ae24518b63715421fe7daa128c6ad579b",
+      "source": "experiments/fqe/FQE_neurips/fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/fqe_coverage_study.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "abdfd370d806e036f3164d165a400b6726ab3c0867d31cf5229b16a49d96fc4e",
+      "source": "experiments/fqe/FQE_neurips/fqe_coverage_study.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/fqe_linear.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "4c74533df873bff1b5b5c83095ab08b60cdb6f202e8ad476b21c51cd81618508",
+      "source": "experiments/fqe/FQE_neurips/fqe_linear.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/hard_benchmark_consistency_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "24a83a5b9aca87269a3a0b419deed5e0c02bc118686d44cc679e4b2e12eef5b0",
+      "source": "experiments/fqe/FQE_neurips/hard_benchmark_consistency_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/hard_benchmark_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "0d5d2dc77b09f7ffa26ef756c10c335fd8b3185489fec18c736396bb60bcbf04",
+      "source": "experiments/fqe/FQE_neurips/hard_benchmark_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/hard_benchmark_longrun_plot.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "a3c63ad5b83319562b0dbe35f2a3ecef236e63bd07713788a3f6bf57f3542e30",
+      "source": "experiments/fqe/FQE_neurips/hard_benchmark_longrun_plot.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/hard_benchmark_rkhs_interpolation_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "57b30e72558aea90dd0bd3ae1b4bf56089d4f7b34496211cfca68f474ec8a708",
+      "source": "experiments/fqe/FQE_neurips/hard_benchmark_rkhs_interpolation_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/hard_benchmark_selected_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "4e90d55907a2d9fd2029f9de9b024c4ad3c9969d7d3957b39dfc2c3a124c0562",
+      "source": "experiments/fqe/FQE_neurips/hard_benchmark_selected_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/hub_spoke_latent_benchmark.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "f0e8e1d216a680ddd51f3fb5bc1b95c1dbca9c02a546a87d9f5ed871f9c390a1",
+      "source": "experiments/fqe/FQE_neurips/hub_spoke_latent_benchmark.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/latent_garnet_benchmark.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "01dfe9f9d0bd836c8dbd2992fc43e9c4474e9651a99ed8bfdb26490fff515aee",
+      "source": "experiments/fqe/FQE_neurips/latent_garnet_benchmark.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/neural_rkhs_weights.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "8853e23064ac9392f7bcad885abc0ca804c03ff682f0b1c248fe17e03e0b3b2c",
+      "source": "experiments/fqe/FQE_neurips/neural_rkhs_weights.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/paper_outputs.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "02c098310c685485a045ec9193e223dbb048beada6f5bb8ca55240845286296a",
+      "source": "experiments/fqe/FQE_neurips/paper_outputs.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/ratio_accuracy_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "5c244c4a4903017a28773eeda1b6365b774b999de4056f19181f307d606cca42",
+      "source": "experiments/fqe/FQE_neurips/ratio_accuracy_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/ratio_estimation.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "2c4c39ed8806cfe02943636e7ed51d4be6a0226aad09bf7ebce8f60a8b9203e5",
+      "source": "experiments/fqe/FQE_neurips/ratio_estimation.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/design_search_report.md",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "c7725fbbfbea8cfd50af89fa00461b10eddebb4052643c3ba244cf092ac86e03",
+      "source": "experiments/fqe/FQE_neurips/results/design_search_report.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/design_search_results.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "82aeb3173379ae46ec0bddc9bd288a550e2ff8dacccbdd6d8dc05c41c6b56a38",
+      "source": "experiments/fqe/FQE_neurips/results/design_search_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/design_search_summary.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "590690692593e5d21df3f4bd7ff7d8031d83ae8794e66add9583bb2aa20fb756",
+      "source": "experiments/fqe/FQE_neurips/results/design_search_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/estimator_shift_summary.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "442134c5ab03cc6785cd0bd2b4a61b3491bb6775a0f72e975a801f1c65c27284",
+      "source": "experiments/fqe/FQE_neurips/results/estimator_shift_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/final_results.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "948792c5bfa78b2ee1aa831187616cdb7b9ee87b9fa663d685296ac976036730",
+      "source": "experiments/fqe/FQE_neurips/results/final_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/final_summary.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "5c2546f94512fef3a4a193e29b5ce6e54baa2815ac006126243c8b8f48febbe6",
+      "source": "experiments/fqe/FQE_neurips/results/final_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/gamma_design_results.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "b921067c76b5b4bf35eb7306eecdc72ca914ee3cca8ad7d4f46e529de7c1e4c8",
+      "source": "experiments/fqe/FQE_neurips/results/gamma_design_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/gamma_design_summary.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "3b509a8dcc6d657aa09a728a5686b22cec9c2bce650c4beb6cefc90fb234994e",
+      "source": "experiments/fqe/FQE_neurips/results/gamma_design_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/gamma_sweep_estimator_summary.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "f62eb9b526c6044baff7004c9bae8d97a4fef75b3d75faffcef8f97c1d6ceacc",
+      "source": "experiments/fqe/FQE_neurips/results/gamma_sweep_estimator_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/gamma_sweep_report.md",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "c7725fbbfbea8cfd50af89fa00461b10eddebb4052643c3ba244cf092ac86e03",
+      "source": "experiments/fqe/FQE_neurips/results/gamma_sweep_report.md"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/gamma_sweep_results.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "1f3939df3624310a68d4bd636a8dabd77982f3fc66e52dce6f47eac153288af6",
+      "source": "experiments/fqe/FQE_neurips/results/gamma_sweep_results.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/gamma_sweep_summary.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "661de5fb5475cfda4f1b194b8945f8f38e3cb8a5c5ccedbf95e89898dff58628",
+      "source": "experiments/fqe/FQE_neurips/results/gamma_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/results/selected_final_family.csv",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "8241e97864c0a4dea3ff426e4a49ade6bb972b88cd273178d8a78ffaa66d5c3c",
+      "source": "experiments/fqe/FQE_neurips/results/selected_final_family.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/rkhs_interpolation_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "85b005db78cd3fdd704775e9b39d79092cc6871d96ffcdda763417f8a4e8e129",
+      "source": "experiments/fqe/FQE_neurips/rkhs_interpolation_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/run_latent_benchmark_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "df07e15f06bfb21c7382e75b8aae951608ff6346c2b9b5794dd248d7fd6907c4",
+      "source": "experiments/fqe/FQE_neurips/run_latent_benchmark_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/run_latent_fqe_experiment.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "15d58d1dc03c153d745eaddda2f2d6a7ba62c3a8a9ff4b87d7f36721047ecc22",
+      "source": "experiments/fqe/FQE_neurips/run_latent_fqe_experiment.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/saddle_optim.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "c50ada155a48c478868ab4fc2b257fbc9565f5699469e6c6cb3ab5960a7195a5",
+      "source": "experiments/fqe/FQE_neurips/saddle_optim.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/sw_fqe.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "12724a73fc95dcf1e8474946ec74998bcd42ae5939e4d8d71aa69c5ca9f24a41",
+      "source": "experiments/fqe/FQE_neurips/sw_fqe.py"
+    },
+    {
+      "anonymized_text": true,
+      "path": "code/FQE_neurips/utils.py",
+      "role": "FQE experiment source, configs, tests, selected summaries, and final-result data",
+      "sha256": "ad524c03491fca6e883e6039dd537bbb1ee88315897dbadbea47d126d48847a3",
+      "source": "experiments/fqe/FQE_neurips/utils.py"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/experiments_composite.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "dcd2763b84db4d1bb8130cbc0013957c4d6441124920c690019288344b71a685",
+      "source": "papers/fqe/figures/experiments_composite.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/gamma_sweep_norm_diagnostic_q_mse.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "fc90aa551bcb8dcc023757344bafc4aa25026e2e873c11e68a5b3bb6a9311804",
+      "source": "papers/fqe/figures/gamma_sweep_norm_diagnostic_q_mse.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/gamma_sweep_stabilization_comparison_q_mse.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "71ab1a9986dc858624c17fd6d6ccef3c67a3202bc8ee1cb0064d3cc5f9c30d66",
+      "source": "papers/fqe/figures/gamma_sweep_stabilization_comparison_q_mse.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/gamma_sweep_weight_quality_all_stabilizers.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "f9e827376a550b9576d49bab6f8b5aa3a41cbd8a2c516f59be740d538c3fbe45",
+      "source": "papers/fqe/figures/gamma_sweep_weight_quality_all_stabilizers.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/minimax_tuning_sensitivity.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "89b28e490fb5d39eaa7b7368686d426dc8694a173b96e5a7c0da87a9629f8414",
+      "source": "papers/fqe/figures/minimax_tuning_sensitivity.pdf"
+    },
+    {
+      "anonymized_text": false,
+      "path": "paper_artifacts/figures/oracle_practical_tuned_comparison.pdf",
+      "role": "paper-referenced final figure artifact",
+      "sha256": "01798d1e0601bdf6e8ccedfc5f7884eae2aa6047be1caf266a56b1baca3bccf3",
+      "source": "papers/fqe/figures/oracle_practical_tuned_comparison.pdf"
+    },
+    {
+      "anonymized_text": true,
+      "path": "paper_artifacts/sections/experiments_appendix.tex",
+      "role": "paper table or experiment-section snippet",
+      "sha256": "2508b94c2b8468a42fb8cbc3bf244edf28c8cb80b9080fb14ce7f2d9be1995d9",
+      "source": "experiments/fqe/FQE_neurips/paper_experiment_bundle/sections/experiments_appendix.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "paper_artifacts/sections/experiments_main.tex",
+      "role": "paper table or experiment-section snippet",
+      "sha256": "d19d238299d5ab7f0acf4975e07c5199f2d1332b913a713c5735577e3e95e0cf",
+      "source": "experiments/fqe/FQE_neurips/paper_experiment_bundle/sections/experiments_main.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "paper_artifacts/tables/controlled_benchmark_summary.tex",
+      "role": "paper table or experiment-section snippet",
+      "sha256": "99f0e49db99a3cd6ed8ed2c725360b4447a35aa4fea9db20124c4ae3af8cf09e",
+      "source": "experiments/fqe/FQE_neurips/paper_experiment_bundle/tables/controlled_benchmark_summary.tex"
+    },
+    {
+      "anonymized_text": true,
+      "path": "paper_artifacts/tables/gamma_sweep_estimator_summary.csv",
+      "role": "paper table or experiment-section snippet",
+      "sha256": "ebf43d73393499219584a9bfe052f307be6bdd337ba28330b06846847d165e95",
+      "source": "experiments/fqe/FQE_neurips/paper_experiment_bundle/tables/gamma_sweep_estimator_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "paper_artifacts/tables/gamma_sweep_summary.csv",
+      "role": "paper table or experiment-section snippet",
+      "sha256": "a70d94aaf9c711a51f4a4dedc215496752445d38daffdd05fdb202a36cacb5a5",
+      "source": "experiments/fqe/FQE_neurips/paper_experiment_bundle/tables/gamma_sweep_summary.csv"
+    },
+    {
+      "anonymized_text": true,
+      "path": "requirements.txt",
+      "role": "minimal Python dependency list",
+      "sha256": "ec3d2c0a8abc2c733ceae115a03f62a051f74b689a84b30e39abc86a51cdfe0b",
+      "source": "generated for anonymous submission bundle"
+    }
+  ],
+  "source_root": "neurips_bellman canonical paper/experiment tree"
+}

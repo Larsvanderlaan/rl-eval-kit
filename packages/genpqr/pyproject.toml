@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genpqr"
+version = "0.1.0"
+description = "Modular generalized policy-to-Q-to-reward tools for inverse reinforcement learning"
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "numpy",
+]
+
+[project.optional-dependencies]
+fqe = ["fqe"]
+torch = ["torch"]
+imitation = ["fqe", "torch", "gymnasium", "stable-baselines3", "imitation"]
+d3rlpy = ["d3rlpy"]
+scope-rl = ["scope-rl"]
+all = ["fqe", "torch", "gymnasium", "stable-baselines3", "imitation", "d3rlpy", "scope-rl"]
+dev = ["pytest", "ruff", "fqe", "torch", "lightgbm"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["genpqr*"]
+
+[tool.setuptools.package-data]
+genpqr = ["py.typed"]

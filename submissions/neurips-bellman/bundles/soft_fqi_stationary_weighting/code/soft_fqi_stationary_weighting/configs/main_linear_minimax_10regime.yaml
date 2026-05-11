@@ -1,0 +1,54 @@
+name: main_linear_minimax_10regime
+base_seed: 20260501
+output_dir: results/main_linear_minimax_10regime
+checkpoint_every: 25
+
+grid: {n_x: 25, n_y: 25}
+environment: {process_noise: 0.075, teleport_prob: 0.002}
+algorithm:
+  gamma: 0.97
+  tau_final: 0.001
+  n_iters: 60
+  ridge: 0.0001
+  metrics_stride: 5
+  value_iteration_tol: 0.0000000001
+  value_iteration_max_iter: 16000
+  anneal_taus: [0.2, 0.05, 0.01, 0.003, 0.001]
+behavior: {decoy_tau: 0.02}
+regimes:
+  shift_001: {target: 0.999, decoy: 0.000, uniform: 0.001}
+  shift_09: {target: 0.91, decoy: 0.00, uniform: 0.09}
+  shift_18: {target: 0.82, decoy: 0.08, uniform: 0.10}
+  shift_27: {target: 0.73, decoy: 0.17, uniform: 0.10}
+  shift_36: {target: 0.64, decoy: 0.26, uniform: 0.10}
+  shift_45: {target: 0.55, decoy: 0.35, uniform: 0.10}
+  shift_54: {target: 0.46, decoy: 0.44, uniform: 0.10}
+  shift_63: {target: 0.37, decoy: 0.53, uniform: 0.10}
+  shift_72: {target: 0.28, decoy: 0.62, uniform: 0.10}
+  shift_80: {target: 0.20, decoy: 0.70, uniform: 0.10}
+data: {n_samples: 5000}
+weights:
+  gamma_weights: [0.95]
+  stabilize_oracle: true
+  n_state_centers: 36
+  bandwidth_scale: 0.65
+  ridge_primal: 0.00001
+  ridge_dual: 0.00001
+  normalization_penalty: 10.0
+  min_weight: 0.00000001
+  max_weight: 25.0
+  clip_quantile: 0.99
+  target_ess_fraction: 0.25
+minimax:
+  q_ridge: 0.0001
+  critic_ridge: 0.0001
+  damping: 0.5
+  max_inner_iter: 1
+  cv_ridge: false
+stages:
+  - name: main_linear_minimax
+    learners: [linear]
+    regimes: [shift_001, shift_09, shift_18, shift_27, shift_36, shift_45, shift_54, shift_63, shift_72, shift_80]
+    schedules: [direct, annealed]
+    methods: [minimax]
+    seeds: {start: 0, stop: 500}

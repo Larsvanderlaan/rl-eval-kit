@@ -1,0 +1,104 @@
+\providecommand{\fqeCalibFigDir}{FQE_calibration_neurips/paper_import_bundle/figures}
+
+\section{Experiments}
+\label{sec:experiments}
+
+We evaluate Bellman calibration as a post-hoc value-space wrapper for fitted
+off-policy value predictors. Each baseline first estimates \(Q(s,a)\), inducing
+\(\widehat V(s)=\sum_a\pi(a\mid s)\widehat Q(s,a)\). Calibration then learns a
+scalar map \(g\) and evaluates \(g(\widehat V)\). The calibration map is fit by
+importance-weighted fitted value iteration,
+\[
+  g_{t+1}\in\arg\min_g\sum_i \rho_i
+  \left[g(\widehat V_i)-\{R_i+\gamma g_t(\widehat V'_i)\}\right]^2,
+  \qquad
+  \rho_i=\pi(A_i\mid S_i)/\mu(A_i\mid S_i),
+\]
+where \((\widehat V_i,\widehat V'_i)\) are out-of-fold predictions for
+cross-calibrated rows. Temporal reward-shift rows instead train the raw value
+model on old-regime behavior data and fit \(g\) on a small held-out batch from
+the recent current regime. The same-small-current retrain comparator uses the
+same learner with a prespecified prediction clip to avoid numerical explosions,
+and is reported as a comparator rather than promoted as a calibrated method. All
+promoted claims are evaluated on independent current or same-regime test data
+and independent oracle rollouts.
+
+The final audit uses 100 independent replications for all core experiment
+rows. We report ratios to the matched uncalibrated baseline for true value
+function MSE and binned Bellman calibration error; values below one are better.
+Brier-style Bellman outcome errors are saved as diagnostics but are not used for
+promotion.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.82\linewidth]{\fqeCalibFigDir/calibration_story_compact.pdf}
+  \caption{\textbf{Bellman calibration improves value accuracy and calibration
+  in score-correctable regimes.} Each bar is a ratio to the matched
+  uncalibrated baseline. The organic rows show affine/misspecified linear FQE,
+  finite-iteration random-feature FQE, and temporal reward shift with recent
+  calibration. Mechanism rows illustrate that linear calibration is enough for
+  affine distortion while isotonic is better for monotone saturation.}
+  \label{fig:calibration-story}
+\end{figure*}
+
+\begin{table*}[t]
+\centering
+\caption{\textbf{Representative audited Bellman calibration results.}
+Ratios are relative to the matched uncalibrated baseline. Win rates are
+seed-matched true-\(V\) MSE win rates unless otherwise noted.}
+\label{tab:evidence-audit-main}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{0.43\linewidth}lrrr@{}}
+\toprule
+Regime and learner & Calibrator & Rel. \(V\) MSE & Rel. cal. err. & Win rate \\
+\midrule
+Affine misspec., linear FQE & Linear & 0.750 & 0.631 & 0.94 \\
+Affine misspec., linear FQE & Isotonic & 0.734 & 0.764 & 0.94 \\
+Finite iteration, RF FQE \(K=2\) & Linear & 0.781 & 0.664 & 0.95 \\
+Finite iteration, RF FQE \(K=4\) & Isotonic & 0.776 & 0.736 & 0.94 \\
+Temporal reward shift, RF FQE & Linear recent & 0.630 & 0.717 & 0.97 \\
+Temporal reward shift, RF FQE & Isotonic recent & 0.627 & 0.916 & 0.98 \\
+\addlinespace[2pt]
+\multicolumn{5}{@{}l}{\emph{Mechanism diagnostics, not organic learner claims}}\\
+Affine distortion mechanism & Linear & 0.430 & 0.169 & 1.00 \\
+Monotone saturation mechanism & Isotonic & 0.375 & 0.022 & 1.00 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Figure~\ref{fig:calibration-story} and Table~\ref{tab:evidence-audit-main}
+show aligned improvements in value accuracy and Bellman calibration. In the
+affine/misspecified linear-FQE regime, linear calibration is sufficient:
+relative true-\(V\) MSE falls to about \(0.75\) and Bellman calibration error to
+about \(0.63\). In the finite-iteration regime, the raw random-feature FQE
+scores remain strongly rank-informative but are mis-scaled; calibration reduces
+true-\(V\) MSE to about \(0.78\) and Bellman calibration error to
+\(0.66\)--\(0.74\). In the temporal reward-shift regime, a model trained on
+old-reward data is recalibrated with a small recent current-regime batch,
+reducing current-regime true-\(V\) MSE by about \(37\%\) and Bellman calibration
+error by about \(28\%\) for linear calibration.
+
+As a benchmark check, we take the official Deep OPE FQE-L2 scores for
+\texttt{cheetah\_run} from DeepMind's RL Unplugged suite as a fixed fitted-value
+baseline, and only fit the post-hoc one-dimensional maps. Across three official
+learning curves, the raw FQE-L2 scores are rank-informative but mis-scaled
+(Spearman \(0.67\)--\(0.88\)). We calibrate on one subset of policy snapshots
+and evaluate absolute OPE error on disjoint snapshots, using three fixed splits
+within each curve. Linear and isotonic maps reduce error on every split; averaged
+over curves, relative OPE error is \(0.39/0.36\) for policies
+\(0\)--\(3\) calibrated and \(4\)--\(7\) evaluated, \(0.20/0.19\) for
+even/odd splits, and \(0.36/0.31\) for policies \(0\)--\(4\) calibrated and
+\(5\)--\(7\) evaluated (linear/isotonic;
+Figure~\ref{fig:cheetah-policy-value}). No base value learner is refit.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.68\linewidth]{\fqeCalibFigDir/rlu_cheetah_policy_calibration_compact.pdf}
+  \caption{\textbf{Deep OPE/RL Unplugged \texttt{cheetah\_run}.}
+  Absolute OPE error after post-hoc value calibration of official Deep OPE
+  FQE-L2 scores, relative to the raw score. Bars average over three official
+  learning curves; whiskers show the range. The dashed line is the raw baseline,
+  and row labels give calibration and held-out evaluation policy indices.}
+  \label{fig:cheetah-policy-value}
+\end{figure}

@@ -159,6 +159,22 @@ python -m occupancy_ratio_benchmark.run \
   --no-plots
 ```
 
+## Application-Shaped Simulators
+
+The ICLR application suite treats RTBGym and RecGym as optional OPE stress
+tests. These rows do not claim oracle density-ratio truth; they use fixed
+behavior and target policies, Monte Carlo target-policy values, and the same
+weight diagnostics as the Gym control settings. Missing `rtbgym`, `recgym`,
+`scope-rl`, or environment registrations produce skipped rows.
+
+```bash
+python -m occupancy_ratio_benchmark.run \
+  --config occupancy_ratio_benchmark/configs/iclr_application.json \
+  --output-root outputs/iclr_application \
+  --external-repo-path /tmp/google-research \
+  --dice-rl-repo-path /tmp/dice_rl
+```
+
 ## Neural Estimator
 
 The additive PyTorch estimator can be run beside the boosted-tree estimator:
@@ -251,10 +267,22 @@ The external comparator is the official Google Research implementation:
 - neural module: `policy_eval.dual_dice.DualDICE`
 - GridWalk module: `dual_dice.algos.dual_dice.TabularDualDice`
 - default local path: `/tmp/google-research`
+- DICE-RL repository: `https://github.com/google-research/dice_rl`
+- DICE-RL default local path: `/tmp/dice_rl`
 
 Smoke runs skip Google DualDICE if TensorFlow, TensorFlow Addons, or the repo is
 missing. Full and overnight runs fail fast when Google DualDICE is requested
 but unavailable.
+
+The ICLR fairness suite keeps the published `policy_eval.dual_dice` comparator
+separate from the DICE-RL recovery form. `google_dualdice_published_default`
+runs the public `policy_eval.dual_dice.DualDICE` defaults. The
+`dice_rl_dualdice_recovered` family runs DICE-RL with the README's exact
+DualDICE recovery flags: `primal_regularizer=0`, `dual_regularizer=1`,
+`zero_reward=1`, `norm_regularizer=0`, and `zeta_pos=0`. The
+`dice_rl_best_regularized` alias uses the README's recommended regularized
+DICE-family flags and is treated as an appendix comparator rather than vanilla
+DualDICE.
 
 ## Outputs
 

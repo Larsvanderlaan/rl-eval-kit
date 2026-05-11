@@ -1,0 +1,35 @@
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/fqe/tests",
+    "packages/genpqr/tests",
+    "packages/occupancy-ratio/occupancy_ratio_benchmark/tests",
+    "packages/causal-ope-benchmark/tests",
+]
+pythonpath = [
+    ".",
+    "packages/fqe",
+    "packages/genpqr",
+    "packages/occupancy-ratio",
+    "packages/causal-ope-benchmark",
+]
+addopts = "-q"
+markers = [
+    "optional_integration: tests requiring optional third-party RL/IRL dependencies",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = [
+    "archive/generated",
+    "legacy",
+    "outputs",
+    "stale",
+    "submissions",
+    "**/__pycache__",
+    "**/.ipynb_checkpoints",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501"]

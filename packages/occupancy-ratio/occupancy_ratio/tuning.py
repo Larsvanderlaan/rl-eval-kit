@@ -10,15 +10,6 @@ from __future__ import annotations
 from functools import wraps
 
 from . import _tuning_impl as _impl
-from ._tuning_impl import (
-    CandidateResult,
-    FoldResult,
-    OccupancySearchSpace,
-    OccupancyTuningConfig,
-    OccupancyTuningResult,
-    tune_occupancy_ratio,
-    tune_occupancy_ratio_auto,
-)
 
 for _name in dir(_impl):
     if not _name.startswith("__"):
@@ -28,8 +19,13 @@ for _name in (
     "CandidateResult",
     "FoldResult",
     "OccupancySearchSpace",
+    "OccupancyTargetValidationCandidateResult",
+    "OccupancyTargetValidationResult",
     "OccupancyTuningConfig",
     "OccupancyTuningResult",
+    "StagedCVCandidateRow",
+    "StagedCVFoldRow",
+    "StagedCVResult",
 ):
     if _name in globals():
         globals()[_name].__module__ = __name__
@@ -57,6 +53,12 @@ def tune_occupancy_ratio_auto(*args, **kwargs):
 def tune_occupancy_ratio(*args, **kwargs):
     _sync_patchable_backend_globals()
     return _impl.tune_occupancy_ratio(*args, **kwargs)
+
+
+@wraps(_impl.tune_occupancy_ratio_with_target_validation)
+def tune_occupancy_ratio_with_target_validation(*args, **kwargs):
+    _sync_patchable_backend_globals()
+    return _impl.tune_occupancy_ratio_with_target_validation(*args, **kwargs)
 
 
 del _name
