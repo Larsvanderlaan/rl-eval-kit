@@ -11,7 +11,6 @@ archive/generated/*
 legacy/
 stale/
 outputs/
-website/
 **/outputs/
 **/results/
 submissions/**/results/

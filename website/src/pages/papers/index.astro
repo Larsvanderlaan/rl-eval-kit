@@ -1,0 +1,25 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import PaperCard from '../../components/PaperCard.astro';
+import { papers } from '../../data/papers';
+---
+
+<StarlightPage
+  frontmatter={{
+    title: 'Papers',
+    description: 'Research manuscripts behind the RLEvalKit ecosystem.',
+  }}
+>
+  <section class="rl-section" style="margin-top:0">
+    <span class="eyebrow">Research layer</span>
+    <h1>Papers behind the methods</h1>
+    <p class="section-intro">
+      These manuscripts define the estimands, assumptions, and failure modes
+      behind the package APIs. Use them when you need method details, citation
+      links, or a deeper account of the diagnostics.
+    </p>
+    <div class="card-grid two">
+      {papers.map((paper) => <PaperCard paper={paper} />)}
+    </div>
+  </section>
+</StarlightPage>

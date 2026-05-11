@@ -1,0 +1,20 @@
+---
+const steps = [
+  ['Logged data', 'Transitions, target-policy actions, initial states, optional row weights'],
+  ['Fit estimators', 'Q models, occupancy ratios, policy models, and reward estimators'],
+  ['Validate', 'Proxy CV, target-validation rollouts, Bellman calibration, ratio diagnostics'],
+  ['Report', 'Policy values, reward functions, manifests, plots, and benchmark tables'],
+];
+---
+
+<ol class="workflow-rail" aria-label="RLEvalKit workflow">
+  {steps.map(([title, detail], index) => (
+    <li>
+      <span>{index + 1}</span>
+      <div>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+      </div>
+    </li>
+  ))}
+</ol>
