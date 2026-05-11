@@ -68,16 +68,16 @@ const navItems = [
           <h1 id="hero-title">RLEvalKit</h1>
           <p class="hero-kicker">
             Offline RL evaluation, density-ratio estimation, and normalized
-            reward modeling in one auditable toolkit.
+            reward modeling in one auditable software stack.
           </p>
           <p class="lead">
             Move from logged transitions to fitted values, reweighting ratios,
-            reward estimates, and diagnostics without stitching together a new
-            experiment stack for every paper.
+            reward estimates, and diagnostics without building a separate
+            experiment stack for each study.
           </p>
           <div class="hero-actions">
-            <a class="rl-button primary" href={withBase('/start/')}>Start building</a>
-            <a class="rl-button" href={withBase('/papers/')}>Read the methods</a>
+            <a class="rl-button primary" href={withBase('/start/')}>Get started</a>
+            <a class="rl-button" href={withBase('/papers/')}>View methods</a>
           </div>
           <dl class="hero-proof-row">
             <div>
@@ -151,12 +151,11 @@ const navItems = [
 
       <section class="rl-section split-section" aria-labelledby="workflow-code-title">
         <div class="section-copy">
-          <span class="eyebrow">One experiment surface</span>
+          <span class="eyebrow">Consistent workflow</span>
           <h2 id="workflow-code-title">Fit values, ratios, and rewards from the same logged-data workflow.</h2>
           <p class="section-intro">
-            Package scope follows the estimand, while the product feel stays
-            consistent: practical defaults, explicit diagnostics, and tuning
-            telemetry you can inspect after a run.
+            Package scope follows the estimand, with consistent defaults,
+            diagnostics, and tuning telemetry across workflows.
           </p>
         </div>
         <CodeWindow title="One workflow, three estimands">
@@ -177,10 +176,10 @@ reward_result = fit_genpqr(
 
       <section class="rl-section" aria-labelledby="packages-title">
         <div class="section-heading">
-          <span class="eyebrow">Package map</span>
-          <h2 id="packages-title">Choose the object you need to estimate.</h2>
+          <span class="eyebrow">Packages</span>
+          <h2 id="packages-title">Select the relevant estimation workflow.</h2>
           <p class="section-intro">
-            Each package has a focused API surface and a documentation path that
+            Each package has a focused API and a documentation path that
             connects practical usage to the manuscript-level assumptions.
           </p>
         </div>
@@ -192,7 +191,7 @@ reward_result = fit_genpqr(
       <section class="rl-section workflow-section" aria-labelledby="workflow-title">
         <div class="section-heading">
           <span class="eyebrow">Workflow</span>
-          <h2 id="workflow-title">Built around offline RL evidence trails.</h2>
+          <h2 id="workflow-title">Designed for offline RL evaluation workflows.</h2>
           <p class="section-intro">
             RLEvalKit is the evaluation, weighting, validation, and normalized
             reward-estimation layer around logged data.
@@ -204,24 +203,23 @@ reward_result = fit_genpqr(
       <section class="rl-section" aria-labelledby="diagnostics-title">
         <div class="section-heading compact">
           <span class="eyebrow">Diagnostics</span>
-          <h2 id="diagnostics-title">Model selection that leaves receipts.</h2>
+          <h2 id="diagnostics-title">Transparent model selection.</h2>
         </div>
         <div class="card-grid two">
           <div class="rl-card">
             <h3>Transparent tuning reports</h3>
             <p>
-              Tuning results show the losses, stability metrics, runtime, and
-              decision signals used to compare candidate estimators:
-              selected method, score components, runtime, and validation data
-              supplied by the user.
+              Tuning reports show the selected method, score components,
+              stability metrics, runtime, and validation data supplied by the
+              user.
             </p>
           </div>
           <div class="rl-card">
-            <h3>Signals users can act on</h3>
+            <h3>Actionable diagnostic summaries</h3>
             <p>
               Reports focus on coverage, stability, tail risk, calibration,
               source-correction status, and adapter status so users can decide
-              whether an estimate is ready for downstream analysis.
+              whether an estimate is appropriate for downstream analysis.
             </p>
           </div>
         </div>
@@ -230,7 +228,7 @@ reward_result = fit_genpqr(
       <section class="rl-section" aria-labelledby="benchmarks-title">
         <div class="section-heading">
           <span class="eyebrow">Artifacts</span>
-          <h2 id="benchmarks-title">Reports that make benchmark runs auditable.</h2>
+          <h2 id="benchmarks-title">Benchmark reports and validation artifacts.</h2>
           <p class="section-intro">
             Benchmark CLIs emit tables, manifests, diagnostic JSON, plots, and
             resumable partial results so researchers can audit exactly what ran.
@@ -269,7 +267,7 @@ reward_result = fit_genpqr(
       <section class="rl-section papers-preview" aria-labelledby="papers-title">
         <div class="section-heading">
           <span class="eyebrow">Methods</span>
-          <h2 id="papers-title">Research assumptions stay close to the APIs.</h2>
+          <h2 id="papers-title">Methods and assumptions.</h2>
           <p class="section-intro">
             The docs connect practical entry points to the manuscripts that
             define their estimands, assumptions, and error decompositions.

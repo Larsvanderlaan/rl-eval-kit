@@ -4,13 +4,13 @@ description: Discounted occupancy-ratio estimation with FORI, diagnostics, tunin
 template: splash
 hero:
   title: Discounted Occupancy Ratios
-  tagline: A dedicated site for target-policy reweighting, source correction, and ratio diagnostics.
+  tagline: Target-policy reweighting, source correction, and ratio diagnostics for logged data.
   image:
     html: |
       <div class="package-hero-visual package-hero-visual--ratio" aria-hidden="true">
         <div class="package-hero-visual__top">
           <span>FORI fit</span>
-          <strong>source aware</strong>
+          <strong>source correction</strong>
         </div>
         <div class="ratio-rings">
           <span></span>
@@ -44,7 +44,7 @@ hero:
   </nav>
   <section class="package-positioning">
     <div>
-      <p class="eyebrow">Ratio site</p>
+      <p class="eyebrow">Ratio workflow</p>
       <h2>Target-policy reweighting with source-aware diagnostics.</h2>
       <p>
         The <code>occupancy-ratio</code> package estimates discounted
@@ -54,7 +54,7 @@ hero:
     </div>
     <dl class="package-metric-panel">
       <div>
-        <dt>Primary object</dt>
+        <dt>Primary output</dt>
         <dd>Discounted state-action weights</dd>
       </div>
       <div>
@@ -204,7 +204,7 @@ state_ratios = model.predict_state_ratio(states, actions)
 - Optional backends such as Google DualDICE should report clear adapter status
   when dependencies or external checkouts are unavailable.
 
-## Method surface
+## Methods
 
 | Method | Entry point | Use case |
 | --- | --- | --- |

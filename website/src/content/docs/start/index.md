@@ -4,8 +4,8 @@ description: Choose and install the right RLEvalKit package.
 ---
 
 RLEvalKit is a Python ecosystem for offline reinforcement-learning evaluation
-and normalized reward estimation. Start from the object you need to estimate,
-then add optional extras only when a workflow needs them.
+and normalized reward estimation. Start with the relevant estimand, then add
+optional extras only when a workflow needs them.
 
 ## Install
 
@@ -96,10 +96,10 @@ broadcasting after a long run.
 
 ## Reading diagnostics
 
-RLEvalKit reports decision signals users need to decide whether an estimate is
-usable for their data. The public report should answer three questions: why was
-this candidate selected, what data support does it rely on, and what should be
-reviewed before using the estimate downstream?
+RLEvalKit reports diagnostic summaries that help users decide whether an
+estimate is usable for their data. The public report should answer three
+questions: why was this candidate selected, what data support does it rely on,
+and what should be reviewed before using the estimate downstream?
 
 - ESS is a diagnostic, not a target. Under meaningful policy shift, near-uniform
   weights can indicate a nearly constant ratio rather than a successful fit.

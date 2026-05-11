@@ -4,13 +4,13 @@ description: Modular generalized policy-to-Q-to-reward tools for inverse reinfor
 template: splash
 hero:
   title: genPQR
-  tagline: A modular inverse-RL site for behavior-policy estimation, Q evaluation, and normalized rewards.
+  tagline: Modular inverse-RL workflows for behavior-policy estimation, Q evaluation, and normalized rewards.
   image:
     html: |
       <div class="package-hero-visual package-hero-visual--genpqr" aria-hidden="true">
         <div class="package-hero-visual__top">
           <span>Reward fit</span>
-          <strong>adapter ready</strong>
+          <strong>adapter status</strong>
         </div>
         <div class="reward-map">
           <span></span>
@@ -47,7 +47,7 @@ hero:
   </nav>
   <section class="package-positioning">
     <div>
-      <p class="eyebrow">Reward site</p>
+      <p class="eyebrow">Reward workflow</p>
       <h2>Normalized reward estimation with modular learners.</h2>
       <p>
         <code>genpqr</code> estimates a normalized reward representation from
@@ -57,7 +57,7 @@ hero:
     </div>
     <dl class="package-metric-panel">
       <div>
-        <dt>Primary object</dt>
+        <dt>Primary output</dt>
         <dd>Normalized reward functions</dd>
       </div>
       <div>
@@ -191,7 +191,7 @@ rewards = result.reward_function.predict_reward(states, actions)
 - Optional adapters should report clear adapter status. A configured fallback is
   a different method choice, not an equivalent result.
 
-## Method surface
+## Methods
 
 | Workflow | Entry point | Use case |
 | --- | --- | --- |

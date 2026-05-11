@@ -3,7 +3,7 @@ title: Discounted Occupancy Ratios Diagnostics
 description: Reading ratio, source, tuning, and benchmark diagnostics.
 ---
 
-## Ratio quality signals
+## Ratio quality diagnostics
 
 These checks are user-facing because they determine whether the fitted weights
 are plausible for OPE, weighted FQE, or downstream reporting.

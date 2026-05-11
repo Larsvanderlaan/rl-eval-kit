@@ -46,7 +46,7 @@ hero:
   </nav>
   <section class="package-positioning">
     <div>
-      <p class="eyebrow">Policy-value site</p>
+      <p class="eyebrow">Policy-value workflow</p>
       <h2>Direct-method OPE with calibration hooks.</h2>
       <p>
         <code>fqe</code> estimates a fixed target policy's Q-function and
@@ -56,7 +56,7 @@ hero:
     </div>
     <dl class="package-metric-panel">
       <div>
-        <dt>Primary object</dt>
+        <dt>Primary output</dt>
         <dd>Q-functions and policy values</dd>
       </div>
       <div>
@@ -82,7 +82,7 @@ hero:
     </article>
     <article>
       <span>03</span>
-      <h3>Review evidence</h3>
+      <h3>Review diagnostics</h3>
       <p>Summarize Bellman fit, calibration, target-validation coverage, and value stability.</p>
     </article>
   </section>
@@ -200,7 +200,7 @@ action_dim)`. Multiple actions are averaged in the Bellman target.
 - Tuning reports should make the selected model, score components, and final
   refit diagnostics easy to inspect.
 
-## Method surface
+## Methods
 
 | Method | Entry point | Use case |
 | --- | --- | --- |

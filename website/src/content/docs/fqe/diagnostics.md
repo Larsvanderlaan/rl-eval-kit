@@ -3,10 +3,10 @@ title: FQE Diagnostics
 description: How to read FQE tuning, validation, calibration, and stationary-weighting diagnostics.
 ---
 
-## Core signals
+## Core diagnostics
 
 These are user-facing checks: they help decide whether a fitted Q model is
-ready to use, not just whether a training run completed.
+appropriate for use, not just whether a training run completed.
 
 | Signal | What it tells you | What to review |
 | --- | --- | --- |
