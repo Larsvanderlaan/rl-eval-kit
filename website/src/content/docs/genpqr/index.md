@@ -61,7 +61,7 @@ hero:
         <dd>Normalized reward functions</dd>
       </div>
       <div>
-        <dt>Default path</dt>
+        <dt>Dependency-light path</dt>
         <dd>Native behavior cloning plus boosted FQE</dd>
       </div>
       <div>
@@ -91,10 +91,14 @@ hero:
 
 ## What is estimated?
 
-GenPQR estimates a normalized reward representation under a maximum-entropy or
-Gumbel-shock style behavioral model. The normalization policy `mu` and
-anchor `g(s)` are part of the estimand: they say which reward scale and offset
-the package should report.
+GenPQR estimates a normalized reward representation from a fitted behavior
+policy and Q evaluation. In the discrete-action maximum-entropy case, the
+utility uses log probabilities; in continuous-action settings, the same
+notation refers to log densities with respect to the chosen action base
+measure.
+
+The normalization policy `mu` and anchor `g(s)` are part of the estimand: they
+say which reward scale and offset the package should report.
 
 <div class="estimand-card estimand-card--genpqr">
   <p class="estimand-label">Utility signal implied by the fitted behavior policy</p>
@@ -102,12 +106,13 @@ the package should report.
 = \log \hat\pi_0(a \mid s) - g(s)</code></pre>
 </div>
 
-GenPQR fits a continuation value for this utility signal:
+GenPQR fits a continuation value for this utility signal under the fitted
+behavior policy:
 
 <div class="estimand-card estimand-card--genpqr">
   <p class="estimand-label">Q value used to construct the reward</p>
   <pre class="math-display"><code>Q_u(s,a)
-= \mathbb{E}\!\left[
+= \mathbb{E}_{\hat\pi_0}\!\left[
     \sum_{t=0}^{\infty} \gamma^t u(S_t,A_t)
     \mid S_0=s,\ A_0=a
   \right]</code></pre>
@@ -170,13 +175,13 @@ rewards = result.reward_function.predict_reward(states, actions)
 | `normalization_policy` | Defines the reward normalization target |
 | Policy estimator | Supplies action probabilities or log densities |
 | Q estimator | Supplies continuation values for reward estimation |
-| `GenPQRResult` | Reward function, typed diagnostics, serialization |
+| `GenPQRResult` | Reward function, diagnostics, serialization |
 
 ## When to use it
 
 - You have demonstrations or logged behavior and want a reward explanation.
-- You need to compare BC/FQE, AIRL/FQE, GAIL/FQE, SCOPE-RL diagnostics, or
-  DeepPQR anchor workflows behind one public interface.
+- You need one interface for comparing BC/FQE, AIRL/FQE, GAIL/FQE,
+  SCOPE-RL diagnostics, or DeepPQR anchor workflows.
 - You want custom policy and Q estimators through public protocols.
 
 ## Reward-identification checks

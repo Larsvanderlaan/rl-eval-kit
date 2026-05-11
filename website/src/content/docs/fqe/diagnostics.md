@@ -12,7 +12,7 @@ appropriate for use, not just whether a training run completed.
 | --- | --- | --- |
 | Held-out weighted Bellman risk | Whether Bellman consistency transfers to held-out rows | Whether the held-out rows cover target-policy regions |
 | Policy-value stability | Whether value estimates agree across folds or seeds | Strong value swings under small config changes |
-| Calibration residuals | Whether Bellman target means match prediction bins | Whether calibration changes the value estimate in a useful direction |
+| Calibration residuals | Whether Bellman target means match prediction bins | Whether calibration materially changes the estimate and is justified by the diagnostic |
 | Target-validation tail mass | How much discounted rollout remains unobserved | Large tail mass with otherwise confident selection |
 | Stationary weight source | Which ratio backend produced FQE row weights | Whether weights are plausible under the policy shift |
 

@@ -71,7 +71,7 @@ hero:
     <article>
       <span>01</span>
       <h3>Reweight rows</h3>
-      <p>Predict state-action weights that move reference rows toward the target policy.</p>
+      <p>Predict state-action weights that move reference rows toward the target policy's normalized discounted occupancy.</p>
     </article>
     <article>
       <span>02</span>
@@ -88,9 +88,9 @@ hero:
 
 ## What is estimated?
 
-The package estimates a discounted state-action density ratio. If the ratio is
-accurate, weighting logged reference rows by `w^pi_gamma(s,a)` makes them
-behave like rows drawn from the target policy's normalized discounted occupancy.
+The package estimates a discounted state-action density ratio. Under support
+assumptions, the ratio identifies expectations under the target policy's
+normalized discounted occupancy by reweighting logged reference rows.
 
 <div class="estimand-card estimand-card--ratio">
   <p class="estimand-label">Discounted state-action density ratio</p>
@@ -100,9 +100,9 @@ behave like rows drawn from the target policy's normalized discounted occupancy.
        {\rho^{\mathrm{ref}}(s)\,\pi_0(a \mid s)}</code></pre>
 </div>
 
-The defining check is a reweighting identity: averages under the target
-policy's discounted occupancy should match weighted averages over the logged
-reference rows.
+The defining identity is a reweighting identity: averages under the target
+policy's normalized discounted occupancy should match weighted averages over
+the logged reference rows.
 
 <div class="estimand-card estimand-card--ratio">
   <p class="estimand-label">How the weights are used</p>
@@ -188,7 +188,7 @@ state_ratios = model.predict_state_ratio(states, actions)
 - You need discounted density ratios for OPE, weighted FQE, or diagnostics.
 - You want a fitted-regression alternative to coupled minimax or DICE-style
   saddle optimization.
-- You need automatic tuning and detailed diagnostics.
+- You want automatic tuning and ratio-quality diagnostics.
 - You want Google DualDICE as an optional external comparator or backend.
 
 ## Ratio quality checks

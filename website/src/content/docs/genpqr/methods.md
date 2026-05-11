@@ -8,10 +8,10 @@ description: Reward identification, normalization, DeepGenPQR, and DeepPQR ancho
 Inverse RL rewards are generally only partially identified. GenPQR makes the
 normalization explicit: the reported reward is the normalized representation
 consistent with the estimated policy, estimated Q-function, and chosen
-statewise affine normalization policy.
+normalization policy or anchor.
 
-That is why a normalization policy is not boilerplate. It is part of the
-estimand.
+The normalization policy is therefore part of the estimand, not a configuration
+detail.
 
 ## Policy-to-Q-to-reward
 

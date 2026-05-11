@@ -27,7 +27,7 @@ you select an adapter that needs them.
 | --- | --- | --- | --- |
 | Estimate a fixed target policy's Q-function or policy value | `fqe` | `fit_fqe_lgbm`, `tune_fqe_auto` | Q model, value estimate, Bellman diagnostics |
 | Estimate discounted target-to-reference occupancy ratios | `occupancy_ratio` | `fit_discounted_occupancy_ratio`, `tune_occupancy_ratio_auto` | State-action weights and ratio diagnostics |
-| Estimate a normalized reward representation from behavior | `genpqr` | `fit_genpqr`, `fit_deep_genpqr` | Reward function and IRL diagnostics |
+| Estimate a normalized reward representation from behavior | `genpqr` | `fit_genpqr`, `fit_deep_genpqr` | Reward function under a chosen normalization policy or anchor, plus IRL diagnostics |
 | Reweight FQE toward target-policy stationarity | `fqe` plus `occupancy-ratio` or Google DualDICE | `fit_stationary_weighted_fqe` | Weighted FQE model and weight diagnostics |
 
 ## Minimal examples

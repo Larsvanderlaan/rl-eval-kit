@@ -73,7 +73,7 @@ hero:
     <article>
       <span>01</span>
       <h3>Estimate values</h3>
-      <p>Fit reusable Q models and average initial target-policy actions for policy-value estimates.</p>
+      <p>Fit reusable Q models and average fitted Q values over initial state-action rows.</p>
     </article>
     <article>
       <span>02</span>
@@ -171,7 +171,7 @@ policy_value = model.estimate_policy_value(initial_states, initial_actions)
 | --- | --- | --- |
 | `states`, `actions` | Yes | Logged transition rows |
 | `next_states` | Yes | One next state per row |
-| `next_actions` | Yes in Q-mode | One or many sampled evaluation-policy actions per next state |
+| `next_actions` | Yes for action-value fitting | One or many sampled evaluation-policy actions per next state |
 | `rewards` | Yes | One reward per row |
 | `gamma` | Yes | Value-estimation discount |
 | `terminals` | Recommended | Terminal mask for Bellman targets |
@@ -183,7 +183,7 @@ action_dim)`. Multiple actions are averaged in the Bellman target.
 
 ## When to use it
 
-- You have logged transitions and actions sampled from an evaluation policy.
+- You have logged behavior transitions and target-policy next or initial actions.
 - You need a direct-method OPE estimate or reusable Q-function.
 - You want stable boosted defaults first, then neural FQE when the function
   class or workload calls for it.
@@ -208,8 +208,8 @@ action_dim)`. Multiple actions are averaged in the Bellman target.
 | Neural FQE | `fit_fqe_neural` | Larger continuous-control workloads |
 | Value-only FVI | `fit_value_lgbm`, `fit_value_neural` | Bellman operator already expressed over states |
 | Automatic tuning | `tune_fqe_auto` | Candidate search and final refit |
-| Target validation | `tune_fqe_with_target_validation` | Independent target-policy rollouts or labels |
-| Stationary weighting | `fit_stationary_weighted_fqe` | Reweighted Bellman regression under distribution shift |
+| Target validation | `tune_fqe_with_target_validation` | Independent target-policy rollouts, finite-horizon returns, or moment targets |
+| Stationary weighting | `fit_stationary_weighted_fqe` | Reweighted Bellman regression with state-action weights |
 | Bellman calibration | `fit_bellman_calibrator` | Post-hoc calibration diagnostics and correction |
 | Low-rank SBV | `LowRankOperatorSBVValidator` | Efficient selection among many Q candidates |
 

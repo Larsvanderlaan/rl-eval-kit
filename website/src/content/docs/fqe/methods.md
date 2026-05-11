@@ -6,8 +6,8 @@ description: Boosted FQE, neural FQE, stationary weighting, target validation, a
 ## Boosted and neural FQE
 
 Boosted FQE uses LightGBM with conservative stable defaults: Huber loss, early
-stopping, regularized tree settings, value-bound inference, deterministic
-single-thread execution, and final refit in tuning workflows.
+stopping, regularized tree settings, deterministic single-thread execution, and
+final refit in tuning workflows.
 
 Neural FQE mirrors the boosted API and adds target networks, Polyak updates,
 gradient clipping, Huber loss by default, and input standardization fitted on

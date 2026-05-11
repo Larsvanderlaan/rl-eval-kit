@@ -17,7 +17,7 @@ export const papers: PaperInfo[] = [
     status: 'Draft source',
     venue: 'Working draft',
     summary:
-      'Introduces FORI as a fitted-regression analogue of FQE for discounted occupancy ratios, separating nuisance, regression, stabilization, and finite-iteration error.',
+      'Introduces FORI for discounted occupancy ratios, with separate nuisance, regression, stabilization, and finite-iteration error terms.',
     sourceHref: `${repo}/submissions/occupancy-ratio/paper/fori_iclr2026/main.tex`,
   },
   {
@@ -46,7 +46,7 @@ export const papers: PaperInfo[] = [
     status: 'Draft PDF',
     venue: 'Conference draft',
     summary:
-      'Develops post-hoc Bellman calibration diagnostics and corrections for fitted value predictors.',
+      'Develops post-hoc Bellman calibration diagnostics for fitted value predictors.',
     sourceHref: `${repo}/submissions/neurips-bellman/papers/calibration/main.tex`,
     pdfHref: `${repo}/submissions/neurips-bellman/papers/calibration/main.pdf`,
   },
@@ -56,7 +56,7 @@ export const papers: PaperInfo[] = [
     status: 'Draft PDF',
     venue: 'Conference draft',
     summary:
-      'Presents GenPQR as a modular route to normalized reward estimation using policy estimation plus Q evaluation.',
+      'Presents GenPQR for normalized reward estimation using policy estimation plus Q evaluation.',
     sourceHref: `${repo}/submissions/irl/papers/conference_genpqr/main_neurips.tex`,
     pdfHref: `${repo}/submissions/irl/papers/conference_genpqr/paper_draft.pdf`,
   },

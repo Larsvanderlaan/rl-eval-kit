@@ -68,12 +68,12 @@ const navItems = [
           <h1 id="hero-title">RLEvalKit</h1>
           <p class="hero-kicker">
             Offline RL evaluation, density-ratio estimation, and normalized
-            reward modeling in one auditable software stack.
+            reward modeling for logged-data studies.
           </p>
           <p class="lead">
-            Move from logged transitions to fitted values, reweighting ratios,
-            reward estimates, and diagnostics without building a separate
-            experiment stack for each study.
+            Estimate target-policy Q-functions, discounted occupancy ratios,
+            or normalized rewards from logged transitions, with package-specific
+            APIs that share reporting conventions.
           </p>
           <div class="hero-actions">
             <a class="rl-button primary" href={withBase('/start/')}>Get started</a>
@@ -90,28 +90,28 @@ const navItems = [
             </div>
             <div>
               <dt>JSON</dt>
-              <dd>diagnostic manifests</dd>
+              <dd>run manifests</dd>
             </div>
           </dl>
         </div>
 
-        <aside class="hero-visual" aria-label="Example diagnostics dashboard">
+        <aside class="hero-visual" aria-label="Illustrative diagnostics panel">
           <div class="visual-head">
-            <span>Evaluation run</span>
+            <span>Example run summary</span>
             <strong>balanced budget</strong>
           </div>
           <div class="metric-strip">
             <div>
-              <span>Policy value</span>
-              <strong>0.428</strong>
+              <span>Q estimate</span>
+              <strong>reported</strong>
             </div>
             <div>
-              <span>Ratio ESS</span>
-              <strong>0.63</strong>
+              <span>ESS fraction</span>
+              <strong>reported</strong>
             </div>
             <div>
-              <span>Reward scale</span>
-              <strong>stable</strong>
+              <span>Normalization SE</span>
+              <strong>reported</strong>
             </div>
           </div>
           <div class="visual-grid" aria-hidden="true">
@@ -122,15 +122,15 @@ const navItems = [
           <ol class="run-lanes">
             <li>
               <span>fqe</span>
-              <strong>Bellman calibration passed</strong>
+              <strong>Bellman calibration summarized</strong>
             </li>
             <li>
               <span>ratio</span>
-              <strong>weight variation checked</strong>
+              <strong>weight variation reported</strong>
             </li>
             <li>
               <span>genpqr</span>
-              <strong>reward diagnostics exported</strong>
+              <strong>reward report exported</strong>
             </li>
           </ol>
         </aside>
@@ -152,13 +152,13 @@ const navItems = [
       <section class="rl-section split-section" aria-labelledby="workflow-code-title">
         <div class="section-copy">
           <span class="eyebrow">Consistent workflow</span>
-          <h2 id="workflow-code-title">Fit values, ratios, and rewards from the same logged-data workflow.</h2>
+          <h2 id="workflow-code-title">Fit values, ratios, and rewards from the same logged transitions.</h2>
           <p class="section-intro">
             Package scope follows the estimand, with consistent defaults,
             diagnostics, and tuning telemetry across workflows.
           </p>
         </div>
-        <CodeWindow title="One workflow, three estimands">
+        <CodeWindow title="Three estimands from one dataset">
 {`from fqe import tune_fqe_auto
 from occupancy_ratio import tune_occupancy_ratio_auto
 from genpqr import GenPQRConfig, fit_genpqr
@@ -191,10 +191,10 @@ reward_result = fit_genpqr(
       <section class="rl-section workflow-section" aria-labelledby="workflow-title">
         <div class="section-heading">
           <span class="eyebrow">Workflow</span>
-          <h2 id="workflow-title">Designed for offline RL evaluation workflows.</h2>
+          <h2 id="workflow-title">Designed for offline RL evaluation.</h2>
           <p class="section-intro">
-            RLEvalKit is the evaluation, weighting, validation, and normalized
-            reward-estimation layer around logged data.
+            RLEvalKit covers evaluation, weighting, validation, and normalized
+            reward estimation for logged data.
           </p>
         </div>
         <WorkflowRail />
@@ -203,23 +203,21 @@ reward_result = fit_genpqr(
       <section class="rl-section" aria-labelledby="diagnostics-title">
         <div class="section-heading compact">
           <span class="eyebrow">Diagnostics</span>
-          <h2 id="diagnostics-title">Transparent model selection.</h2>
+          <h2 id="diagnostics-title">Model-selection reports.</h2>
         </div>
         <div class="card-grid two">
           <div class="rl-card">
-            <h3>Transparent tuning reports</h3>
+            <h3>Tuning outputs</h3>
             <p>
-              Tuning reports show the selected method, score components,
-              stability metrics, runtime, and validation data supplied by the
-              user.
+              Reports show the selected method, score components, fold
+              summaries, runtime, and any validation data supplied by the user.
             </p>
           </div>
           <div class="rl-card">
-            <h3>Actionable diagnostic summaries</h3>
+            <h3>Diagnostic checks</h3>
             <p>
-              Reports focus on coverage, stability, tail risk, calibration,
-              source-correction status, and adapter status so users can decide
-              whether an estimate is appropriate for downstream analysis.
+              Summaries focus on support, stability, tail risk, calibration,
+              source-correction status, and adapter status.
             </p>
           </div>
         </div>

@@ -14,7 +14,7 @@ const { paper } = Astro.props;
     <span>{paper.status}</span>
   </div>
   <h3>{paper.title}</h3>
-  <p class="paper-card__venue">Draft context: {paper.venue}</p>
+  <p class="paper-card__venue">{paper.venue}</p>
   <p>{paper.summary}</p>
   <div class="paper-card__links">
     <a href={paper.sourceHref}>Source</a>

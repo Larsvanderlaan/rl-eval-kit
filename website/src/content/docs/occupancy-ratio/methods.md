@@ -31,10 +31,10 @@ and exactly equal to one.
 
 ## Automatic tuning
 
-The tuning suite scores candidates by proxy risk, OPE/reward stability, ratio
-quality, and runtime. It penalizes very low ESS, extreme tail concentration,
-heavy clipping, and nearly constant weights under meaningful behavior-target
-mismatch.
+The tuning suite scores candidates by proxy risk, observed-reward weighted OPE
+stability, ratio quality, and runtime. It penalizes very low ESS, extreme tail
+concentration, heavy clipping, and nearly constant weights under meaningful
+behavior-target mismatch.
 
 It does not reward a candidate merely because ESS is closer to one.
 
