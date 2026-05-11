@@ -37,11 +37,31 @@ class BenchmarkConfig:
     policy_shifts: tuple[float, ...] = (0.5,)
     n_eval: int = 256
     n_initial_eval: int = 128
+    gym_target_value_rollouts: int = 8
+    stationary_gamma_ratio: float = 0.99
     output_plots: bool = True
     fail_fast: bool = False
+    tune_cv: bool = False
+    automl_tuning: Literal["off", "fast", "balanced"] = "off"
+    staged_cv: bool = False
+    staged_cv_iterations: tuple[int, ...] | None = None
     include_hopper: bool = False
     hopper_artifact_dir: Path = Path("hopper_fqe_benchmark/artifacts")
     google_research_path: Path = Path("/tmp/google-research")
+    google_dualdice_num_updates: int = 1000
+    google_dualdice_batch_size: int = 128
+    dice_rl_repo_path: Path = Path("/tmp/dice_rl")
+    dice_rl_num_steps: int = 1000
+    dice_rl_batch_size: int = 128
+    dice_rl_learning_rate: float = 1e-4
+    dice_rl_hidden_dims: tuple[int, ...] = (64, 64)
+    scope_rl_repo_path: Path | None = None
+    scope_rl_n_steps: int = 10000
+    scope_rl_n_steps_per_epoch: int = 10000
+    scope_rl_batch_size: int = 128
+    scope_rl_learning_rate: float = 1e-4
+    scope_rl_hidden_dim: int = 100
+    scope_rl_bandwidth: float = 1.0
 
     boosted_num_iterations: int = 16
     boosted_tune_num_iterations: int = 12
@@ -67,6 +87,41 @@ class BenchmarkConfig:
                 raise ValueError("gammas must be in [0, 1).")
         if self.n_eval <= 0 or self.n_initial_eval <= 0:
             raise ValueError("evaluation sizes must be positive.")
+        if int(self.gym_target_value_rollouts) <= 0:
+            raise ValueError("gym_target_value_rollouts must be positive.")
+        if not (0.0 <= float(self.stationary_gamma_ratio) < 1.0):
+            raise ValueError("stationary_gamma_ratio must be in [0, 1).")
+        if self.automl_tuning not in {"off", "fast", "balanced"}:
+            raise ValueError("automl_tuning must be 'off', 'fast', or 'balanced'.")
+        if self.staged_cv_iterations is not None:
+            if not self.staged_cv_iterations:
+                raise ValueError("staged_cv_iterations must be nonempty when supplied.")
+            if any(int(value) <= 0 for value in self.staged_cv_iterations):
+                raise ValueError("staged_cv_iterations entries must be positive.")
+        if int(self.google_dualdice_num_updates) <= 0:
+            raise ValueError("google_dualdice_num_updates must be positive.")
+        if int(self.google_dualdice_batch_size) <= 0:
+            raise ValueError("google_dualdice_batch_size must be positive.")
+        if int(self.dice_rl_num_steps) <= 0:
+            raise ValueError("dice_rl_num_steps must be positive.")
+        if int(self.dice_rl_batch_size) <= 0:
+            raise ValueError("dice_rl_batch_size must be positive.")
+        if float(self.dice_rl_learning_rate) <= 0.0:
+            raise ValueError("dice_rl_learning_rate must be positive.")
+        if not self.dice_rl_hidden_dims or any(int(width) <= 0 for width in self.dice_rl_hidden_dims):
+            raise ValueError("dice_rl_hidden_dims must contain positive widths.")
+        if int(self.scope_rl_n_steps) <= 0:
+            raise ValueError("scope_rl_n_steps must be positive.")
+        if int(self.scope_rl_n_steps_per_epoch) <= 0:
+            raise ValueError("scope_rl_n_steps_per_epoch must be positive.")
+        if int(self.scope_rl_batch_size) <= 0:
+            raise ValueError("scope_rl_batch_size must be positive.")
+        if float(self.scope_rl_learning_rate) <= 0.0:
+            raise ValueError("scope_rl_learning_rate must be positive.")
+        if int(self.scope_rl_hidden_dim) <= 0:
+            raise ValueError("scope_rl_hidden_dim must be positive.")
+        if float(self.scope_rl_bandwidth) <= 0.0:
+            raise ValueError("scope_rl_bandwidth must be positive.")
 
     @classmethod
     def for_stage(
@@ -92,6 +147,14 @@ class BenchmarkConfig:
                 neural_gradient_steps_per_iteration=8,
                 neural_tune_num_iterations=4,
                 neural_tune_gradient_steps_per_iteration=5,
+                gym_target_value_rollouts=4,
+                google_dualdice_num_updates=50,
+                google_dualdice_batch_size=64,
+                dice_rl_num_steps=50,
+                dice_rl_batch_size=64,
+                scope_rl_n_steps=50,
+                scope_rl_n_steps_per_epoch=50,
+                scope_rl_batch_size=32,
             )
         if stage == "core":
             return cls(
@@ -110,6 +173,14 @@ class BenchmarkConfig:
                 neural_gradient_steps_per_iteration=20,
                 neural_tune_num_iterations=20,
                 neural_tune_gradient_steps_per_iteration=15,
+                gym_target_value_rollouts=16,
+                google_dualdice_num_updates=1000,
+                google_dualdice_batch_size=128,
+                dice_rl_num_steps=1000,
+                dice_rl_batch_size=128,
+                scope_rl_n_steps=1000,
+                scope_rl_n_steps_per_epoch=1000,
+                scope_rl_batch_size=128,
             )
         if stage == "full":
             return cls(
@@ -129,6 +200,14 @@ class BenchmarkConfig:
                 neural_gradient_steps_per_iteration=30,
                 neural_tune_num_iterations=40,
                 neural_tune_gradient_steps_per_iteration=20,
+                gym_target_value_rollouts=32,
+                google_dualdice_num_updates=5000,
+                google_dualdice_batch_size=256,
+                dice_rl_num_steps=5000,
+                dice_rl_batch_size=256,
+                scope_rl_n_steps=5000,
+                scope_rl_n_steps_per_epoch=5000,
+                scope_rl_batch_size=256,
             )
         raise ValueError("stage must be 'smoke', 'core', or 'full'.")
 
@@ -160,12 +239,25 @@ class BenchmarkDataset:
     true_policy_value: float | None = None
     sample_weight: Array | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    target_actions: Array | None = None
+    episode_ids: Array | None = None
+    timesteps: Array | None = None
+    step_per_trajectory: int | None = None
+    behavior_action_pscore: Array | None = None
 
     def __post_init__(self) -> None:
+        if self.target_actions is None:
+            self.target_actions = np.asarray(self.actions)
         n = int(np.asarray(self.rewards).reshape(-1).shape[0])
-        for name in ("states", "actions", "next_states", "next_actions", "terminals"):
+        for name in ("states", "actions", "target_actions", "next_states", "next_actions", "terminals"):
             if np.asarray(getattr(self, name)).shape[0] != n:
                 raise ValueError(f"{name} must have {n} rows.")
+        for name in ("episode_ids", "timesteps", "behavior_action_pscore"):
+            value = getattr(self, name)
+            if value is not None and np.asarray(value).shape[0] != n:
+                raise ValueError(f"{name} must have {n} rows.")
+        if self.step_per_trajectory is not None and int(self.step_per_trajectory) <= 0:
+            raise ValueError("step_per_trajectory must be positive when supplied.")
 
     @property
     def n(self) -> int:
@@ -197,6 +289,7 @@ class FittedEstimator:
     runtime_sec: float
     diagnostics: dict[str, Any] = field(default_factory=dict)
     tuning_runtime_sec: float = 0.0
+    tuning_rows: list[dict[str, Any]] = field(default_factory=list)
 
     def predict_q(self, states: Array, actions: Array) -> Array:
         if hasattr(self.model, "predict_q"):
@@ -228,5 +321,7 @@ class BenchmarkRunResult:
     summary_path: Path
     diagnostics_path: Path
     manifest_path: Path
+    tuning_results_path: Path
     rows: list[dict[str, Any]]
     summary_rows: list[dict[str, Any]]
+    tuning_rows: list[dict[str, Any]]

@@ -5,7 +5,7 @@ import importlib.util
 import numpy as np
 import pytest
 
-from fqe import BoostedFQEConfig, fit_fqe_from_policy, fit_fqe_lgbm, fit_value_lgbm, tune_fqe_cv
+from fqe import BoostedFQEConfig, fit_fqe_from_policy, fit_fqe_lgbm, fit_value_lgbm, load_fqe_lgbm, tune_fqe_cv
 
 
 LIGHTGBM_AVAILABLE = importlib.util.find_spec("lightgbm") is not None
@@ -114,6 +114,22 @@ def test_constant_reward_value_approaches_discounted_value() -> None:
 
 
 @pytestmark_lgbm
+def test_gym_timeouts_continue_bootstrap() -> None:
+    states = np.zeros((40, 1))
+    rewards = np.ones(40)
+    model = fit_value_lgbm(
+        states,
+        states,
+        rewards,
+        gamma=0.5,
+        timeouts=np.ones(40),
+        config=_small_config(loss="squared", num_iterations=20, target_min=0.0, target_max=3.0),
+    )
+    assert np.allclose(model.predict_value(np.zeros((3, 1))), 2.0, atol=0.6)
+    assert model.diagnostics["timeout_fraction"] == pytest.approx(1.0)
+
+
+@pytestmark_lgbm
 def test_value_mode_matches_q_mode_with_constant_actions() -> None:
     states = np.linspace(-1.0, 1.0, 30).reshape(-1, 1)
     actions = np.zeros((30, 1))
@@ -167,6 +183,34 @@ def test_multi_sample_next_actions_and_policy_sampler() -> None:
 
 
 @pytestmark_lgbm
+def test_discrete_action_spec_and_weighted_action_expectations() -> None:
+    states = np.repeat(np.linspace(0.0, 1.0, 24).reshape(-1, 1), 2, axis=0)
+    actions = np.tile(np.array([0, 1]), 24)
+    rewards = states.reshape(-1) + actions.astype(float)
+    next_actions = np.tile(np.array([[0, 1]]), (states.shape[0], 1))
+    model = fit_fqe_lgbm(
+        states,
+        actions,
+        states,
+        next_actions,
+        rewards,
+        gamma=0.1,
+        next_action_weights=np.column_stack([np.full(states.shape[0], 0.25), np.full(states.shape[0], 0.75)]),
+        action_spec={"type": "discrete_index", "n_actions": 2},
+        config=_small_config(loss="squared", num_iterations=10, seed=29),
+    )
+    pred = model.predict_q(states[:4], np.array([0, 1, 0, 1]))
+    assert pred.shape == (4,)
+    assert model.diagnostics["target_action_expectation"] == "weighted"
+    value = model.estimate_policy_value(
+        states[:3],
+        np.tile(np.array([[0, 1]]), (3, 1)),
+        initial_action_weights=np.array([[0.0, 1.0], [0.5, 0.5], [1.0, 0.0]]),
+    )
+    assert np.isfinite(value)
+
+
+@pytestmark_lgbm
 def test_terminal_mask_blocks_bootstrap() -> None:
     states = np.zeros((30, 1))
     next_states = np.zeros((30, 1))
@@ -180,6 +224,27 @@ def test_terminal_mask_blocks_bootstrap() -> None:
         config=_small_config(loss="squared", num_iterations=10, infer_value_bounds=False),
     )
     assert np.allclose(terminal_model.predict_value(np.zeros((4, 1))), 1.0, atol=0.4)
+
+
+@pytestmark_lgbm
+def test_boosted_serialization_round_trip(tmp_path) -> None:
+    states = np.linspace(-1.0, 1.0, 36).reshape(-1, 1)
+    actions = np.zeros((36, 1))
+    rewards = 1.0 + states.reshape(-1)
+    model = fit_fqe_lgbm(
+        states,
+        actions,
+        states,
+        actions,
+        rewards,
+        gamma=0.0,
+        config=_small_config(loss="squared", num_iterations=8, seed=31),
+    )
+    path = tmp_path / "boosted_fqe.fqe"
+    model.save(path)
+    loaded = load_fqe_lgbm(path)
+    assert loaded.diagnostics["mode"] == "q"
+    assert np.allclose(loaded.predict_q(states, actions), model.predict_q(states, actions))
 
 
 @pytestmark_lgbm

@@ -5,13 +5,15 @@ from pathlib import Path
 from typing import Literal, Sequence
 
 
-BenchmarkProfile = Literal["smoke", "medium", "full", "overnight", "dualdice-paper"]
+BenchmarkProfile = Literal["smoke", "medium", "full", "overnight", "high_stakes", "dualdice-paper"]
 BenchmarkStage = BenchmarkProfile
 
 BOOSTED_ESTIMATOR_PRESETS = (
     "squared",
     "huber",
     "stable",
+    "stable_factored",
+    "relaxed_tail",
     "logistic_nuisance",
     "stable_logistic_nuisance",
     "transition_norm",
@@ -20,11 +22,14 @@ BOOSTED_ESTIMATOR_PRESETS = (
     "crossfit2_calibrated",
     "bellman_moment_calibrated",
     "auto",
+    "staged_cv",
 )
 NEURAL_ESTIMATOR_PRESETS = (
     "squared",
     "huber",
     "stable",
+    "stable_factored",
+    "relaxed_tail",
     "logistic_nuisance",
     "stable_logistic_nuisance",
     "google_parity",
@@ -34,6 +39,8 @@ NEURAL_ESTIMATOR_PRESETS = (
     "crossfit2_calibrated",
     "bellman_moment_calibrated",
     "auto",
+    "staged_cv",
+    "naive_final_bellman_cv",
 )
 DIRECT_ESTIMATORS = {
     "oracle",
@@ -41,6 +48,17 @@ DIRECT_ESTIMATORS = {
     "neural_network",
     "google_dualdice",
     "google_dualdice_neural",
+    "neural_fori_default_stable",
+    "neural_fori_cv_size",
+    "neural_fori_oracle",
+    "google_dualdice_published_default",
+    "google_dualdice_default",
+    "dualdice_gmm_tuned",
+    "dualdice_oracle",
+    "dice_rl_dualdice_recovered",
+    "dice_rl_dualdice_gmm_tuned",
+    "dice_rl_dualdice_oracle",
+    "dice_rl_best_regularized",
     "google_tabular_dualdice_gridwalk",
     *(f"boosted_tree_{preset}" for preset in BOOSTED_ESTIMATOR_PRESETS),
     *(f"neural_network_{preset}" for preset in NEURAL_ESTIMATOR_PRESETS),
@@ -66,22 +84,27 @@ class OccupancyRatioBenchmarkConfig:
     seeds: Sequence[int] = field(default_factory=lambda: (0, 1))
     sample_sizes: Sequence[int] = field(default_factory=lambda: (500,))
     gammas: Sequence[float] = field(default_factory=lambda: (0.5, 0.9))
+    discrete_policy_shifts: Sequence[float] = field(default_factory=tuple)
     linear_gaussian_policy_shifts: Sequence[float] = field(default_factory=lambda: (1.0,))
+    random_tabular_state_counts: Sequence[int] = field(default_factory=lambda: (20, 50))
+    random_tabular_action_counts: Sequence[int] = field(default_factory=lambda: (2, 5))
     settings: Sequence[str] = field(
         default_factory=lambda: ("discrete_chain", "linear_gaussian", "nonlinear_monte_carlo")
     )
     estimators: Sequence[str] = field(
         default_factory=lambda: ("oracle", "boosted_tree", "neural_network", "google_dualdice_neural")
     )
-    boosted_estimator_presets: Sequence[str] = field(default_factory=lambda: ("squared", "huber", "stable"))
+    boosted_estimator_presets: Sequence[str] = field(default_factory=lambda: ("stable",))
     neural_estimator_presets: Sequence[str] = field(default_factory=lambda: ("stable",))
     include_google_dual_dice: bool = True
+    include_dice_rl: bool = True
     include_dualdice_gridwalk: bool = False
     gridwalk_alphas: Sequence[float] = field(default_factory=lambda: (0.0, 0.5))
     external_repo_path: Path = Path("/tmp/google-research")
+    dice_rl_repo_path: Path = Path("/tmp/dice_rl")
     n_jobs: int = 1
 
-    boosted_num_iterations: int = 30
+    boosted_num_iterations: int = 60
     boosted_trees_per_iteration: int = 1
     boosted_mcmc_samples: int = 24
     boosted_batch_size: int = 512
@@ -106,35 +129,54 @@ class OccupancyRatioBenchmarkConfig:
     neural_mcmc_samples: int = 24
     neural_batch_size: int = 512
     neural_hidden_dims: Sequence[int] = field(default_factory=lambda: (64, 64))
+    neural_action_hidden_dims: Sequence[int] | None = None
+    neural_source_hidden_dims: Sequence[int] | None = None
+    neural_transition_hidden_dims: Sequence[int] | None = None
+    neural_direct_one_step_hidden_dims: Sequence[int] | None = None
     neural_activation: str = "silu"
     neural_learning_rate: float = 5e-4
     neural_nuisance_learning_rate: float = 1e-3
-    neural_weight_decay: float = 1e-4
+    neural_weight_decay: float = 1e-5
     neural_action_steps: int = 800
+    neural_source_steps: int | None = None
     neural_transition_steps: int = 1_000
+    neural_direct_one_step_steps: int | None = None
     neural_transition_permutation_samples: int = 4
     neural_density_ratio_loss: str = "lsif"
     neural_logistic_logit_clip: float | None = 20.0
     neural_losses: Sequence[str] = field(default_factory=lambda: ("squared", "huber"))
     neural_stabilization_presets: Sequence[str] = field(default_factory=tuple)
-    neural_fixed_point_damping: float = 0.75
+    neural_fixed_point_damping: float = 0.5
     neural_validation_warmup_iterations: int = 1
     neural_occupancy_ratio_max: float | None = 50.0
     neural_pseudo_outcome_upper_quantile: float = 0.995
     neural_sample_weight_mode: str = "uniform"
     neural_sample_weight_max: float | None = 20.0
     neural_nuisance_prediction_max: float | None = 50.0
+    neural_direct_adjoint_steps: int | None = 128
+    neural_direct_adjoint_learning_rate: float | None = None
+    neural_direct_adjoint_weight_decay: float | None = None
     neural_grad_clip_norm: float | None = 5.0
     neural_crossfit_folds: int = 1
     neural_moment_calibration: str = "scalar"
     neural_device: str = "cpu"
     google_num_updates: int = 50
     google_batch_size: int = 128
+    google_batch_sizes: Sequence[int] = field(default_factory=lambda: (128,))
     google_learning_rates: Sequence[float] = field(default_factory=lambda: (1e-4, 3e-4, 1e-3))
     google_weight_decays: Sequence[float] = field(default_factory=lambda: (1e-6, 1e-5, 1e-4))
     google_hidden_dims: Sequence[int] = field(default_factory=lambda: (64, 128))
     google_update_grid: Sequence[int] = field(default_factory=lambda: (250, 1_000, 5_000))
+    dice_rl_num_steps: int = 1_000
+    dice_rl_batch_size: int = 128
+    dice_rl_learning_rate: float = 1e-4
+    dice_rl_hidden_dims: Sequence[int] = field(default_factory=lambda: (64, 64))
+    dice_rl_update_grid: Sequence[int] = field(default_factory=lambda: (250, 1_000, 5_000))
+    dice_rl_batch_sizes: Sequence[int] = field(default_factory=lambda: (128, 256))
+    dice_rl_learning_rates: Sequence[float] = field(default_factory=lambda: (1e-4, 3e-4, 1e-3))
+    dice_rl_hidden_dim_grid: Sequence[int] = field(default_factory=lambda: (64, 128))
     tune_cv: bool = False
+    automl_tuning: str = "off"
     cv_folds: int = 3
     cv_scoring: str = "composite"
     cv_lambda_norm: float = 0.1
@@ -143,8 +185,21 @@ class OccupancyRatioBenchmarkConfig:
     cv_occupancy_ratio_max_values: Sequence[float | None] = field(default_factory=lambda: (25.0, 50.0, None))
     cv_nuisance_prediction_max_values: Sequence[float | None] = field(default_factory=lambda: (25.0, 50.0, None))
     cv_moment_calibrations: Sequence[str] = field(default_factory=lambda: ("none", "scalar"))
+    cv_moment_extra_blocks: Sequence[str] = field(default_factory=tuple)
+    cv_moment_multiscale_rff_scales: Sequence[float] = field(default_factory=lambda: (0.5, 2.0))
+    cv_moment_strata_quantiles: Sequence[float] = field(default_factory=lambda: (0.25, 0.50, 0.75))
+    cv_score_method: str = "legacy_rank"
+    cv_gmm_objective: str = "ratio"
+    cv_gmm_cov_ridge: float = 0.10
+    cv_gmm_complexity_weight: float = 0.05
+    cv_gmm_ope_broad_weight: float = 0.10
+    cv_gmm_refit_fraction: float = 1.0
+    staged_bootstrap_cv: bool = False
+    staged_cv_iterations: int = 3
+    staged_cv_n_bootstrap: int = 200
     mc_truth_samples: int = 8_000
     gym_target_value_rollouts: int = 24
+    application_target_value_rollouts: int = 24
     openml_task_ids: Sequence[int] = field(default_factory=lambda: (31, 37, 54, 1464))
     openml_max_tasks: int | None = 2
     tabular_state_cap: int | None = None
@@ -157,24 +212,44 @@ class OccupancyRatioBenchmarkConfig:
             "D4RL/minigrid/fourrooms-v0",
         )
     )
+    source_state_correction_mode: str = "auto"
     estimator_timeout_sec: float | None = None
     resume: bool = True
     write_plots: bool = True
+    config_path: Path | None = None
+    config_sha256: str = ""
 
     def __post_init__(self) -> None:
         profile = self.stage if self.profile is None else self.profile
-        if profile not in {"smoke", "medium", "full", "overnight", "dualdice-paper"}:
-            raise ValueError("profile must be 'smoke', 'medium', 'full', 'overnight', or 'dualdice-paper'.")
+        profiles = {"smoke", "medium", "full", "overnight", "high_stakes", "dualdice-paper"}
+        if profile not in profiles:
+            raise ValueError(
+                "profile must be 'smoke', 'medium', 'full', 'overnight', 'high_stakes', or 'dualdice-paper'."
+            )
         object.__setattr__(self, "profile", profile)
         object.__setattr__(self, "stage", profile)
+        object.__setattr__(self, "output_root", Path(self.output_root))
+        object.__setattr__(self, "external_repo_path", Path(self.external_repo_path))
+        object.__setattr__(self, "dice_rl_repo_path", Path(self.dice_rl_repo_path))
+        if self.config_path is not None:
+            object.__setattr__(self, "config_path", Path(self.config_path))
         if self.n_jobs <= 0:
             raise ValueError("n_jobs must be positive.")
         for gamma in self.gammas:
             if not (0.0 <= float(gamma) < 1.0):
                 raise ValueError("all gammas must be in [0, 1).")
+        for shift in self.discrete_policy_shifts:
+            if float(shift) < 0.0:
+                raise ValueError("discrete_policy_shifts must be nonnegative.")
         for shift in self.linear_gaussian_policy_shifts:
             if float(shift) < 0.0:
                 raise ValueError("linear_gaussian_policy_shifts must be nonnegative.")
+        for count in self.random_tabular_state_counts:
+            if int(count) <= 1:
+                raise ValueError("random_tabular_state_counts must contain values greater than 1.")
+        for count in self.random_tabular_action_counts:
+            if int(count) <= 1:
+                raise ValueError("random_tabular_action_counts must contain values greater than 1.")
         for alpha in self.gridwalk_alphas:
             if not (0.0 <= float(alpha) <= 1.0):
                 raise ValueError("gridwalk_alphas must be in [0, 1].")
@@ -204,6 +279,8 @@ class OccupancyRatioBenchmarkConfig:
             "squared",
             "huber",
             "stable",
+            "stable_factored",
+            "relaxed_tail",
             "logistic_nuisance",
             "stable_logistic_nuisance",
             "transition_norm",
@@ -212,6 +289,7 @@ class OccupancyRatioBenchmarkConfig:
             "crossfit2_calibrated",
             "bellman_moment_calibrated",
             "auto",
+            "staged_cv",
             "huber_projection",
             "huber_projection_damping",
             "huber_projection_damping_transition_norm",
@@ -234,6 +312,12 @@ class OccupancyRatioBenchmarkConfig:
             raise ValueError("boosted_occupancy_ratio_max must be positive when supplied.")
         if self.neural_occupancy_ratio_max is not None and self.neural_occupancy_ratio_max <= 0.0:
             raise ValueError("neural_occupancy_ratio_max must be positive when supplied.")
+        if self.neural_direct_adjoint_steps is not None and int(self.neural_direct_adjoint_steps) <= 0:
+            raise ValueError("neural_direct_adjoint_steps must be positive when supplied.")
+        if self.neural_direct_adjoint_learning_rate is not None and float(self.neural_direct_adjoint_learning_rate) <= 0.0:
+            raise ValueError("neural_direct_adjoint_learning_rate must be positive when supplied.")
+        if self.neural_direct_adjoint_weight_decay is not None and float(self.neural_direct_adjoint_weight_decay) < 0.0:
+            raise ValueError("neural_direct_adjoint_weight_decay must be nonnegative when supplied.")
         if not (0.0 < self.boosted_pseudo_outcome_upper_quantile < 1.0):
             raise ValueError("boosted_pseudo_outcome_upper_quantile must be in (0, 1).")
         if int(self.boosted_crossfit_folds) < 1:
@@ -256,6 +340,15 @@ class OccupancyRatioBenchmarkConfig:
             raise ValueError("neural_batch_size must be positive.")
         if not tuple(self.neural_hidden_dims) or any(int(width) <= 0 for width in self.neural_hidden_dims):
             raise ValueError("neural_hidden_dims must contain positive widths.")
+        for name in (
+            "neural_action_hidden_dims",
+            "neural_source_hidden_dims",
+            "neural_transition_hidden_dims",
+            "neural_direct_one_step_hidden_dims",
+        ):
+            dims = getattr(self, name)
+            if dims is not None and (not tuple(dims) or any(int(width) <= 0 for width in dims)):
+                raise ValueError(f"{name} must contain positive widths when supplied.")
         if int(self.neural_validation_warmup_iterations) < 0:
             raise ValueError("neural_validation_warmup_iterations must be nonnegative.")
         if self.neural_learning_rate <= 0.0 or self.neural_nuisance_learning_rate <= 0.0:
@@ -264,6 +357,10 @@ class OccupancyRatioBenchmarkConfig:
             raise ValueError("neural_weight_decay must be nonnegative.")
         if self.neural_action_steps <= 0 or self.neural_transition_steps <= 0:
             raise ValueError("neural nuisance step counts must be positive.")
+        if self.neural_source_steps is not None and int(self.neural_source_steps) <= 0:
+            raise ValueError("neural_source_steps must be positive when supplied.")
+        if self.neural_direct_one_step_steps is not None and int(self.neural_direct_one_step_steps) <= 0:
+            raise ValueError("neural_direct_one_step_steps must be positive when supplied.")
         if self.neural_transition_permutation_samples <= 0:
             raise ValueError("neural_transition_permutation_samples must be positive.")
         if str(self.neural_density_ratio_loss) not in {"lsif", "logistic"}:
@@ -278,6 +375,8 @@ class OccupancyRatioBenchmarkConfig:
             raise ValueError("neural_moment_calibration must be 'none' or 'scalar'.")
         if int(self.cv_folds) < 2:
             raise ValueError("cv_folds must be >= 2.")
+        if str(self.automl_tuning) not in {"off", "fast", "balanced"}:
+            raise ValueError("automl_tuning must be 'off', 'fast', or 'balanced'.")
         if str(self.cv_scoring) not in {"composite", "loss"}:
             raise ValueError("cv_scoring must be 'composite' or 'loss'.")
         if self.cv_lambda_norm < 0.0 or self.cv_lambda_tail < 0.0:
@@ -294,9 +393,38 @@ class OccupancyRatioBenchmarkConfig:
         for method in self.cv_moment_calibrations:
             if str(method) not in {"none", "scalar"}:
                 raise ValueError("cv_moment_calibrations entries must be 'none' or 'scalar'.")
+        allowed_blocks = {"second_order", "multiscale_rff", "support", "policy_shift"}
+        unknown_blocks = sorted(str(block) for block in self.cv_moment_extra_blocks if str(block) not in allowed_blocks)
+        if unknown_blocks:
+            raise ValueError(f"cv_moment_extra_blocks entries must be one of {sorted(allowed_blocks)}.")
+        for scale in self.cv_moment_multiscale_rff_scales:
+            if float(scale) <= 0.0:
+                raise ValueError("cv_moment_multiscale_rff_scales entries must be positive.")
+        for quantile in self.cv_moment_strata_quantiles:
+            if not (0.0 < float(quantile) < 1.0):
+                raise ValueError("cv_moment_strata_quantiles entries must be in (0, 1).")
+        if str(self.cv_score_method) not in {"legacy_rank", "bellman_gmm", "validation_loss"}:
+            raise ValueError("cv_score_method must be 'legacy_rank', 'bellman_gmm', or 'validation_loss'.")
+        if str(self.cv_gmm_objective) not in {"ratio", "ope"}:
+            raise ValueError("cv_gmm_objective must be 'ratio' or 'ope'.")
+        if float(self.cv_gmm_cov_ridge) < 0.0:
+            raise ValueError("cv_gmm_cov_ridge must be nonnegative.")
+        if float(self.cv_gmm_complexity_weight) < 0.0:
+            raise ValueError("cv_gmm_complexity_weight must be nonnegative.")
+        if not (0.0 <= float(self.cv_gmm_ope_broad_weight) <= 1.0):
+            raise ValueError("cv_gmm_ope_broad_weight must be in [0, 1].")
+        if not (0.0 < float(self.cv_gmm_refit_fraction) <= 1.0):
+            raise ValueError("cv_gmm_refit_fraction must be in (0, 1].")
+        if not (1 <= int(self.staged_cv_iterations) <= 5):
+            raise ValueError("staged_cv_iterations must be in [1, 5].")
+        if int(self.staged_cv_n_bootstrap) < 0:
+            raise ValueError("staged_cv_n_bootstrap must be nonnegative.")
         for value in self.google_learning_rates:
             if float(value) <= 0.0:
                 raise ValueError("google_learning_rates must be positive.")
+        for value in self.google_batch_sizes:
+            if int(value) <= 0:
+                raise ValueError("google_batch_sizes must be positive.")
         for value in self.google_weight_decays:
             if float(value) < 0.0:
                 raise ValueError("google_weight_decays must be nonnegative.")
@@ -306,8 +434,30 @@ class OccupancyRatioBenchmarkConfig:
         for value in self.google_update_grid:
             if int(value) <= 0:
                 raise ValueError("google_update_grid must be positive.")
+        if int(self.dice_rl_num_steps) <= 0:
+            raise ValueError("dice_rl_num_steps must be positive.")
+        if int(self.dice_rl_batch_size) <= 0:
+            raise ValueError("dice_rl_batch_size must be positive.")
+        if float(self.dice_rl_learning_rate) <= 0.0:
+            raise ValueError("dice_rl_learning_rate must be positive.")
+        if not tuple(self.dice_rl_hidden_dims) or any(int(width) <= 0 for width in self.dice_rl_hidden_dims):
+            raise ValueError("dice_rl_hidden_dims must contain positive widths.")
+        for value in self.dice_rl_update_grid:
+            if int(value) <= 0:
+                raise ValueError("dice_rl_update_grid must be positive.")
+        for value in self.dice_rl_batch_sizes:
+            if int(value) <= 0:
+                raise ValueError("dice_rl_batch_sizes must be positive.")
+        for value in self.dice_rl_learning_rates:
+            if float(value) <= 0.0:
+                raise ValueError("dice_rl_learning_rates must be positive.")
+        for value in self.dice_rl_hidden_dim_grid:
+            if int(value) <= 0:
+                raise ValueError("dice_rl_hidden_dim_grid must be positive.")
         if int(self.gym_target_value_rollouts) <= 0:
             raise ValueError("gym_target_value_rollouts must be positive.")
+        if int(self.application_target_value_rollouts) <= 0:
+            raise ValueError("application_target_value_rollouts must be positive.")
         for task_id in self.openml_task_ids:
             if int(task_id) <= 0:
                 raise ValueError("openml_task_ids must contain positive task ids.")
@@ -321,6 +471,8 @@ class OccupancyRatioBenchmarkConfig:
         for dataset_id in self.minari_dataset_ids:
             if not str(dataset_id):
                 raise ValueError("minari_dataset_ids entries must be nonempty.")
+        if str(self.source_state_correction_mode) not in {"auto", "always", "never"}:
+            raise ValueError("source_state_correction_mode must be 'auto', 'always', or 'never'.")
         if self.huber_delta is not None and self.huber_delta <= 0.0:
             raise ValueError("huber_delta must be positive when supplied.")
         if self.huber_delta_scale <= 0.0:
@@ -328,7 +480,9 @@ class OccupancyRatioBenchmarkConfig:
         if self.huber_hessian_floor < 0.0:
             raise ValueError("huber_hessian_floor must be nonnegative.")
         if self.estimator_timeout_sec is None:
-            if profile != "overnight":
+            if profile == "high_stakes":
+                object.__setattr__(self, "estimator_timeout_sec", 900.0)
+            elif profile != "overnight":
                 default_timeout = 120.0 if profile == "smoke" else 600.0
                 object.__setattr__(self, "estimator_timeout_sec", default_timeout)
         elif float(self.estimator_timeout_sec) <= 0.0:
@@ -346,7 +500,8 @@ class OccupancyRatioBenchmarkConfig:
         """Construct the recommended benchmark configuration.
 
         ``for_stage`` is retained for compatibility; profiles now include
-        ``medium`` and ``dualdice-paper`` in addition to smoke/full.
+        ``medium``, ``overnight``, ``high_stakes``, and ``dualdice-paper``
+        in addition to smoke/full.
         """
         if stage == "smoke":
             return cls(
@@ -489,11 +644,69 @@ class OccupancyRatioBenchmarkConfig:
                 neural_mcmc_samples=24,
                 neural_action_steps=1_000,
                 neural_transition_steps=1_400,
-                neural_fixed_point_damping=0.75,
+                neural_fixed_point_damping=0.5,
                 google_num_updates=1_000,
                 mc_truth_samples=50_000,
                 gym_target_value_rollouts=32,
                 estimator_timeout_sec=None,
+            )
+        if stage == "high_stakes":
+            return cls(
+                stage="high_stakes",
+                profile="high_stakes",
+                output_root=Path(output_root),
+                seeds=tuple(range(5)),
+                sample_sizes=(1_000, 5_000),
+                gammas=(0.9, 0.95, 0.99),
+                linear_gaussian_policy_shifts=(0.5, 1.0, 2.0),
+                settings=(
+                    "discrete_chain",
+                    "discrete_grid",
+                    "linear_gaussian",
+                    "nonlinear_monte_carlo",
+                    "gym_pendulum",
+                    "gym_mountain_car_continuous",
+                    "gym_halfcheetah",
+                    "gym_hopper",
+                    "openml_finite_mdp",
+                    "obp_logged_bandit",
+                    "minari_pointmaze",
+                    "minari_minigrid",
+                ),
+                estimators=(
+                    "oracle",
+                    "boosted_tree_stable",
+                    "neural_network_stable",
+                    "google_dualdice_neural",
+                    "boosted_tree_auto",
+                    "neural_network_auto",
+                    "neural_network_stable_logistic_nuisance",
+                ),
+                boosted_estimator_presets=("stable", "auto"),
+                neural_estimator_presets=("stable", "auto", "stable_logistic_nuisance"),
+                include_google_dual_dice=include_google_dual_dice,
+                include_dualdice_gridwalk=False,
+                external_repo_path=Path(external_repo_path),
+                boosted_num_iterations=80,
+                boosted_mcmc_samples=48,
+                boosted_density_ratio_loss="lsif",
+                boosted_fixed_point_damping=0.5,
+                boosted_moment_calibration="scalar",
+                huber_delta=None,
+                huber_delta_scale=1.345,
+                neural_num_iterations=80,
+                neural_gradient_steps_per_iteration=8,
+                neural_mcmc_samples=24,
+                neural_action_steps=1_000,
+                neural_transition_steps=1_400,
+                neural_density_ratio_loss="lsif",
+                neural_fixed_point_damping=0.5,
+                neural_moment_calibration="scalar",
+                source_state_correction_mode="auto",
+                google_num_updates=1_000,
+                mc_truth_samples=50_000,
+                gym_target_value_rollouts=32,
+                estimator_timeout_sec=900.0,
             )
         if stage == "dualdice-paper":
             return cls(
@@ -519,7 +732,7 @@ class OccupancyRatioBenchmarkConfig:
                 neural_gradient_steps_per_iteration=4,
                 google_num_updates=1_000,
             )
-        raise ValueError("profile must be 'smoke', 'medium', 'full', 'overnight', or 'dualdice-paper'.")
+        raise ValueError("profile must be 'smoke', 'medium', 'full', 'overnight', 'high_stakes', or 'dualdice-paper'.")
 
     @classmethod
     def for_profile(
@@ -543,5 +756,19 @@ class OccupancyRatioBenchmarkConfig:
     def resolved_estimators(self) -> tuple[str, ...]:
         estimators = tuple(self.estimators)
         if not self.include_google_dual_dice:
-            estimators = tuple(name for name in estimators if "dualdice" not in str(name))
+            estimators = tuple(
+                name
+                for name in estimators
+                if str(name)
+                not in {
+                    "google_dualdice",
+                    "google_dualdice_neural",
+                    "google_dualdice_default",
+                    "google_dualdice_published_default",
+                    "dualdice_gmm_tuned",
+                    "dualdice_oracle",
+                }
+            )
+        if not self.include_dice_rl:
+            estimators = tuple(name for name in estimators if not str(name).startswith("dice_rl_"))
         return estimators

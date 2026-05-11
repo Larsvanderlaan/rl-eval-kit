@@ -1,12 +1,13 @@
-# RL Evaluation Packages
+# RLEvalKit Packages
 
 This folder contains the production Python distributions:
 
 - `fqe`: fitted Q evaluation and fitted value iteration tools.
 - `occupancy-ratio`: occupancy-ratio estimators and benchmark tools.
-- `bellman-trees`: target-weighted Bellman aggregation trees and forests.
+- `genpqr`: generalized policy-to-Q-to-reward tools for inverse RL.
+- `causal-ope-benchmark`: causal inference and industry OPE benchmark simulators.
 
-Install both packages for local development:
+Install all packages for local development:
 
 ```bash
 python -m pip install -r packages/requirements-dev.txt
@@ -17,13 +18,14 @@ or install them individually:
 ```bash
 python -m pip install -e "packages/fqe[neural,benchmark]"
 python -m pip install -e "packages/occupancy-ratio[neural,benchmark]"
-python -m pip install -e "packages/bellman-trees[test]"
+python -m pip install -e "packages/genpqr[dev]"
+python -m pip install -e "packages/causal-ope-benchmark[dev]"
 ```
 
-Supported imports are `fqe`, `fqe_benchmark`, `occupancy_ratio`, and
-`occupancy_ratio_benchmark`. Legacy repository namespaces such as `FQE.*` and
-`IRL.fit_occupancy_ratio*` remain as transitional shims and emit deprecation
-warnings where practical.
+Supported imports are `fqe`, `fqe_benchmark`, `occupancy_ratio`,
+`occupancy_ratio_benchmark`, `genpqr`, and `causal_ope_benchmark`.
+Submission-specific and retired root namespaces live outside the release
+surface.
 
 ## Commands
 
@@ -39,5 +41,5 @@ From the repository root after editable install:
 
 ```bash
 python -m pytest
-python -m ruff check packages/fqe packages/occupancy-ratio packages/bellman-trees
+python -m ruff check packages/fqe packages/occupancy-ratio packages/genpqr packages/causal-ope-benchmark
 ```

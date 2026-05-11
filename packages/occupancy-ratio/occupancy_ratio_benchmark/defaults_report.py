@@ -8,15 +8,24 @@ from typing import Any
 import numpy as np
 
 from occupancy_ratio_benchmark.io import write_csv
+from occupancy_ratio_benchmark.conservatism_audit import build_conservatism_audit_rows
 
 
 GOOGLE_ESTIMATOR = "google_dualdice_neural"
+DEFAULT_INELIGIBLE_ESTIMATORS = {
+    "boosted_tree_squared",
+    "boosted_tree_huber",
+    "neural_network_squared",
+    "neural_network_huber",
+    "neural_network_google_parity",
+}
 
 
 def generate_defaults_report(results_csv: str | Path, output_dir: str | Path | None = None) -> dict[str, Path]:
     """Summarize benchmark CSVs into a default-selection report."""
     results_path = Path(results_csv)
     rows = _read_rows(results_path)
+    rows = _attach_conservatism_status(rows)
     out_dir = Path(output_dir) if output_dir is not None else results_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
     summary_rows = _estimator_summary(rows)
@@ -54,6 +63,24 @@ def _read_rows(path: Path) -> list[dict[str, Any]]:
         return list(csv.DictReader(handle))
 
 
+def _attach_conservatism_status(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Add conservatism audit fields so default selection cannot ignore failures."""
+    audit_rows = build_conservatism_audit_rows(rows)
+    audit_by_key = {
+        (_cell_key(row), str(row.get("estimator", ""))): row
+        for row in audit_rows
+    }
+    out = []
+    for row in rows:
+        merged = dict(row)
+        audit = audit_by_key.get((_cell_key(row), str(row.get("estimator", ""))))
+        if audit is not None:
+            merged["audit_status"] = audit.get("audit_status", "")
+            merged["audit_reason"] = audit.get("audit_reason", "")
+        out.append(merged)
+    return out
+
+
 def _to_float(value: Any, default: float = np.nan) -> float:
     if value in ("", None):
         return default
@@ -67,31 +94,82 @@ def _to_float(value: Any, default: float = np.nan) -> float:
 def _balanced_score(row: dict[str, Any]) -> float:
     if row.get("status") != "ok":
         return float("inf")
+    if str(row.get("audit_status", "")).lower() == "fail":
+        return float("inf")
+    if _has_safety_failure(row):
+        return float("inf")
+    if _row_has_ratio_truth(row):
+        score = _ratio_truth_score(row)
+    else:
+        score = _ope_score(row)
+    if not np.isfinite(score):
+        return float("inf")
+    return float(score + _safety_tiebreaker(row))
+
+
+def _row_has_ratio_truth(row: dict[str, Any]) -> bool:
+    available = _to_float(row.get("ratio_truth_available"))
+    if np.isfinite(available):
+        return bool(available > 0.5)
+    has_ratio_metric = np.isfinite(_to_float(row.get("ratio_normalized_l1"))) or np.isfinite(
+        _to_float(row.get("log_ratio_rmse"))
+    )
+    return bool(has_ratio_metric and row.get("truth_source") not in {"", None})
+
+
+def _ratio_truth_score(row: dict[str, Any]) -> float:
+    ratio_l1 = _to_float(row.get("ratio_normalized_l1"))
+    log_rmse = _to_float(row.get("log_ratio_rmse"))
+    ope = _to_float(row.get("ope_value_abs_error"), 0.0)
+    if not np.isfinite(ratio_l1):
+        ratio_l1 = _to_float(row.get("ratio_rel_mse"))
+    if not np.isfinite(ratio_l1):
+        ratio_l1 = _to_float(row.get("ratio_l1"))
+    if not np.isfinite(ratio_l1):
+        return _ope_score(row)
+    score = ratio_l1
+    if np.isfinite(log_rmse):
+        score += 0.25 * log_rmse
+    if np.isfinite(ope):
+        score += 0.10 * ope
+    return float(score)
+
+
+def _ope_score(row: dict[str, Any]) -> float:
+    se_units = _to_float(row.get("ope_value_abs_error_se_units"))
+    if np.isfinite(se_units):
+        return float(se_units)
     primary = _to_float(row.get("ope_value_abs_error"))
-    if not np.isfinite(primary):
-        primary = _to_float(row.get("ratio_rel_mse"))
-    if not np.isfinite(primary):
-        primary = _to_float(row.get("log_ratio_rmse"))
     if not np.isfinite(primary):
         primary = _to_float(row.get("absolute_error"))
     if not np.isfinite(primary):
-        return float("inf")
-    ratio_guard = 0.0
-    for name, scale in (
-        ("ratio_normalized_l1", 0.05),
-        ("ratio_tv", 0.05),
-        ("log_ratio_rmse", 0.02),
-        ("clipping_fraction", 0.05),
-        ("negative_raw_fraction", 1.0),
-    ):
-        value = _to_float(row.get(name), 0.0)
-        if np.isfinite(value):
-            ratio_guard += scale * abs(value)
-    ess = _to_float(row.get("effective_sample_size_fraction"), 1.0)
-    ess_penalty = max(0.0, 0.05 - ess) * 10.0 if np.isfinite(ess) else 0.0
-    se_error = _to_float(row.get("ope_value_abs_error_se_units"))
-    se_penalty = 0.01 * max(0.0, se_error - 2.0) if np.isfinite(se_error) else 0.0
-    return float(primary + ratio_guard + ess_penalty + se_penalty)
+        primary = _to_float(row.get("log_ratio_rmse"))
+    return float(primary)
+
+
+def _has_safety_failure(row: dict[str, Any]) -> bool:
+    nonfinite_raw = _to_float(row.get("nonfinite_raw_fraction"), 0.0)
+    negative_raw = _to_float(row.get("negative_raw_fraction"), 0.0)
+    clipping = max(
+        _to_float(row.get("clipping_fraction"), 0.0),
+        _to_float(row.get("projection_clipped_fraction_final"), 0.0),
+    )
+    if np.isfinite(nonfinite_raw) and nonfinite_raw > 0.0:
+        return True
+    if np.isfinite(negative_raw) and negative_raw > 0.01:
+        return True
+    return bool(np.isfinite(clipping) and clipping > 0.50)
+
+
+def _safety_tiebreaker(row: dict[str, Any]) -> float:
+    negative_raw = max(0.0, _to_float(row.get("negative_raw_fraction"), 0.0))
+    clipping = max(
+        0.0,
+        _to_float(row.get("clipping_fraction"), 0.0),
+        _to_float(row.get("projection_clipped_fraction_final"), 0.0),
+    )
+    nonfinite_raw = max(0.0, _to_float(row.get("nonfinite_raw_fraction"), 0.0))
+    return float(0.02 * clipping + 1.0 * negative_raw + 5.0 * nonfinite_raw)
 
 
 def _cell_key(row: dict[str, Any]) -> tuple[str, ...]:
@@ -133,6 +211,8 @@ def _balanced_winners(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "ope_value_abs_error": row.get("ope_value_abs_error", ""),
                 "ratio_normalized_l1": row.get("ratio_normalized_l1", ""),
                 "effective_sample_size_fraction": row.get("effective_sample_size_fraction", ""),
+                "true_effective_sample_size_fraction": row.get("true_effective_sample_size_fraction", ""),
+                "ess_fraction_abs_error_to_truth": row.get("ess_fraction_abs_error_to_truth", ""),
             }
         )
     return winners
@@ -155,12 +235,17 @@ def _estimator_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "error_rows": sum(row.get("status") == "error" for row in group),
                 "timeout_rows": sum(row.get("status") == "timeout" for row in group),
                 "skipped_rows": sum(row.get("status") == "skipped" for row in group),
+                "audit_fail_rows": sum(str(row.get("audit_status", "")).lower() == "fail" for row in group),
+                "audit_warn_rows": sum(str(row.get("audit_status", "")).lower() == "warn" for row in group),
                 "balanced_score_median": float(np.median(finite_scores)) if finite_scores.size else "",
                 "balanced_score_mean": float(np.mean(finite_scores)) if finite_scores.size else "",
                 "ope_value_abs_error_median": _median_metric(ok_rows, "ope_value_abs_error"),
                 "ratio_normalized_l1_median": _median_metric(ok_rows, "ratio_normalized_l1"),
                 "log_ratio_rmse_median": _median_metric(ok_rows, "log_ratio_rmse"),
                 "ess_fraction_median": _median_metric(ok_rows, "effective_sample_size_fraction"),
+                "true_ess_fraction_median": _median_metric(ok_rows, "true_effective_sample_size_fraction"),
+                "ess_abs_error_to_truth_median": _median_metric(ok_rows, "ess_fraction_abs_error_to_truth"),
+                "weight_q99_ratio_to_truth_median": _median_metric(ok_rows, "weight_q99_ratio_to_truth"),
                 "clipping_fraction_median": _median_metric(ok_rows, "clipping_fraction"),
             }
         )
@@ -222,6 +307,8 @@ def _recommend_default(summary_rows: list[dict[str, Any]]) -> dict[str, Any]:
         for row in summary_rows
         if str(row.get("estimator", "")).startswith("neural_network")
         and row.get("balanced_score_median") not in {"", None}
+        and int(row.get("audit_fail_rows", 0) or 0) == 0
+        and str(row.get("estimator", "")) not in DEFAULT_INELIGIBLE_ESTIMATORS
     ]
     if neural_rows:
         neural_rows = sorted(neural_rows, key=lambda row: float(row["balanced_score_median"]))
@@ -237,7 +324,7 @@ def _recommend_default(summary_rows: list[dict[str, Any]]) -> dict[str, Any]:
         if best_score <= 1.10 * google_score:
             return {
                 "recommended_default": best["estimator"],
-                "reason": "best neural preset is within the balanced guardrail against Google DualDICE",
+                "reason": "best neural preset is within the ratio/OPE guardrail against Google DualDICE",
             }
         return {
             "recommended_default": "neural_network_stable",
@@ -246,6 +333,7 @@ def _recommend_default(summary_rows: list[dict[str, Any]]) -> dict[str, Any]:
 
     boosted_candidates = {
         "boosted_tree_stable",
+        "boosted_tree_relaxed_tail",
         "boosted_tree_stable_logistic_nuisance",
         "boosted_tree_auto",
     }
@@ -253,6 +341,7 @@ def _recommend_default(summary_rows: list[dict[str, Any]]) -> dict[str, Any]:
         row
         for row in summary_rows
         if str(row.get("estimator", "")) in boosted_candidates and row.get("balanced_score_median") not in {"", None}
+        and int(row.get("audit_fail_rows", 0) or 0) == 0
     ]
     stable = next((row for row in boosted_rows if row.get("estimator") == "boosted_tree_stable"), None)
     if boosted_rows:
@@ -265,17 +354,20 @@ def _recommend_default(summary_rows: list[dict[str, Any]]) -> dict[str, Any]:
             }
         stable_score = float(stable["balanced_score_median"])
         best_score = float(best["balanced_score_median"])
-        if best["estimator"] != "boosted_tree_stable" and best_score <= 0.95 * stable_score:
+        if best["estimator"] != "boosted_tree_stable" and best_score < 0.95 * stable_score:
             return {
                 "recommended_default": best["estimator"],
-                "reason": "boosted challenger materially improves median balanced score over stable",
+                "reason": "boosted challenger materially improves median ratio/OPE score over stable",
             }
         return {
             "recommended_default": "boosted_tree_stable",
-            "reason": "stable boosted default remains within the material guardrail",
+            "reason": "stable boosted default remains within the material ratio/OPE guardrail",
         }
 
-    return {"recommended_default": "neural_network_stable", "reason": "no successful neural rows"}
+    return {
+        "recommended_default": "boosted_tree_stable",
+        "reason": "no candidate passed all default-selection safety and conservatism checks; keep the stable baseline",
+    }
 
 
 def _render_markdown(
@@ -297,18 +389,20 @@ def _render_markdown(
         "",
         "## Estimator Summary",
         "",
-        "| estimator | ok/rows | median score | median OPE error | median ESS |",
-        "|---|---:|---:|---:|---:|",
+        "| estimator | ok/rows | median score | median ratio L1 | median OPE error | median ESS | median ESS error to truth |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for row in sorted(summary_rows, key=lambda item: _to_float(item.get("balanced_score_median"), float("inf"))):
         lines.append(
-            "| {estimator} | {ok_rows}/{n_rows} | {score} | {ope} | {ess} |".format(
+            "| {estimator} | {ok_rows}/{n_rows} | {score} | {ratio_l1} | {ope} | {ess} | {ess_gap} |".format(
                 estimator=row["estimator"],
                 ok_rows=row["ok_rows"],
                 n_rows=row["n_rows"],
                 score=_fmt(row.get("balanced_score_median")),
+                ratio_l1=_fmt(row.get("ratio_normalized_l1_median")),
                 ope=_fmt(row.get("ope_value_abs_error_median")),
                 ess=_fmt(row.get("ess_fraction_median")),
+                ess_gap=_fmt(row.get("ess_abs_error_to_truth_median")),
             )
         )
     lines.extend(["", "## Neural Vs Google DualDICE", "", "| estimator | cells | win rate | median score ratio |", "|---|---:|---:|---:|"])

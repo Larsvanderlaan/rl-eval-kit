@@ -19,13 +19,21 @@ neural = ["torch"]
 benchmark = ["matplotlib", "gymnasium", "mujoco"]
 tabular-benchmark = ["openml", "scikit-learn", "obp", "minari"]
 google = ["tensorflow", "tensorflow-addons"]
+google-dualdice = ["tensorflow", "tensorflow-addons"]
+scope-rl = ["scope-rl"]
+docs = ["mkdocs", "mkdocs-material", "mkdocstrings[python]", "pymdown-extensions"]
 dev = ["build", "pytest", "ruff", "torch", "matplotlib", "gymnasium", "mujoco"]
 
 [project.scripts]
 occupancy-ratio-benchmark = "occupancy_ratio_benchmark.run:main"
 occupancy-ratio-gridwalk = "occupancy_ratio_benchmark.dualdice_grid:main"
 occupancy-ratio-defaults-report = "occupancy_ratio_benchmark.defaults_report:main"
+occupancy-ratio-neural-default-ablation = "occupancy_ratio_benchmark.neural_default_ablation:main"
+occupancy-ratio-moment-evaluator-ablation = "occupancy_ratio_benchmark.moment_evaluator_ablation:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["occupancy_ratio*"]
+
+[tool.setuptools.package-data]
+occupancy_ratio_benchmark = ["configs/*.json"]

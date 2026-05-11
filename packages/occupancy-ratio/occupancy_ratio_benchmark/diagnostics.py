@@ -14,24 +14,74 @@ def effective_sample_size(weights: Array) -> float:
     return float((w.sum() ** 2) / max(float(np.sum(w**2)), 1e-12))
 
 
+def _weight_cv(weights: Array) -> float:
+    w = np.asarray(weights, dtype=np.float64).reshape(-1)
+    return float(np.std(w) / max(abs(float(np.mean(w))), 1e-12))
+
+
 def summarize_weights(weights: Array, *, raw_weights: Array | None = None) -> dict[str, float]:
     w = np.asarray(weights, dtype=np.float64).reshape(-1)
     raw = w if raw_weights is None else np.asarray(raw_weights, dtype=np.float64).reshape(-1)
+    if raw.shape != w.shape:
+        raise ValueError("raw_weights must have the same shape as weights.")
+    finite_raw = np.isfinite(raw)
+    safety_clipped = (~finite_raw) | (raw < 0.0)
+    postprocessed = ~np.isclose(raw, w, rtol=1e-10, atol=1e-12, equal_nan=True)
+    q50 = float(np.quantile(w, 0.50))
+    q99 = float(np.quantile(w, 0.99))
     return {
         "weight_mean": float(np.mean(w)),
         "weight_std": float(np.std(w)),
-        "weight_cv": float(np.std(w) / max(abs(float(np.mean(w))), 1e-12)),
+        "weight_cv": _weight_cv(w),
         "weight_min": float(np.min(w)),
         "weight_max": float(np.max(w)),
-        "weight_q50": float(np.quantile(w, 0.50)),
+        "weight_q50": q50,
         "weight_q90": float(np.quantile(w, 0.90)),
         "weight_q95": float(np.quantile(w, 0.95)),
-        "weight_q99": float(np.quantile(w, 0.99)),
-        "weight_q99_to_median": float(np.quantile(w, 0.99) / max(float(np.quantile(w, 0.50)), 1e-12)),
+        "weight_q99": q99,
+        "weight_q99_to_median": float(q99 / max(q50, 1e-12)),
         "effective_sample_size": effective_sample_size(w),
         "effective_sample_size_fraction": float(effective_sample_size(w) / max(w.shape[0], 1)),
         "negative_raw_fraction": float(np.mean(raw < 0.0)),
-        "clipping_fraction": float(np.mean(raw != w)),
+        "nonfinite_raw_fraction": float(np.mean(~finite_raw)),
+        "clipping_fraction": float(np.mean(safety_clipped)),
+        "postprocessing_changed_fraction": float(np.mean(postprocessed)),
+    }
+
+
+def truth_heterogeneity_diagnostics(true_ratio: Array, estimated_ratio: Array) -> dict[str, float]:
+    truth = np.asarray(true_ratio, dtype=np.float64).reshape(-1)
+    pred = np.asarray(estimated_ratio, dtype=np.float64).reshape(-1)
+    if truth.shape != pred.shape:
+        raise ValueError("true_ratio and estimated_ratio must have the same shape.")
+    n = max(int(truth.shape[0]), 1)
+    truth_ess = float(effective_sample_size(truth) / n)
+    pred_ess = float(effective_sample_size(pred) / n)
+    truth_q99 = float(np.quantile(truth, 0.99))
+    pred_q99 = float(np.quantile(pred, 0.99))
+    truth_q50 = float(np.quantile(truth, 0.50))
+    pred_q50 = float(np.quantile(pred, 0.50))
+    truth_cv = _weight_cv(truth)
+    pred_cv = _weight_cv(pred)
+    truth_q99_to_median = float(truth_q99 / max(truth_q50, 1e-12))
+    pred_q99_to_median = float(pred_q99 / max(pred_q50, 1e-12))
+    return {
+        "true_effective_sample_size_fraction": truth_ess,
+        "ess_fraction_abs_error_to_truth": float(abs(pred_ess - truth_ess)),
+        "ess_fraction_ratio_to_truth": float(pred_ess / max(truth_ess, 1e-12)),
+        "true_weight_cv": truth_cv,
+        "weight_cv_abs_error_to_truth": float(abs(pred_cv - truth_cv)),
+        "weight_cv_ratio_to_truth": float(pred_cv / max(truth_cv, 1e-12)),
+        "true_weight_q99": truth_q99,
+        "weight_q99_abs_error_to_truth": float(abs(pred_q99 - truth_q99)),
+        "weight_q99_ratio_to_truth": float(pred_q99 / max(truth_q99, 1e-12)),
+        "true_weight_q99_to_median": truth_q99_to_median,
+        "weight_q99_to_median_abs_error_to_truth": float(abs(pred_q99_to_median - truth_q99_to_median)),
+        "weight_q99_to_median_ratio_to_truth": float(
+            pred_q99_to_median / max(truth_q99_to_median, 1e-12)
+        ),
+        "true_weight_max": float(np.max(truth)),
+        "weight_max_abs_error_to_truth": float(abs(float(np.max(pred)) - float(np.max(truth)))),
     }
 
 
@@ -126,6 +176,7 @@ def estimator_diagnostics(
     out.update(ratio_quality(true_ratio, estimated_ratio))
     out.update(calibration_by_quantile(true_ratio, estimated_ratio))
     out.update(summarize_weights(estimated_ratio, raw_weights=raw))
+    out.update(truth_heterogeneity_diagnostics(true_ratio, estimated_ratio))
     out["normalization_error"] = normalization_error(estimated_ratio, reference_weights)
     out["bellman_flow_residual_l2"] = bellman_flow_residual(
         estimated_ratio,
@@ -159,6 +210,14 @@ def estimator_diagnostics_optional(
     return out
 
 
+def _finite_float_or_none(value: Any) -> float | None:
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return out if np.isfinite(out) else None
+
+
 def summarize_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
     keys = ("profile", "stage", "setting", "policy_shift", "estimator", "gamma", "sample_size", "status")
@@ -174,11 +233,19 @@ def summarize_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
                 key
                 for row in group_rows
                 for key, value in row.items()
-                if isinstance(value, (int, float, np.integer, np.floating)) and np.isfinite(float(value))
+                if _finite_float_or_none(value) is not None
             }
         )
         for key in numeric_keys:
-            vals = np.asarray([float(row[key]) for row in group_rows if key in row and np.isfinite(float(row[key]))])
+            vals = np.asarray(
+                [
+                    numeric
+                    for row in group_rows
+                    if key in row
+                    for numeric in (_finite_float_or_none(row[key]),)
+                    if numeric is not None
+                ]
+            )
             if vals.size == 0:
                 continue
             out[f"{key}_mean"] = float(np.mean(vals))

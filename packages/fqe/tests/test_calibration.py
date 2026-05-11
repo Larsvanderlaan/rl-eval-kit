@@ -33,6 +33,8 @@ def test_calibration_validates_inputs() -> None:
         fit_bellman_calibrator(pred, np.ones(5), rewards, gamma=0.9, method="bad")
     with pytest.raises(ValueError, match="nonnegative"):
         fit_bellman_calibrator(pred, np.ones(5), rewards, gamma=0.9, sample_weight=np.array([1, 1, -1, 1, 1]))
+    with pytest.raises(ValueError, match="positive total"):
+        fit_bellman_calibrator(pred, np.ones(5), rewards, gamma=0.9, sample_weight=np.zeros(5))
 
 
 def test_small_sample_too_many_bins_falls_back() -> None:

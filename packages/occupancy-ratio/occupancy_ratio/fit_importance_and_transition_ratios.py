@@ -406,6 +406,211 @@ def fit_importance_ratio_lgbm(
     )
 
 
+def fit_state_density_ratio_lgbm(
+    *,
+    S_ref: Array,
+    S_num: Array,
+    numerator_weights: Optional[Array] = None,
+    seed: int = 123,
+    clip_nonneg: bool = True,
+    num_boost_round: int = 100,
+    lgb_params: Optional[Dict[str, Any]] = None,
+    eps_hess: float = 1e-3,
+    test_size: float = 0.2,
+    early_stopping_rounds: int = 10,
+    refit_on_all_data: bool = False,
+    show_tqdm: bool = True,
+    tqdm_leave: bool = True,
+    tqdm_desc_es: str = "boosting source-state ratio (early stopping)",
+    tqdm_desc_refit: str = "boosting source-state ratio (refit)",
+    init_score_value: float = 1.0,
+    prediction_max: Optional[float] = 50.0,
+    prediction_power: float = 1.0,
+    normalize_predictions: bool = False,
+    prediction_norm_eps: float = 1e-12,
+    moment_calibration: str = "none",
+    crossfit_folds: int = 1,
+    crossfit_seed: Optional[int] = None,
+    density_ratio_loss: str = "lsif",
+    logistic_logit_clip: Optional[float] = 20.0,
+) -> Dict[str, Any]:
+    """Fit a generic feature density ratio ``rho_num(x) / rho_ref(x)``.
+
+    The denominator block is sampled from ``S_ref`` and supplies the quadratic
+    term. The numerator block is sampled from ``S_num`` and supplies the linear
+    term. The features may be states or state-action rows. Optional numerator
+    weights are normalized within the numerator block so unequal initial sample
+    sizes do not rescale the fitted ratio.
+    """
+    if early_stopping_rounds < 0:
+        raise ValueError("early_stopping_rounds must be nonnegative.")
+    _validate_prediction_postprocess(
+        prediction_max=prediction_max,
+        prediction_power=prediction_power,
+        prediction_norm_eps=prediction_norm_eps,
+    )
+    _validate_extra_nuisance_options(
+        moment_calibration=moment_calibration,
+        crossfit_folds=crossfit_folds,
+    )
+    density_ratio_loss = _validate_density_ratio_loss(density_ratio_loss)
+    _validate_logistic_options(logistic_logit_clip)
+
+    S_ref_feat = _as_2d_float32(S_ref, "S_ref")
+    S_num_feat = _as_2d_float32(S_num, "S_num")
+    if S_ref_feat.shape[1] != S_num_feat.shape[1]:
+        raise ValueError("S_ref and S_num must have the same feature dimension.")
+    _validate_test_size(test_size)
+
+    n_ref = S_ref_feat.shape[0]
+    n_num = S_num_feat.shape[0]
+    if n_ref == 0 or n_num == 0:
+        raise ValueError("S_ref and S_num must both contain at least one row.")
+    num_weights = _normalize_numerator_weights(numerator_weights, n_num, target_sum=float(n_ref))
+    train_ref, valid_ref = _split_rows(n_ref, test_size=test_size, seed=seed)
+    train_num, valid_num = _split_rows(n_num, test_size=test_size, seed=seed + 17_719)
+
+    make_arrays = (
+        make_state_density_ratio_long_arrays
+        if density_ratio_loss == "lsif"
+        else make_state_density_ratio_binary_arrays
+    )
+    X_train, y_train, w_train = make_arrays(
+        X_den=S_ref_feat[train_ref],
+        X_num=S_num_feat[train_num],
+        numerator_weights=_normalize_numerator_weights(
+            num_weights[train_num],
+            train_num.size,
+            target_sum=float(train_ref.size),
+        ),
+    )
+    X_valid, y_valid, w_valid = make_arrays(
+        X_den=S_ref_feat[valid_ref],
+        X_num=S_num_feat[valid_num],
+        numerator_weights=_normalize_numerator_weights(
+            num_weights[valid_num],
+            valid_num.size,
+            target_sum=float(valid_ref.size),
+        ),
+    )
+
+    dtrain = make_lgb_importance_ratio_dataset(X_train, y_train, w_train)
+    dvalid = make_lgb_importance_ratio_dataset(X_valid, y_valid, w_valid)
+
+    params = _importance_lgb_params(lgb_params)
+    num_boost_round = extract_num_boost_round(params, default=num_boost_round)
+    feval = importance_ratio_eval
+    if density_ratio_loss == "lsif":
+        _set_constant_init_score(dtrain, X_train.shape[0], init_score_value)
+        _set_constant_init_score(dvalid, X_valid.shape[0], init_score_value)
+
+        def objective(preds: Array, dataset: lgb.Dataset) -> tuple[Array, Array]:
+            return importance_ratio_objective(preds, dataset, eps=float(eps_hess))
+
+        params["objective"] = objective
+    else:
+        params = _binary_ratio_lgb_params(params)
+        feval = None
+    callbacks = _make_callbacks(
+        total=num_boost_round,
+        desc=tqdm_desc_es,
+        evals_result={},
+        early_stopping_rounds=early_stopping_rounds,
+        show_tqdm=show_tqdm,
+        tqdm_leave=tqdm_leave,
+    )
+    evals_result = callbacks["evals_result"]
+    bst_es = lgb.train(
+        params=params,
+        train_set=dtrain,
+        num_boost_round=num_boost_round,
+        valid_sets=[dvalid],
+        valid_names=["valid"],
+        feval=feval,
+        callbacks=callbacks["callbacks"],
+    )
+    best_iteration = _best_iteration(bst_es, fallback=num_boost_round)
+
+    if refit_on_all_data:
+        X_long, y_long, w_long = make_arrays(
+            X_den=S_ref_feat,
+            X_num=S_num_feat,
+            numerator_weights=num_weights,
+        )
+        dall = make_lgb_importance_ratio_dataset(X_long, y_long, w_long)
+        if density_ratio_loss == "lsif":
+            _set_constant_init_score(dall, X_long.shape[0], init_score_value)
+        bst_source = lgb.train(
+            params=params,
+            train_set=dall,
+            num_boost_round=best_iteration,
+            valid_sets=[dall],
+            valid_names=["train"],
+            feval=feval,
+            callbacks=_make_callbacks(
+                total=best_iteration,
+                desc=tqdm_desc_refit,
+                show_tqdm=show_tqdm,
+                tqdm_leave=tqdm_leave,
+            )["callbacks"],
+        )
+        prior_correction = _binary_prior_correction(y_long, w_long)
+    else:
+        bst_source = bst_es
+        prior_correction = _binary_prior_correction(y_train, w_train)
+
+    source_raw = _predict_ratio_from_booster(
+        booster=bst_source,
+        X=S_ref_feat,
+        offset=float(init_score_value),
+        density_ratio_loss=density_ratio_loss,
+        logistic_logit_clip=logistic_logit_clip,
+        prior_correction=prior_correction,
+        num_iteration=best_iteration,
+    )
+    source_hat, source_summary = _postprocess_ratio_predictions(
+        source_raw,
+        clip_nonneg=clip_nonneg,
+        prediction_max=prediction_max,
+        prediction_power=prediction_power,
+        normalize_predictions=normalize_predictions,
+        eps=prediction_norm_eps,
+    )
+    source_hat, calibration = _calibrate_action_predictions(
+        source_hat,
+        moment_calibration=moment_calibration,
+        eps=prediction_norm_eps,
+    )
+    source_summary = _ratio_prediction_summary(
+        source_hat,
+        clipped_fraction=float(source_summary.get("clipped_fraction", 0.0)),
+        normalization_scale=float(source_summary.get("normalization_scale", 1.0)),
+    )
+
+    return dict(
+        bst_source=bst_source,
+        best_iteration=best_iteration,
+        source_hat=source_hat,
+        source_hat_raw=source_raw,
+        source_hat_summary=source_summary,
+        X_source_ref=S_ref_feat,
+        X_source_num=S_num_feat,
+        evals_result=evals_result,
+        prediction_offset=float(init_score_value),
+        prediction_max=None if prediction_max is None else float(prediction_max),
+        prediction_power=float(prediction_power),
+        normalize_predictions=bool(normalize_predictions),
+        prediction_scale=float(calibration["scale"]),
+        moment_calibration=str(moment_calibration),
+        calibration=calibration,
+        crossfit_folds=int(crossfit_folds),
+        crossfit_seed=None if crossfit_seed is None else int(crossfit_seed),
+        density_ratio_loss=density_ratio_loss,
+        logistic_logit_clip=None if logistic_logit_clip is None else float(logistic_logit_clip),
+        prior_correction=float(prior_correction),
+    )
+
+
 def make_importance_ratio_long_arrays_from_sa(X_sa_beh: Array, X_sa_pi: Array) -> tuple[Array, Array, Array]:
     """Build the long LSIF dataset for ``pi(a | s) / pi0(a | s)``."""
     X_sa_beh = np.asarray(X_sa_beh, dtype=np.float32)
@@ -425,6 +630,34 @@ def make_importance_ratio_long_arrays_from_sa(X_sa_beh: Array, X_sa_pi: Array) -
         ]
     )
     weights = np.ones_like(y_long, dtype=np.float64)
+    return X_long, y_long, weights
+
+
+def make_state_density_ratio_long_arrays(
+    *,
+    X_den: Array,
+    X_num: Array,
+    numerator_weights: Array,
+) -> tuple[Array, Array, Array]:
+    """Build the long LSIF dataset for a generic numerator/denominator ratio."""
+    X_den = np.asarray(X_den, dtype=np.float32)
+    X_num = np.asarray(X_num, dtype=np.float32)
+    if X_den.ndim != 2 or X_num.ndim != 2:
+        raise ValueError("X_den and X_num must be 2D arrays.")
+    if X_den.shape[1] != X_num.shape[1]:
+        raise ValueError("X_den and X_num must have the same number of columns.")
+
+    n_den = X_den.shape[0]
+    n_num = X_num.shape[0]
+    weights_num = _normalize_numerator_weights(numerator_weights, n_num, target_sum=float(n_den))
+    X_long = np.vstack([X_den, X_num])
+    y_long = np.concatenate(
+        [
+            np.ones(n_den, dtype=np.int32),
+            np.zeros(n_num, dtype=np.int32),
+        ]
+    )
+    weights = np.concatenate([np.ones(n_den, dtype=np.float64), weights_num])
     return X_long, y_long, weights
 
 
@@ -452,6 +685,34 @@ def make_importance_ratio_binary_arrays_from_sa(X_sa_beh: Array, X_sa_pi: Array)
         ]
     )
     weights = np.ones_like(y_long, dtype=np.float64)
+    return X_long, y_long, weights
+
+
+def make_state_density_ratio_binary_arrays(
+    *,
+    X_den: Array,
+    X_num: Array,
+    numerator_weights: Array,
+) -> tuple[Array, Array, Array]:
+    """Build a binary dataset for a generic numerator/denominator ratio."""
+    X_den = np.asarray(X_den, dtype=np.float32)
+    X_num = np.asarray(X_num, dtype=np.float32)
+    if X_den.ndim != 2 or X_num.ndim != 2:
+        raise ValueError("X_den and X_num must be 2D arrays.")
+    if X_den.shape[1] != X_num.shape[1]:
+        raise ValueError("X_den and X_num must have the same number of columns.")
+
+    n_den = X_den.shape[0]
+    n_num = X_num.shape[0]
+    weights_num = _normalize_numerator_weights(numerator_weights, n_num, target_sum=float(n_den))
+    X_long = np.vstack([X_den, X_num])
+    y_long = np.concatenate(
+        [
+            np.zeros(n_den, dtype=np.int32),
+            np.ones(n_num, dtype=np.int32),
+        ]
+    )
+    weights = np.concatenate([np.ones(n_den, dtype=np.float64), weights_num])
     return X_long, y_long, weights
 
 
@@ -838,6 +1099,30 @@ def _binary_prior_correction(y: Array, weight: Optional[Array]) -> float:
     if numerator_weight <= 0.0 or denominator_weight <= 0.0:
         return 1.0
     return denominator_weight / numerator_weight
+
+
+def _normalize_numerator_weights(
+    weights: Optional[Array],
+    n_rows: int,
+    *,
+    target_sum: float,
+) -> Array:
+    n = int(n_rows)
+    if n <= 0:
+        raise ValueError("n_rows must be positive.")
+    if weights is None:
+        out = np.ones(n, dtype=np.float64)
+    else:
+        out = np.asarray(weights, dtype=np.float64).reshape(-1)
+        if out.shape[0] != n:
+            raise ValueError("numerator_weights must match numerator rows.")
+        out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
+        np.maximum(out, 0.0, out=out)
+    total = float(np.sum(out))
+    if not np.isfinite(total) or total <= 0.0:
+        out = np.ones(n, dtype=np.float64)
+        total = float(n)
+    return out * (float(target_sum) / total)
 
 
 def _predict_ratio_from_booster(

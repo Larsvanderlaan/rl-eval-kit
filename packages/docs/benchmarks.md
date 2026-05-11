@@ -24,11 +24,37 @@ occupancy-ratio-benchmark \
   --no-plots
 ```
 
-Profiles are `smoke`, `medium`, `full`, `overnight`, and `dualdice-paper`.
+Profiles are `smoke`, `medium`, `full`, `overnight`, `high_stakes`, and
+`dualdice-paper`.
 Occupancy runs write `results.partial.csv` and `tuning_results.partial.csv`
 after each estimator and resume from those files by default. Use `--no-resume`
 for a clean rerun. Per-estimator timeouts default to 120 seconds for smoke and
 600 seconds for larger profiles.
+
+The unified FORI vs Google DualDICE audit uses first-class JSON configs and the
+same entry point:
+
+```bash
+PYTHONPATH=packages/occupancy-ratio .venv/bin/python -m occupancy_ratio_benchmark.run \
+  --config packages/occupancy-ratio/occupancy_ratio_benchmark/configs/dualdice_smoke.json \
+  --external-repo-path /tmp/google-research \
+  --output-root outputs/occupancy_ratio_dualdice_audit
+
+PYTHONPATH=packages/occupancy-ratio .venv/bin/python -m occupancy_ratio_benchmark.run \
+  --config packages/occupancy-ratio/occupancy_ratio_benchmark/configs/dualdice_core.json \
+  --external-repo-path /tmp/google-research \
+  --output-root outputs/occupancy_ratio_dualdice_audit
+
+PYTHONPATH=packages/occupancy-ratio .venv/bin/python -m occupancy_ratio_benchmark.run \
+  --config packages/occupancy-ratio/occupancy_ratio_benchmark/configs/dualdice_high_stakes.json \
+  --external-repo-path /tmp/google-research \
+  --output-root outputs/occupancy_ratio_dualdice_audit
+```
+
+These runs automatically write `defaults_report.md`,
+`defaults_neural_vs_dice.csv`, `benchmark_readout.md`, a manifest with git and
+config-hash metadata, and plots for OPE error, ratio diagnostics, ESS, runtime,
+source-state diagnostics, and failure/timeout rate.
 
 The `overnight` profile adds Gymnasium continuous-control settings for
 realistic OPE stress tests. Controlled settings keep oracle ratio diagnostics;
@@ -42,3 +68,7 @@ occupancy-ratio-defaults-report /tmp/occupancy_default_overnight/overnight/resul
 Google DualDICE comparisons require a local Google Research checkout and its
 TensorFlow dependencies. Missing optional dependencies produce structured skip
 or error rows instead of stopping smoke runs.
+
+Older DualDICE/FORI benchmark code under `submissions/` is retained for audit
+history and paper-specific reproduction; new OPE/DualDICE benchmark work should use
+`occupancy_ratio_benchmark.run`.

@@ -10,6 +10,13 @@ from fqe_benchmark.types import BenchmarkConfig, BenchmarkDataset
 Array = np.ndarray
 
 
+GYM_CONTROL_DATASETS = {
+    "gym_pendulum": "Pendulum-v1",
+    "gym_mountain_car_continuous": "MountainCarContinuous-v0",
+    "mountain_car": "MountainCarContinuous-v0",
+}
+
+
 def make_datasets(config: BenchmarkConfig) -> list[BenchmarkDataset]:
     datasets: list[BenchmarkDataset] = []
     for dataset_name in config.datasets:
@@ -17,6 +24,22 @@ def make_datasets(config: BenchmarkConfig) -> list[BenchmarkDataset]:
             if config.include_hopper:
                 for seed in config.seeds:
                     datasets.append(make_hopper_placeholder(seed=int(seed), config=config))
+            continue
+        if dataset_name in GYM_CONTROL_DATASETS:
+            for sample_size in config.sample_sizes:
+                for gamma in config.gammas:
+                    for seed in config.seeds:
+                        datasets.append(
+                            make_gym_control_dataset(
+                                name=dataset_name,
+                                sample_size=int(sample_size),
+                                gamma=float(gamma),
+                                seed=int(seed),
+                                n_eval=int(config.n_eval),
+                                n_initial_eval=int(config.n_initial_eval),
+                                target_value_rollouts=int(config.gym_target_value_rollouts),
+                            )
+                        )
             continue
         for sample_size in config.sample_sizes:
             for gamma in config.gammas:
@@ -60,6 +83,16 @@ def make_dataset(
             n_eval=n_eval,
             n_initial_eval=n_initial_eval,
         )
+    if name in GYM_CONTROL_DATASETS:
+        return make_gym_control_dataset(
+            name=name,
+            sample_size=sample_size,
+            gamma=gamma,
+            seed=seed,
+            n_eval=n_eval,
+            n_initial_eval=n_initial_eval,
+            target_value_rollouts=8,
+        )
     raise ValueError(f"Unknown benchmark dataset '{name}'.")
 
 
@@ -75,6 +108,7 @@ def make_hopper_placeholder(*, seed: int, config: BenchmarkConfig) -> BenchmarkD
         domain="offline_hopper",
         states=zeros_s,
         actions=zeros_a,
+        target_actions=zeros_a,
         next_states=zeros_s,
         next_actions=zeros_a,
         rewards=np.zeros(2, dtype=np.float64),
@@ -184,6 +218,7 @@ def _sample_tabular(
     q_truth = _solve_tabular_q(mdp, gamma)
     states_idx = rng.choice(mdp.n_states, size=sample_size, p=_stationary_distribution(mdp.transition, mdp.behavior_policy, mdp.initial_dist, gamma))
     actions_idx = np.array([rng.choice(mdp.n_actions, p=mdp.behavior_policy[s]) for s in states_idx], dtype=np.int64)
+    train_target_actions_idx = np.array([rng.choice(mdp.n_actions, p=mdp.target_policy[s]) for s in states_idx], dtype=np.int64)
     next_idx = np.array([rng.choice(mdp.n_states, p=mdp.transition[s, a]) for s, a in zip(states_idx, actions_idx)], dtype=np.int64)
     next_actions_idx = np.array([rng.choice(mdp.n_actions, p=mdp.target_policy[s]) for s in next_idx], dtype=np.int64)
     rewards = mdp.rewards[states_idx, actions_idx]
@@ -216,6 +251,7 @@ def _sample_tabular(
         domain="tabular",
         states=encode_states(states_idx),
         actions=encode_actions(actions_idx),
+        target_actions=encode_actions(train_target_actions_idx),
         next_states=encode_states(next_idx),
         next_actions=encode_actions(next_actions_idx),
         rewards=rewards,
@@ -282,6 +318,7 @@ def make_linear_gaussian(
     initial_cov = np.diag([0.8, 0.6])
     states = rng.multivariate_normal(initial_mean, initial_cov + np.eye(2), size=sample_size)
     actions = states @ behavior_k.T + rng.normal(scale=behavior_sd, size=(sample_size, 1))
+    target_actions = states @ target_k.T + rng.normal(scale=target_sd, size=(sample_size, 1))
     next_states = states @ b.T + actions @ c.T + rng.normal(scale=noise_sd, size=(sample_size, 2))
     next_actions = next_states @ target_k.T + rng.normal(scale=target_sd, size=(sample_size, 1))
     rewards = _linear_gaussian_reward(states, actions, q_mat, r_action)
@@ -313,6 +350,7 @@ def make_linear_gaussian(
         domain="controlled_synthetic",
         states=states,
         actions=actions,
+        target_actions=target_actions,
         next_states=next_states,
         next_actions=next_actions,
         rewards=rewards,
@@ -373,3 +411,399 @@ def _solve_linear_gaussian_q(
             break
         p, linear, const = p_next, linear_next, const_next
     return p, linear, float(const)
+
+
+@dataclass(frozen=True)
+class _GymGaussianPolicy:
+    name: str
+    action_low: Array
+    action_high: Array
+    gain: Array
+    bias: Array
+    noise_scale: float
+
+    def mean_action(self, states: Array) -> Array:
+        states_arr = np.asarray(states, dtype=np.float64).reshape(-1, self.gain.shape[1])
+        action_center = 0.5 * (self.action_high + self.action_low)
+        action_scale = 0.5 * (self.action_high - self.action_low)
+        if self.name in {"gym_pendulum", "Pendulum-v1"} and states_arr.shape[1] >= 3:
+            raw = -1.8 * states_arr[:, [1]] - 0.25 * states_arr[:, [2]] + self.bias.reshape(1, -1)
+        elif self.name in {"gym_mountain_car_continuous", "mountain_car", "MountainCarContinuous-v0"} and states_arr.shape[1] >= 2:
+            raw = 3.5 * states_arr[:, [1]] + 1.5 * (states_arr[:, [0]] + 0.5) + self.bias.reshape(1, -1)
+        else:
+            raw = np.tanh(states_arr / 5.0) @ self.gain.T + self.bias.reshape(1, -1)
+        return action_center.reshape(1, -1) + action_scale.reshape(1, -1) * np.tanh(raw)
+
+    def sample(self, states: Array, rng: np.random.Generator) -> Array:
+        mean = self.mean_action(states)
+        action_scale = 0.5 * (self.action_high - self.action_low)
+        noise = float(self.noise_scale) * action_scale.reshape(1, -1) * rng.normal(size=mean.shape)
+        return np.clip(mean + noise, self.action_low.reshape(1, -1), self.action_high.reshape(1, -1))
+
+
+def make_gym_control_dataset(
+    *,
+    name: str,
+    sample_size: int,
+    gamma: float,
+    seed: int,
+    n_eval: int,
+    n_initial_eval: int,
+    target_value_rollouts: int,
+) -> BenchmarkDataset:
+    if name not in GYM_CONTROL_DATASETS:
+        raise ValueError(f"Unknown Gym control dataset '{name}'.")
+    try:
+        import gymnasium as gym
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError("Install gymnasium to use Gym control FQE benchmark datasets.") from exc
+
+    env_id = GYM_CONTROL_DATASETS[name]
+    rng = np.random.default_rng(int(seed))
+    env = gym.make(env_id)
+    try:
+        state_dim = int(np.asarray(env.observation_space.shape).prod())
+        action_dim = int(np.asarray(env.action_space.shape).prod())
+        action_low = np.asarray(env.action_space.low, dtype=np.float64).reshape(action_dim)
+        action_high = np.asarray(env.action_space.high, dtype=np.float64).reshape(action_dim)
+        action_low, action_high = _finite_action_bounds(action_low, action_high)
+        behavior_policy, target_policy = _make_gym_policies(
+            name=name,
+            state_dim=state_dim,
+            action_low=action_low,
+            action_high=action_high,
+        )
+        max_steps = int(getattr(env.spec, "max_episode_steps", None) or 1_000)
+        candidates = _collect_gym_candidates(
+            env=env,
+            behavior_policy=behavior_policy,
+            gamma=float(gamma),
+            sample_size=int(sample_size),
+            rng=rng,
+            max_steps=max_steps,
+        )
+        pick, scope_step = _sample_gym_training_indices(
+            candidates,
+            sample_size=int(sample_size),
+            rng=rng,
+            max_steps=max_steps,
+        )
+        states = candidates["states"][pick]
+        actions = candidates["actions"][pick]
+        next_states = candidates["next_states"][pick]
+        rewards = candidates["rewards"][pick]
+        terminals = candidates["terminals"][pick]
+        episode_ids = candidates["episode_ids"][pick]
+        timesteps = candidates["timesteps"][pick]
+        target_actions = target_policy.sample(states, rng)
+        next_actions = target_policy.sample(next_states, rng)
+        initial_states = _sample_initial_states(env, int(n_initial_eval), rng)
+        initial_actions = target_policy.sample(initial_states, rng)
+        target_eval_states = _sample_gym_occupancy_states(
+            env=env,
+            policy=target_policy,
+            gamma=float(gamma),
+            n=int(n_eval),
+            rng=rng,
+            max_steps=max_steps,
+        )
+        target_eval_actions = target_policy.sample(target_eval_states, rng)
+        behavior_eval_states = _sample_gym_occupancy_states(
+            env=env,
+            policy=behavior_policy,
+            gamma=float(gamma),
+            n=int(n_eval),
+            rng=rng,
+            max_steps=max_steps,
+        )
+        behavior_eval_actions = behavior_policy.sample(behavior_eval_states, rng)
+    finally:
+        env.close()
+
+    target_value, target_value_se = _estimate_gym_policy_value(
+        env_id=env_id,
+        policy=target_policy,
+        gamma=float(gamma),
+        seed=int(seed) + 91_001,
+        rollouts=int(target_value_rollouts),
+        max_steps=max_steps,
+    )
+    return BenchmarkDataset(
+        name=name,
+        domain="gym_control",
+        states=states,
+        actions=actions,
+        target_actions=target_actions,
+        next_states=next_states,
+        next_actions=next_actions,
+        rewards=rewards,
+        terminals=terminals,
+        gamma=float(gamma),
+        seed=int(seed),
+        initial_states=initial_states,
+        initial_actions=initial_actions,
+        target_eval_states=target_eval_states,
+        target_eval_actions=target_eval_actions,
+        behavior_eval_states=behavior_eval_states,
+        behavior_eval_actions=behavior_eval_actions,
+        true_q_fn=None,
+        true_policy_value=float(target_value),
+        metadata={
+            "sample_size": int(sample_size),
+            "env_id": env_id,
+            "target_policy_value_se": float(target_value_se),
+            "target_value_rollouts": int(target_value_rollouts),
+            "max_episode_steps": int(max_steps),
+            "state_dim": int(state_dim),
+            "action_dim": int(action_dim),
+            "truth_source": "target_policy_mc_rollout",
+            "scope_rl_step_per_trajectory": None if scope_step is None else int(scope_step),
+        },
+        episode_ids=episode_ids,
+        timesteps=timesteps,
+        step_per_trajectory=scope_step,
+    )
+
+
+def _stable_seed(text: str) -> int:
+    return int(sum((idx + 1) * ord(char) for idx, char in enumerate(text)) % (2**32 - 1))
+
+
+def _finite_action_bounds(low: Array, high: Array) -> tuple[Array, Array]:
+    lo = np.asarray(low, dtype=np.float64).copy()
+    hi = np.asarray(high, dtype=np.float64).copy()
+    lo[~np.isfinite(lo)] = -1.0
+    hi[~np.isfinite(hi)] = 1.0
+    same = hi <= lo
+    lo[same] = -1.0
+    hi[same] = 1.0
+    return lo, hi
+
+
+def _make_gym_policies(
+    *,
+    name: str,
+    state_dim: int,
+    action_low: Array,
+    action_high: Array,
+) -> tuple[_GymGaussianPolicy, _GymGaussianPolicy]:
+    rng = np.random.default_rng(_stable_seed(name))
+    action_dim = int(action_low.shape[0])
+    target_gain = rng.normal(scale=0.20, size=(action_dim, int(state_dim)))
+    target_bias = rng.normal(scale=0.10, size=action_dim)
+    behavior_gain = 0.70 * target_gain + rng.normal(scale=0.15, size=target_gain.shape)
+    behavior_bias = target_bias + rng.normal(scale=0.20, size=action_dim)
+    if name in {"gym_pendulum", "gym_mountain_car_continuous", "mountain_car"}:
+        target_bias = np.zeros(action_dim, dtype=np.float64)
+        behavior_bias = rng.normal(scale=0.25, size=action_dim)
+    return (
+        _GymGaussianPolicy(
+            name=name,
+            action_low=action_low,
+            action_high=action_high,
+            gain=behavior_gain,
+            bias=behavior_bias,
+            noise_scale=0.35,
+        ),
+        _GymGaussianPolicy(
+            name=name,
+            action_low=action_low,
+            action_high=action_high,
+            gain=target_gain,
+            bias=target_bias,
+            noise_scale=0.12,
+        ),
+    )
+
+
+def _reset_env(env, rng: np.random.Generator) -> Array:
+    obs, _ = env.reset(seed=int(rng.integers(0, 2**31 - 1)))
+    return np.asarray(obs, dtype=np.float64).reshape(-1)
+
+
+def _collect_gym_candidates(
+    *,
+    env,
+    behavior_policy: _GymGaussianPolicy,
+    gamma: float,
+    sample_size: int,
+    rng: np.random.Generator,
+    max_steps: int,
+) -> dict[str, Array]:
+    target_candidates = max(int(sample_size) * 3, int(sample_size) + 512)
+    states: list[Array] = []
+    actions: list[Array] = []
+    next_states: list[Array] = []
+    rewards: list[float] = []
+    terminals: list[float] = []
+    discount_weights: list[float] = []
+    episode_ids: list[int] = []
+    timesteps: list[int] = []
+    episode_id = 0
+    while len(states) < target_candidates:
+        obs = _reset_env(env, rng)
+        discount = 1.0
+        for timestep in range(int(max_steps)):
+            action = behavior_policy.sample(obs.reshape(1, -1), rng).reshape(-1)
+            next_obs, reward, terminated, truncated, _ = env.step(action.astype(env.action_space.dtype, copy=False))
+            done = bool(terminated or truncated)
+            states.append(obs.copy())
+            actions.append(action.astype(np.float64, copy=True))
+            next_states.append(np.asarray(next_obs, dtype=np.float64).reshape(-1))
+            rewards.append(float(reward))
+            terminals.append(1.0 if bool(terminated) else 0.0)
+            discount_weights.append(float(discount))
+            episode_ids.append(int(episode_id))
+            timesteps.append(int(timestep))
+            if done or len(states) >= target_candidates:
+                break
+            obs = np.asarray(next_obs, dtype=np.float64).reshape(-1)
+            discount *= float(gamma)
+        episode_id += 1
+    return {
+        "states": np.asarray(states, dtype=np.float64),
+        "actions": np.asarray(actions, dtype=np.float64),
+        "next_states": np.asarray(next_states, dtype=np.float64),
+        "rewards": np.asarray(rewards, dtype=np.float64),
+        "terminals": np.asarray(terminals, dtype=np.float64),
+        "discount_weights": np.asarray(discount_weights, dtype=np.float64),
+        "episode_ids": np.asarray(episode_ids, dtype=np.int64),
+        "timesteps": np.asarray(timesteps, dtype=np.int64),
+    }
+
+
+def _sample_candidate_indices(weights: Array, *, sample_size: int, rng: np.random.Generator) -> Array:
+    w = np.asarray(weights, dtype=np.float64).reshape(-1)
+    w = np.maximum(w, 0.0)
+    if not np.isfinite(w).all() or float(np.sum(w)) <= 0.0:
+        probs = None
+    else:
+        probs = w / float(np.sum(w))
+    return rng.choice(w.shape[0], size=int(sample_size), replace=w.shape[0] < int(sample_size), p=probs)
+
+
+def _sample_gym_training_indices(
+    candidates: dict[str, Array],
+    *,
+    sample_size: int,
+    rng: np.random.Generator,
+    max_steps: int,
+) -> tuple[Array, int | None]:
+    step = _choose_rectangular_step(sample_size=int(sample_size), max_steps=int(max_steps))
+    chunks = _complete_gym_chunks(
+        candidates["episode_ids"],
+        candidates["timesteps"],
+        step_per_trajectory=step,
+    )
+    needed = int(sample_size) // int(step)
+    if int(sample_size) % int(step) == 0 and needed > 0 and len(chunks) >= needed:
+        chosen = rng.choice(len(chunks), size=needed, replace=False)
+        return np.concatenate([chunks[int(idx)] for idx in chosen]).astype(np.int64, copy=False), int(step)
+    pick = _sample_candidate_indices(candidates["discount_weights"], sample_size=int(sample_size), rng=rng)
+    return pick, None
+
+
+def _choose_rectangular_step(*, sample_size: int, max_steps: int) -> int:
+    upper = max(3, min(int(sample_size), int(max_steps), 64))
+    divisors = [value for value in range(3, upper + 1) if int(sample_size) % value == 0]
+    if divisors:
+        return int(max(divisors))
+    return int(min(upper, max(3, int(sample_size))))
+
+
+def _complete_gym_chunks(episode_ids: Array, timesteps: Array, *, step_per_trajectory: int) -> list[Array]:
+    episodes = np.asarray(episode_ids).reshape(-1)
+    times = np.asarray(timesteps).reshape(-1)
+    chunks: list[Array] = []
+    for episode in np.unique(episodes):
+        idx = np.flatnonzero(episodes == episode)
+        order = idx[np.argsort(times[idx], kind="stable")]
+        ordered_times = times[order]
+        start = 0
+        while start + int(step_per_trajectory) <= order.size:
+            candidate = order[start : start + int(step_per_trajectory)]
+            candidate_times = ordered_times[start : start + int(step_per_trajectory)]
+            if np.all(np.diff(candidate_times) == 1):
+                chunks.append(candidate)
+            start += int(step_per_trajectory)
+    return chunks
+
+
+def _sample_initial_states(env, n: int, rng: np.random.Generator) -> Array:
+    return np.asarray([_reset_env(env, rng) for _ in range(int(n))], dtype=np.float64)
+
+
+def _sample_gym_occupancy_states(
+    *,
+    env,
+    policy: _GymGaussianPolicy,
+    gamma: float,
+    n: int,
+    rng: np.random.Generator,
+    max_steps: int,
+) -> Array:
+    candidates = _collect_policy_state_candidates(env=env, policy=policy, gamma=gamma, n=int(n), rng=rng, max_steps=max_steps)
+    pick = _sample_candidate_indices(candidates["discount_weights"], sample_size=int(n), rng=rng)
+    return candidates["states"][pick]
+
+
+def _collect_policy_state_candidates(
+    *,
+    env,
+    policy: _GymGaussianPolicy,
+    gamma: float,
+    n: int,
+    rng: np.random.Generator,
+    max_steps: int,
+) -> dict[str, Array]:
+    target_candidates = max(int(n) * 3, int(n) + 256)
+    states: list[Array] = []
+    discount_weights: list[float] = []
+    while len(states) < target_candidates:
+        obs = _reset_env(env, rng)
+        discount = 1.0
+        for _ in range(int(max_steps)):
+            states.append(obs.copy())
+            discount_weights.append(float(discount))
+            action = policy.sample(obs.reshape(1, -1), rng).reshape(-1)
+            next_obs, _, terminated, truncated, _ = env.step(action.astype(env.action_space.dtype, copy=False))
+            if bool(terminated or truncated) or len(states) >= target_candidates:
+                break
+            obs = np.asarray(next_obs, dtype=np.float64).reshape(-1)
+            discount *= float(gamma)
+    return {"states": np.asarray(states, dtype=np.float64), "discount_weights": np.asarray(discount_weights, dtype=np.float64)}
+
+
+def _estimate_gym_policy_value(
+    *,
+    env_id: str,
+    policy: _GymGaussianPolicy,
+    gamma: float,
+    seed: int,
+    rollouts: int,
+    max_steps: int,
+) -> tuple[float, float]:
+    import gymnasium as gym
+
+    rng = np.random.default_rng(int(seed))
+    env = gym.make(env_id)
+    values = []
+    try:
+        for _ in range(max(int(rollouts), 1)):
+            obs = _reset_env(env, rng)
+            discount = 1.0
+            total = 0.0
+            for _ in range(int(max_steps)):
+                action = policy.sample(obs.reshape(1, -1), rng).reshape(-1)
+                next_obs, reward, terminated, truncated, _ = env.step(action.astype(env.action_space.dtype, copy=False))
+                total += discount * float(reward)
+                discount *= float(gamma)
+                obs = np.asarray(next_obs, dtype=np.float64).reshape(-1)
+                if bool(terminated or truncated):
+                    break
+            values.append(total)
+    finally:
+        env.close()
+    arr = np.asarray(values, dtype=np.float64)
+    se = float(np.std(arr, ddof=1) / np.sqrt(arr.size)) if arr.size > 1 else 0.0
+    return float(np.mean(arr)), se

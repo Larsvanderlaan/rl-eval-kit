@@ -15,11 +15,20 @@ dependencies = [
 
 [project.optional-dependencies]
 neural = ["torch"]
-benchmark = ["matplotlib"]
-dev = ["build", "pytest", "ruff", "torch", "matplotlib"]
+validation = ["torch", "pyyaml"]
+stationary = ["occupancy-ratio[google-dualdice]"]
+fori = ["occupancy-ratio"]
+google-dualdice = ["occupancy-ratio[google-dualdice]"]
+minimax-weight = ["occupancy-ratio[google-dualdice]"]
+scope-rl = ["occupancy-ratio[scope-rl]"]
+benchmark = ["matplotlib", "gymnasium"]
+dev = ["build", "pytest", "ruff", "torch", "pyyaml", "matplotlib", "gymnasium", "occupancy-ratio[google-dualdice]"]
 
 [project.scripts]
 fqe-benchmark = "fqe_benchmark.run:main"
+fqe-compare-validators = "fqe_benchmark.sbv_compare:main"
+fqe-sbv-experiment = "fqe_benchmark.sbv_experiment:main"
+fqe-sbv-gym-nn-size = "fqe_benchmark.sbv_gym_nn_size:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

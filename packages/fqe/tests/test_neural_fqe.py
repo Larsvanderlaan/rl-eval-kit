@@ -11,6 +11,7 @@ from fqe import (
     fit_fqe_neural,
     fit_fqe_neural_from_policy,
     fit_value_neural,
+    load_fqe_neural,
     tune_fqe_neural_cv,
 )
 
@@ -130,6 +131,29 @@ def test_terminal_mask_blocks_neural_bootstrap() -> None:
 
 
 @pytestmark_torch
+def test_neural_timeouts_continue_bootstrap() -> None:
+    states = np.zeros((40, 1))
+    rewards = np.ones(40)
+    model = fit_value_neural(
+        states,
+        states,
+        rewards,
+        gamma=0.5,
+        timeouts=np.ones(40),
+        config=_small_config(
+            loss="squared",
+            num_iterations=14,
+            gradient_steps_per_iteration=14,
+            target_min=0.0,
+            target_max=3.0,
+            early_stopping=False,
+        ),
+    )
+    assert np.allclose(model.predict_value(np.zeros((3, 1))), 2.0, atol=0.85)
+    assert model.diagnostics["timeout_fraction"] == pytest.approx(1.0)
+
+
+@pytestmark_torch
 def test_neural_value_mode_matches_q_mode_with_constant_actions() -> None:
     states = np.linspace(-1.0, 1.0, 36).reshape(-1, 1)
     actions = np.zeros((36, 1))
@@ -180,6 +204,24 @@ def test_neural_multi_sample_next_actions_and_policy_sampler() -> None:
         config=_small_config(num_iterations=4, gradient_steps_per_iteration=6),
     )
     assert np.isfinite(sampled_model.estimate_policy_value(states[:5], actions[:5]))
+
+
+@pytestmark_torch
+def test_neural_serialization_round_trip(tmp_path) -> None:
+    states = np.linspace(-1.0, 1.0, 28).reshape(-1, 1)
+    rewards = 0.5 + states.reshape(-1)
+    model = fit_value_neural(
+        states,
+        states,
+        rewards,
+        gamma=0.0,
+        config=_small_config(loss="squared", num_iterations=6, gradient_steps_per_iteration=8, early_stopping=False, seed=33),
+    )
+    path = tmp_path / "neural_fqe.pt"
+    model.save(path)
+    loaded = load_fqe_neural(path)
+    assert loaded.diagnostics["mode"] == "value"
+    assert np.allclose(loaded.predict_value(states), model.predict_value(states), atol=1e-6)
 
 
 @pytestmark_torch

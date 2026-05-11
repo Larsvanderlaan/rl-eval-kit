@@ -1,21 +1,21 @@
 [tool.pytest.ini_options]
 testpaths = [
     "packages/fqe/tests",
+    "packages/genpqr/tests",
     "packages/occupancy-ratio/occupancy_ratio_benchmark/tests",
-    "packages/bellman-trees/tests",
+    "packages/causal-ope-benchmark/tests",
 ]
 pythonpath = [
     ".",
     "packages/fqe",
+    "packages/genpqr",
     "packages/occupancy-ratio",
-    "packages/bellman-trees",
-    "experiments/neurips_bellman/fqe_stationary_weighting",
-    "experiments/neurips_bellman/hopper_fqe_benchmark",
-    "experiments/neurips_bellman/soft_fqi_stationary_weighting",
-    "experiments/irl/conference_genpqr/repro",
-    "experiments/irl/journal_debiased_irl",
+    "packages/causal-ope-benchmark",
 ]
 addopts = "-q"
+markers = [
+    "optional_integration: tests requiring optional third-party RL/IRL dependencies",
+]
 
 [tool.ruff]
 target-version = "py310"
@@ -24,7 +24,8 @@ extend-exclude = [
     "archive/generated",
     "legacy",
     "outputs",
-    "submission_bundles",
+    "stale",
+    "submissions",
     "**/__pycache__",
     "**/.ipynb_checkpoints",
 ]

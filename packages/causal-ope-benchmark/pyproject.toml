@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "causal-ope-benchmark"
+version = "0.2.0"
+description = "Realistic causal inference and industry OPE benchmark simulators"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = ["offline-rl", "ope", "causal-inference", "benchmark", "simulation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+    "numpy",
+]
+
+[project.optional-dependencies]
+fqe = ["fqe[neural]"]
+occupancy = ["occupancy-ratio"]
+gym = ["gymnasium"]
+scope-rl = ["scope-rl"]
+all = ["fqe[neural]", "occupancy-ratio", "gymnasium", "scope-rl"]
+dev = ["pytest", "ruff", "build"]
+
+[project.scripts]
+causal-ope-benchmark = "causal_ope_benchmark.run:main"
+
+[project.urls]
+Homepage = "https://github.com/Larsvanderlaan/rl-eval-kit"
+Repository = "https://github.com/Larsvanderlaan/rl-eval-kit"
+Issues = "https://github.com/Larsvanderlaan/rl-eval-kit/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["causal_ope_benchmark*"]
+
+[tool.setuptools]
+include-package-data = true

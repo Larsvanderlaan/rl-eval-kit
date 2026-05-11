@@ -5,20 +5,27 @@
 *.log
 .codex_*.py
 
-# --- Build/output anywhere ---
+# --- Local archives and generated outputs ---
 archive/generated/*
 !archive/generated/README.md
+legacy/
+stale/
 outputs/
+website/
 **/outputs/
-FQE_neurips/outputs/
-FQE_calibration_neurips/.cache/
-FQE_calibration_neurips/.mplconfig/
-hopper_fqe_benchmark/outputs/
-hopper_fqe_benchmark/artifacts/cache/
-hopper_fqe_benchmark/artifacts/mplconfig/
+**/results/
+submissions/**/results/
+submissions/**/outputs/
+submissions/**/artifacts/cache/
+submissions/**/artifacts/mplconfig/
+submissions/**/.cache/
+submissions/**/.mplconfig/
+
+# --- Build artifacts ---
 **/dist/
 **/build/
 **/target/
+**/.astro/
 **/*.egg-info/
 **/.pytest_cache/
 **/__pycache__/
@@ -26,12 +33,28 @@ hopper_fqe_benchmark/artifacts/mplconfig/
 **/.mplconfig/
 **/.Rproj.user/
 **/.ipynb_checkpoints/
+*.pyc
+
+# --- Large data/model artifacts ---
+*.hdf5
+*.h5
+*.npy
+*.npz
+*.onnx
+*.pkl
+*.pt
+*.pth
+*.tfrecord
+*.tfrecord-*
+
+# --- LaTeX intermediates ---
 *.aux
 *.bbl
 *.blg
 *.fdb_latexmk
 *.fls
 *.out
+*.synctex.gz
 *.toc
 
 # --- Node (if any packages are JS/TS) ---
@@ -49,7 +72,5 @@ hopper_fqe_benchmark/artifacts/mplconfig/
 myenv3
 myenv3/
 myenv3/**
+stale/local_envs/
 *.ipynb
-*.pyc
-*.hdf5
-*.onnx

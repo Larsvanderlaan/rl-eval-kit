@@ -1,2 +1,0 @@
-gamma,process_noise_sd,behavior_action_sd,low_shift,moderate_shift,severe_shift,status,note
-0.95,0.05,0.1,0.0,1.1,1.35,qualified,Satisfied ordered low/moderate/severe criteria on the misspecified-affine n=4000 slice; moderate value gains may use clipped oracle diagnostics when raw oracle WLS is overlap-stressed.

@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 import numpy as np
 
+from fqe.bellman import build_bellman_target, validate_action_weights, validate_bootstrap_inputs, weighted_action_expectation
+
 
 Array = np.ndarray
 CalibrationMethod = Literal[
@@ -73,6 +75,8 @@ def fit_bellman_calibrator(
     gamma: float,
     *,
     terminals: Array | None = None,
+    timeouts: Array | None = None,
+    continuation: Array | None = None,
     sample_weight: Array | None = None,
     method: CalibrationMethod = "histogram_rescale",
     n_bins: int = 10,
@@ -92,6 +96,8 @@ def fit_bellman_calibrator(
         next_predictions,
         rewards,
         terminals=terminals,
+        timeouts=timeouts,
+        continuation=continuation,
         sample_weight=sample_weight,
     )
     gamma_f = _validate_gamma(gamma)
@@ -104,10 +110,15 @@ def fit_bellman_calibrator(
 
     calibrator: BellmanCalibrator | None = None
     losses: list[float] = []
-    targets = rew + gamma_f * (1.0 - term) * next_pred
+    targets = build_bellman_target(rewards=rew, gamma=gamma_f, next_predictions=next_pred, continuation=1.0 - term)
     for _ in range(iterations):
         if calibrator is not None:
-            targets = rew + gamma_f * (1.0 - term) * calibrator.predict(next_pred)
+            targets = build_bellman_target(
+                rewards=rew,
+                gamma=gamma_f,
+                next_predictions=calibrator.predict(next_pred),
+                continuation=1.0 - term,
+            )
         calibrator = _fit_single_step_calibrator(
             pred,
             targets,
@@ -144,7 +155,10 @@ def fit_q_bellman_calibrator(
     gamma: float,
     *,
     terminals: Array | None = None,
+    timeouts: Array | None = None,
+    continuation: Array | None = None,
     sample_weight: Array | None = None,
+    next_action_weights: Array | None = None,
     method: CalibrationMethod = "histogram_rescale",
     n_bins: int = 10,
     min_bin_size: int = 30,
@@ -154,13 +168,15 @@ def fit_q_bellman_calibrator(
     """Fit a Bellman calibrator for a Q-mode FQE model."""
 
     pred = np.asarray(model.predict_q(states, actions), dtype=np.float64).reshape(-1)
-    next_pred = _predict_q_next_average(model, next_states, next_actions)
+    next_pred = _predict_q_next_average(model, next_states, next_actions, next_action_weights=next_action_weights)
     return fit_bellman_calibrator(
         pred,
         next_pred,
         rewards,
         gamma,
         terminals=terminals,
+        timeouts=timeouts,
+        continuation=continuation,
         sample_weight=sample_weight,
         method=method,
         n_bins=n_bins,
@@ -178,6 +194,8 @@ def fit_value_bellman_calibrator(
     gamma: float,
     *,
     terminals: Array | None = None,
+    timeouts: Array | None = None,
+    continuation: Array | None = None,
     sample_weight: Array | None = None,
     method: CalibrationMethod = "histogram_rescale",
     n_bins: int = 10,
@@ -195,6 +213,8 @@ def fit_value_bellman_calibrator(
         rewards,
         gamma,
         terminals=terminals,
+        timeouts=timeouts,
+        continuation=continuation,
         sample_weight=sample_weight,
         method=method,
         n_bins=n_bins,
@@ -212,6 +232,8 @@ def bellman_calibration_diagnostics(
     *,
     calibrator: BellmanCalibrator | None = None,
     terminals: Array | None = None,
+    timeouts: Array | None = None,
+    continuation: Array | None = None,
     sample_weight: Array | None = None,
     n_bins: int = 20,
     min_bin_size: int = 30,
@@ -228,6 +250,8 @@ def bellman_calibration_diagnostics(
         next_predictions,
         rewards,
         terminals=terminals,
+        timeouts=timeouts,
+        continuation=continuation,
         sample_weight=sample_weight,
     )
     gamma_f = _validate_gamma(gamma)
@@ -235,7 +259,7 @@ def bellman_calibration_diagnostics(
     min_size = _validate_positive_int(min_bin_size, "min_bin_size")
     folds_requested = _validate_positive_int(n_folds, "n_folds")
 
-    outcome_before = rew + gamma_f * (1.0 - term) * next_pred
+    outcome_before = build_bellman_target(rewards=rew, gamma=gamma_f, next_predictions=next_pred, continuation=1.0 - term)
     if calibrator is None:
         pred_after = pred.copy()
         next_after = next_pred.copy()
@@ -244,7 +268,7 @@ def bellman_calibration_diagnostics(
         pred_after = calibrator.predict(pred)
         next_after = calibrator.predict(next_pred)
         extrapolation = calibrator.extrapolation_counts(pred)
-    outcome_after = rew + gamma_f * (1.0 - term) * next_after
+    outcome_after = build_bellman_target(rewards=rew, gamma=gamma_f, next_predictions=next_after, continuation=1.0 - term)
 
     before = _calibration_error_summary(pred, outcome_before, weight, bins_requested, min_size, folds_requested)
     after = _calibration_error_summary(pred_after, outcome_after, weight, bins_requested, min_size, folds_requested)
@@ -721,10 +745,23 @@ def _weighted_quantile(values: Array, weights: Array, quantiles: Array) -> Array
     return np.interp(q, cdf, sorted_values, left=sorted_values[0], right=sorted_values[-1])
 
 
-def _predict_q_next_average(model: Any, next_states: Array, next_actions: Array) -> Array:
+def _predict_q_next_average(
+    model: Any,
+    next_states: Array,
+    next_actions: Array,
+    *,
+    next_action_weights: Array | None = None,
+) -> Array:
     states = np.asarray(next_states, dtype=np.float64)
     actions = np.asarray(next_actions, dtype=np.float64)
     if actions.ndim == 2:
+        if next_action_weights is not None:
+            validate_action_weights(
+                next_action_weights,
+                n_rows=actions.shape[0],
+                n_actions=1,
+                name="next_action_weights",
+            )
         return np.asarray(model.predict_q(states, actions), dtype=np.float64).reshape(-1)
     if actions.ndim != 3:
         raise ValueError("next_actions must have shape (n, action_dim) or (n, n_action_samples, action_dim).")
@@ -734,7 +771,13 @@ def _predict_q_next_average(model: Any, next_states: Array, next_actions: Array)
     repeated_states = np.repeat(states, int(n_samples), axis=0)
     flat_actions = actions.reshape(n * int(n_samples), -1)
     pred = np.asarray(model.predict_q(repeated_states, flat_actions), dtype=np.float64).reshape(n, int(n_samples))
-    return np.mean(pred, axis=1)
+    weights = validate_action_weights(
+        next_action_weights,
+        n_rows=n,
+        n_actions=int(n_samples),
+        name="next_action_weights",
+    )
+    return weighted_action_expectation(pred, weights)
 
 
 def _validated_transition_vectors(
@@ -743,6 +786,8 @@ def _validated_transition_vectors(
     rewards: Array,
     *,
     terminals: Array | None,
+    timeouts: Array | None,
+    continuation: Array | None,
     sample_weight: Array | None,
 ) -> tuple[Array, Array, Array, Array, Array]:
     pred = _as_finite_vector(predictions, "predictions")
@@ -750,11 +795,13 @@ def _validated_transition_vectors(
     rew = _as_finite_vector(rewards, "rewards")
     if pred.shape != next_pred.shape or pred.shape != rew.shape:
         raise ValueError("predictions, next_predictions, and rewards must have the same length.")
-    term = np.zeros_like(pred) if terminals is None else _as_finite_vector(terminals, "terminals")
-    if term.shape != pred.shape:
-        raise ValueError("terminals must have the same length as predictions.")
-    if np.any((term < 0.0) | (term > 1.0)):
-        raise ValueError("terminals must be in [0, 1].")
+    bootstrap = validate_bootstrap_inputs(
+        n_rows=pred.shape[0],
+        terminals=terminals,
+        timeouts=timeouts,
+        continuation=continuation,
+    )
+    term = bootstrap.terminals
     weight = _optional_weights(sample_weight, pred.shape[0], "sample_weight")
     return pred, next_pred, rew, term, weight
 
@@ -767,6 +814,8 @@ def _optional_weights(weights: Array | None, n: int, name: str) -> Array:
         raise ValueError(f"{name} must have {int(n)} rows.")
     if np.any(arr < 0.0):
         raise ValueError(f"{name} must be nonnegative.")
+    if float(np.sum(arr)) <= 0.0:
+        raise ValueError(f"{name} must have positive total weight.")
     return arr.astype(np.float64, copy=False)
 
 

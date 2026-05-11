@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Any, Callable, Literal, Sequence
 
 import numpy as np
@@ -19,10 +20,13 @@ from fqe.fit_fqe import (
     ModeName,
     _as_1d_float,
     _as_2d_float,
-    _as_next_actions,
+    _as_action_features,
+    _as_initial_actions,
+    _as_next_action_features,
     _bellman_risk,
+    _is_uniform_action_weights,
+    _normalize_action_spec,
     _next_state_action_features,
-    _optional_terminals,
     _optional_weights,
     _resolve_target_bounds,
     _slice_next_actions,
@@ -30,6 +34,13 @@ from fqe.fit_fqe import (
     _train_validation_indices,
     _validate_features,
     _validate_gamma,
+)
+from fqe.bellman import (
+    package_versions,
+    serializable_config,
+    validate_action_weights,
+    validate_bootstrap_inputs,
+    weighted_action_expectation,
 )
 
 
@@ -42,6 +53,7 @@ __all__ = [
     "fit_fqe_neural",
     "fit_value_neural",
     "fit_fqe_neural_from_policy",
+    "load_fqe_neural",
     "tune_fqe_neural_cv",
 ]
 
@@ -151,6 +163,7 @@ class NeuralFQEModel:
     diagnostics: dict[str, Any]
     train_indices: Array
     validation_indices: Array
+    action_spec: dict[str, Any] | None = None
 
     def predict(self, states: Array, actions: Array | None = None) -> Array:
         """Predict Q(s, a) in Q mode or V(s) in value mode."""
@@ -166,7 +179,7 @@ class NeuralFQEModel:
         """Predict fitted Q-values."""
         if self.mode != "q":
             raise ValueError("predict_q is only available for Q-mode NeuralFQEModel objects.")
-        features = _state_action_features(states, actions, self.state_dim, self.action_dim)
+        features = _state_action_features(states, actions, self.state_dim, self.action_dim, self.action_spec)
         return self._predict_features(features)
 
     def predict_value(self, states: Array) -> Array:
@@ -181,12 +194,30 @@ class NeuralFQEModel:
         initial_states: Array,
         initial_actions: Array | None = None,
         initial_weights: Array | None = None,
+        initial_action_weights: Array | None = None,
     ) -> float:
         """Estimate the policy value by averaging initial predictions."""
         if self.mode == "q":
             if initial_actions is None:
                 raise ValueError("initial_actions are required for Q-mode policy value estimation.")
-            values = self.predict_q(initial_states, initial_actions)
+            states_2d = _as_2d_float(initial_states, "initial_states", expected_cols=self.state_dim)
+            actions_3d = _as_initial_actions(
+                initial_actions,
+                n_rows=states_2d.shape[0],
+                action_dim=self.action_dim,
+                action_spec=self.action_spec,
+            )
+            action_weights = validate_action_weights(
+                initial_action_weights,
+                n_rows=states_2d.shape[0],
+                n_actions=actions_3d.shape[1],
+                name="initial_action_weights",
+            )
+            values_by_action = [
+                self.predict_q(states_2d, actions_3d[:, action_idx, :])
+                for action_idx in range(actions_3d.shape[1])
+            ]
+            values = weighted_action_expectation(np.stack(values_by_action, axis=1), action_weights)
         else:
             if initial_actions is not None:
                 raise ValueError("initial_actions must not be supplied for value-mode policy value estimation.")
@@ -209,7 +240,71 @@ class NeuralFQEModel:
             "diagnostics": dict(self.diagnostics),
             "train_indices": np.asarray(self.train_indices, dtype=np.int64),
             "validation_indices": np.asarray(self.validation_indices, dtype=np.int64),
+            "action_spec": None if self.action_spec is None else dict(self.action_spec),
         }
+
+    def save(self, path: str | Path) -> None:
+        """Save a versioned neural FQE model artifact."""
+        _require_torch()
+        path_obj = Path(path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "schema_version": 1,
+            "model_family": "neural_torch",
+            "mode": self.mode,
+            "gamma": float(self.gamma),
+            "state_dim": int(self.state_dim),
+            "action_dim": None if self.action_dim is None else int(self.action_dim),
+            "config": serializable_config(self.config),
+            "input_mean": np.asarray(self.input_mean, dtype=np.float64),
+            "input_std": np.asarray(self.input_std, dtype=np.float64),
+            "history": list(self.history),
+            "diagnostics": dict(self.diagnostics),
+            "train_indices": np.asarray(self.train_indices, dtype=np.int64),
+            "validation_indices": np.asarray(self.validation_indices, dtype=np.int64),
+            "action_spec": None if self.action_spec is None else dict(self.action_spec),
+            "versions": package_versions(("numpy", "torch", "fqe")),
+            "network_state_dict": {key: value.detach().cpu() for key, value in self.network.state_dict().items()},
+            "target_network_state_dict": {
+                key: value.detach().cpu() for key, value in self.target_network.state_dict().items()
+            },
+        }
+        torch.save(payload, path_obj)
+
+    @classmethod
+    def load(cls, path: str | Path) -> "NeuralFQEModel":
+        """Load a neural FQE artifact saved by :meth:`save`."""
+        _require_torch()
+        payload = torch.load(Path(path), map_location="cpu", weights_only=False)
+        if int(payload.get("schema_version", -1)) != 1 or payload.get("model_family") != "neural_torch":
+            raise ValueError("Unsupported neural FQE artifact.")
+        config = NeuralFQEConfig(**dict(payload["config"]))
+        state_dim = int(payload["state_dim"])
+        action_dim = None if payload["action_dim"] is None else int(payload["action_dim"])
+        input_dim = state_dim if payload["mode"] == "value" else state_dim + int(action_dim)
+        network = _MLP(input_dim, tuple(config.hidden_dims), config.activation)
+        target_network = _MLP(input_dim, tuple(config.hidden_dims), config.activation)
+        network.load_state_dict(payload["network_state_dict"])
+        target_network.load_state_dict(payload["target_network_state_dict"])
+        device = torch.device(config.device)
+        network.to(device).eval()
+        target_network.to(device).eval()
+        return cls(
+            network=network,
+            target_network=target_network,
+            mode=payload["mode"],
+            gamma=float(payload["gamma"]),
+            state_dim=state_dim,
+            action_dim=action_dim,
+            config=config,
+            input_mean=np.asarray(payload["input_mean"], dtype=np.float64),
+            input_std=np.asarray(payload["input_std"], dtype=np.float64),
+            history=list(payload["history"]),
+            diagnostics=dict(payload["diagnostics"]),
+            train_indices=np.asarray(payload["train_indices"], dtype=np.int64),
+            validation_indices=np.asarray(payload["validation_indices"], dtype=np.int64),
+            action_spec=payload.get("action_spec"),
+        )
 
     def _predict_features(self, features: Array) -> Array:
         _require_torch()
@@ -222,6 +317,11 @@ class NeuralFQEModel:
         return pred
 
 
+def load_fqe_neural(path: str | Path) -> NeuralFQEModel:
+    """Load a neural FQE artifact saved by :meth:`NeuralFQEModel.save`."""
+    return NeuralFQEModel.load(path)
+
+
 def fit_fqe_neural(
     states: Array,
     actions: Array,
@@ -230,29 +330,49 @@ def fit_fqe_neural(
     rewards: Array,
     gamma: float,
     terminals: Array | None = None,
+    timeouts: Array | None = None,
+    continuation: Array | None = None,
     sample_weight: Array | None = None,
+    next_action_weights: Array | None = None,
     config: NeuralFQEConfig | None = None,
+    action_spec: dict[str, Any] | None = None,
 ) -> NeuralFQEModel:
     """Fit neural FQE on state-action transitions."""
     config = NeuralFQEConfig.stable_defaults() if config is None else config
     rewards_1d = _as_1d_float(rewards, "rewards")
     states_2d = _as_2d_float(states, "states", n_rows=rewards_1d.shape[0])
-    actions_2d = _as_2d_float(actions, "actions", n_rows=rewards_1d.shape[0])
+    resolved_action_spec = _normalize_action_spec(action_spec)
+    actions_2d = _as_action_features(actions, "actions", n_rows=rewards_1d.shape[0], action_spec=resolved_action_spec)
     next_states_2d = _as_2d_float(next_states, "next_states", n_rows=rewards_1d.shape[0])
-    next_actions_3d = _as_next_actions(next_actions, n_rows=rewards_1d.shape[0], action_dim=actions_2d.shape[1])
+    next_actions_3d = _as_next_action_features(
+        next_actions,
+        n_rows=rewards_1d.shape[0],
+        action_dim=actions_2d.shape[1],
+        action_spec=resolved_action_spec,
+    )
+    next_action_weight_2d = validate_action_weights(
+        next_action_weights,
+        n_rows=rewards_1d.shape[0],
+        n_actions=next_actions_3d.shape[1],
+        name="next_action_weights",
+    )
     features = np.concatenate([states_2d, actions_2d], axis=1)
     next_features = _next_state_action_features(next_states_2d, next_actions_3d)
     return _fit_neural_fixed_point(
         features=features,
         next_features=next_features,
+        next_action_weights=next_action_weight_2d,
         rewards=rewards_1d,
         gamma=gamma,
         terminals=terminals,
+        timeouts=timeouts,
+        continuation=continuation,
         sample_weight=sample_weight,
         config=config,
         mode="q",
         state_dim=states_2d.shape[1],
         action_dim=actions_2d.shape[1],
+        action_spec=resolved_action_spec,
     )
 
 
@@ -262,6 +382,8 @@ def fit_value_neural(
     rewards: Array,
     gamma: float,
     terminals: Array | None = None,
+    timeouts: Array | None = None,
+    continuation: Array | None = None,
     sample_weight: Array | None = None,
     config: NeuralFQEConfig | None = None,
 ) -> NeuralFQEModel:
@@ -273,14 +395,18 @@ def fit_value_neural(
     return _fit_neural_fixed_point(
         features=states_2d,
         next_features=next_states_2d[:, None, :],
+        next_action_weights=np.ones((rewards_1d.shape[0], 1), dtype=np.float64),
         rewards=rewards_1d,
         gamma=gamma,
         terminals=terminals,
+        timeouts=timeouts,
+        continuation=continuation,
         sample_weight=sample_weight,
         config=config,
         mode="value",
         state_dim=states_2d.shape[1],
         action_dim=None,
+        action_spec=None,
     )
 
 
@@ -294,8 +420,12 @@ def fit_fqe_neural_from_policy(
     *,
     n_next_action_samples: int = 1,
     terminals: Array | None = None,
+    timeouts: Array | None = None,
+    continuation: Array | None = None,
     sample_weight: Array | None = None,
+    next_action_weights: Array | None = None,
     config: NeuralFQEConfig | None = None,
+    action_spec: dict[str, Any] | None = None,
 ) -> NeuralFQEModel:
     """Sample evaluation-policy next actions and fit Q-mode neural FQE."""
     if n_next_action_samples <= 0:
@@ -313,8 +443,12 @@ def fit_fqe_neural_from_policy(
         rewards=rewards_1d,
         gamma=gamma,
         terminals=terminals,
+        timeouts=timeouts,
+        continuation=continuation,
         sample_weight=sample_weight,
+        next_action_weights=next_action_weights,
         config=config,
+        action_spec=action_spec,
     )
 
 
@@ -328,7 +462,11 @@ def tune_fqe_neural_cv(
     next_states: Array,
     next_actions: Array | None = None,
     terminals: Array | None = None,
+    timeouts: Array | None = None,
+    continuation: Array | None = None,
     sample_weight: Array | None = None,
+    next_action_weights: Array | None = None,
+    action_spec: dict[str, Any] | None = None,
     base_config: NeuralFQEConfig | None = None,
     validation_fraction: float | None = None,
     seed: int | None = None,
@@ -352,6 +490,8 @@ def tune_fqe_neural_cv(
             "rewards": rewards_1d[train_idx],
             "gamma": gamma,
             "terminals": None if terminals is None else np.asarray(terminals)[train_idx],
+            "timeouts": None if timeouts is None else np.asarray(timeouts)[train_idx],
+            "continuation": None if continuation is None else np.asarray(continuation)[train_idx],
             "sample_weight": None if sample_weight is None else np.asarray(sample_weight)[train_idx],
             "config": cfg,
         }
@@ -369,6 +509,8 @@ def tune_fqe_neural_cv(
                 actions=np.asarray(actions)[train_idx],
                 next_states=np.asarray(next_states)[train_idx],
                 next_actions=_slice_next_actions(np.asarray(next_actions), train_idx),
+                next_action_weights=None if next_action_weights is None else np.asarray(next_action_weights)[train_idx],
+                action_spec=action_spec,
                 **fit_kwargs,
             )
             val_pred = model.predict_q(np.asarray(states)[val_idx], np.asarray(actions)[val_idx])
@@ -376,23 +518,34 @@ def tune_fqe_neural_cv(
                 model.target_network,
                 _next_state_action_features(
                     _as_2d_float(np.asarray(next_states)[val_idx], "next_states"),
-                    _as_next_actions(_slice_next_actions(np.asarray(next_actions), val_idx), len(val_idx), model.action_dim),
+                    _as_next_action_features(
+                        _slice_next_actions(np.asarray(next_actions), val_idx),
+                        n_rows=len(val_idx),
+                        action_dim=model.action_dim,
+                        action_spec=model.action_spec,
+                    ),
                 ),
                 model.input_mean,
                 model.input_std,
                 model.config.device,
+                None if next_action_weights is None else np.asarray(next_action_weights)[val_idx],
             )
         else:
             raise ValueError("actions and next_actions must either both be supplied or both be omitted.")
         val_rewards = rewards_1d[val_idx]
-        val_terminals = _optional_terminals(None if terminals is None else np.asarray(terminals)[val_idx], len(val_idx))
+        val_bootstrap = validate_bootstrap_inputs(
+            n_rows=len(val_idx),
+            terminals=None if terminals is None else np.asarray(terminals)[val_idx],
+            timeouts=None if timeouts is None else np.asarray(timeouts)[val_idx],
+            continuation=None if continuation is None else np.asarray(continuation)[val_idx],
+        )
         val_weights = _optional_weights(None if sample_weight is None else np.asarray(sample_weight)[val_idx], len(val_idx), "sample_weight")
         score = _bellman_risk(
             predictions=val_pred,
             next_predictions=val_next,
             rewards=val_rewards,
             gamma=gamma,
-            terminals=val_terminals,
+            terminals=1.0 - val_bootstrap.continuation,
             sample_weight=val_weights,
         )
         candidates.append({"index": idx, "params": dict(updates), "score": float(score), "model": model})
@@ -407,6 +560,8 @@ def tune_fqe_neural_cv(
                 rewards=rewards,
                 gamma=gamma,
                 terminals=terminals,
+                timeouts=timeouts,
+                continuation=continuation,
                 sample_weight=sample_weight,
                 config=final_config,
             )
@@ -419,7 +574,11 @@ def tune_fqe_neural_cv(
                 rewards=rewards,
                 gamma=gamma,
                 terminals=terminals,
+                timeouts=timeouts,
+                continuation=continuation,
                 sample_weight=sample_weight,
+                next_action_weights=next_action_weights,
+                action_spec=action_spec,
                 config=final_config,
             )
     return {
@@ -436,18 +595,29 @@ def _fit_neural_fixed_point(
     *,
     features: Array,
     next_features: Array,
+    next_action_weights: Array | None,
     rewards: Array,
     gamma: float,
     terminals: Array | None,
+    timeouts: Array | None,
+    continuation: Array | None,
     sample_weight: Array | None,
     config: NeuralFQEConfig,
     mode: ModeName,
     state_dim: int,
     action_dim: int | None,
+    action_spec: dict[str, Any] | None,
 ) -> NeuralFQEModel:
     gamma = _validate_gamma(gamma)
     n = rewards.shape[0]
-    terminals_1d = _optional_terminals(terminals, n)
+    bootstrap = validate_bootstrap_inputs(n_rows=n, terminals=terminals, timeouts=timeouts, continuation=continuation)
+    continuation_1d = bootstrap.continuation
+    next_action_weights_2d = validate_action_weights(
+        next_action_weights,
+        n_rows=n,
+        n_actions=next_features.shape[1],
+        name="next_action_weights",
+    )
     weights_1d = _optional_weights(sample_weight, n, "sample_weight")
     _validate_features(features, next_features, rewards)
     _require_torch()
@@ -461,7 +631,8 @@ def _fit_neural_fixed_point(
     x_all = _features_to_tensor(features, input_mean, input_std, device)
     x_next_all = _next_features_to_tensor(next_features, input_mean, input_std, device)
     rewards_t = torch.as_tensor(rewards, dtype=torch.float32, device=device)
-    terminals_t = torch.as_tensor(terminals_1d, dtype=torch.float32, device=device)
+    continuation_t = torch.as_tensor(continuation_1d, dtype=torch.float32, device=device)
+    next_action_weights_t = torch.as_tensor(next_action_weights_2d, dtype=torch.float32, device=device)
     weights_t = torch.as_tensor(weights_1d, dtype=torch.float32, device=device)
     train_idx_t = torch.as_tensor(train_idx, dtype=torch.long, device=device)
     val_idx_t = torch.as_tensor(val_idx, dtype=torch.long, device=device)
@@ -491,8 +662,8 @@ def _fit_neural_fixed_point(
     for iteration in iterator:
         network.train()
         with torch.no_grad():
-            next_pred_all = _predict_next_tensor(target_network, x_next_all)
-            targets_all = rewards_t + float(gamma) * (1.0 - terminals_t) * next_pred_all
+            next_pred_all = _predict_next_tensor(target_network, x_next_all, next_action_weights_t)
+            targets_all = rewards_t + float(gamma) * continuation_t * next_pred_all
             targets_all = _clip_targets_tensor(targets_all, target_min, target_max)
         last_loss = float("nan")
         for _ in range(config.gradient_steps_per_iteration):
@@ -515,14 +686,14 @@ def _fit_neural_fixed_point(
         network.eval()
         target_network.eval()
         with torch.no_grad():
-            next_pred_eval = _predict_next_tensor(target_network, x_next_all)
+            next_pred_eval = _predict_next_tensor(target_network, x_next_all, next_action_weights_t)
             pred_all = network(x_all)
             train_risk = _bellman_risk(
                 predictions=pred_all[train_idx_t].detach().cpu().numpy().astype(np.float64),
                 next_predictions=next_pred_eval[train_idx_t].detach().cpu().numpy().astype(np.float64),
                 rewards=rewards[train_idx],
                 gamma=gamma,
-                terminals=terminals_1d[train_idx],
+                terminals=1.0 - continuation_1d[train_idx],
                 sample_weight=weights_1d[train_idx],
             )
             val_risk = _bellman_risk(
@@ -530,10 +701,10 @@ def _fit_neural_fixed_point(
                 next_predictions=next_pred_eval[val_idx_t].detach().cpu().numpy().astype(np.float64),
                 rewards=rewards[val_idx],
                 gamma=gamma,
-                terminals=terminals_1d[val_idx],
+                terminals=1.0 - continuation_1d[val_idx],
                 sample_weight=weights_1d[val_idx],
             )
-        improved = (not config.early_stopping) or val_risk <= best_risk - float(config.min_improvement)
+        improved = (not config.early_stopping) or val_risk <= best_risk - float(config.min_improvement) or not np.isfinite(best_risk)
         if improved:
             best_risk = min(best_risk, val_risk)
             best_state = deepcopy(network.state_dict())
@@ -560,6 +731,17 @@ def _fit_neural_fixed_point(
     target_network.load_state_dict(best_target_state)
     network.eval()
     target_network.eval()
+    with torch.no_grad():
+        pred_final = network(x_all).detach().cpu().numpy().astype(np.float64)
+        next_final = _predict_next_tensor(target_network, x_next_all, next_action_weights_t).detach().cpu().numpy().astype(np.float64)
+    final_self_risk = _bellman_risk(
+        predictions=pred_final,
+        next_predictions=next_final,
+        rewards=rewards,
+        gamma=gamma,
+        terminals=1.0 - continuation_1d,
+        sample_weight=weights_1d,
+    )
     diagnostics = {
         "mode": mode,
         "gamma": float(gamma),
@@ -572,6 +754,8 @@ def _fit_neural_fixed_point(
         "best_validation_bellman_risk": float(best_risk),
         "final_train_bellman_risk": float(history[-1]["train_bellman_risk"]) if history else np.nan,
         "final_validation_bellman_risk": float(history[-1]["validation_bellman_risk"]) if history else np.nan,
+        "final_self_bellman_risk": float(final_self_risk),
+        "target_action_expectation": "weighted" if not _is_uniform_action_weights(next_action_weights_2d) else "uniform",
         "target_min": target_min,
         "target_max": target_max,
         "n_samples": int(n),
@@ -580,6 +764,9 @@ def _fit_neural_fixed_point(
         "device": str(device),
         "standardize_inputs": bool(config.standardize_inputs),
     }
+    diagnostics.update(bootstrap.diagnostics)
+    if action_spec is not None:
+        diagnostics["action_spec_type"] = str(action_spec.get("type", "continuous"))
     return NeuralFQEModel(
         network=network,
         target_network=target_network,
@@ -594,6 +781,7 @@ def _fit_neural_fixed_point(
         diagnostics=diagnostics,
         train_indices=train_idx,
         validation_indices=val_idx,
+        action_spec=action_spec,
     )
 
 
@@ -659,17 +847,31 @@ def _next_features_to_tensor(next_features: Array, mean: Array, std: Array, devi
     return _features_to_tensor(flat, mean, std, device).reshape(n, m, d)
 
 
-def _predict_next_tensor(model: Any, x_next: Any):
+def _predict_next_tensor(model: Any, x_next: Any, action_weights: Any | None = None):
     n, m, d = x_next.shape
-    return model(x_next.reshape(n * m, d)).reshape(n, m).mean(dim=1)
+    pred = model(x_next.reshape(n * m, d)).reshape(n, m)
+    if action_weights is None:
+        return pred.mean(dim=1)
+    return torch.sum(pred * action_weights, dim=1)
 
 
-def _predict_next_average_neural(model: Any, next_features: Array, mean: Array, std: Array, device: str) -> Array:
+def _predict_next_average_neural(
+    model: Any,
+    next_features: Array,
+    mean: Array,
+    std: Array,
+    device: str,
+    next_action_weights: Array | None = None,
+) -> Array:
     _require_torch()
     model.eval()
     with torch.no_grad():
-        x_next = _next_features_to_tensor(next_features, mean, std, torch.device(device))
-        pred = _predict_next_tensor(model, x_next).detach().cpu().numpy().astype(np.float64)
+        device_obj = torch.device(device)
+        x_next = _next_features_to_tensor(next_features, mean, std, device_obj)
+        weights_t = None
+        if next_action_weights is not None:
+            weights_t = torch.as_tensor(next_action_weights, dtype=torch.float32, device=device_obj)
+        pred = _predict_next_tensor(model, x_next, weights_t).detach().cpu().numpy().astype(np.float64)
     return pred
 
 

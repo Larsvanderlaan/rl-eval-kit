@@ -196,6 +196,7 @@ def _run_boosted_tree_rows(
         actions_i = np.asarray(all_data.action, dtype=np.int64).reshape(-1)
         next_states_i = np.asarray(all_data.next_state, dtype=np.int64).reshape(-1)
         target_actions_i = target_policy.sample_action(states_i)
+        next_target_actions_i = target_policy.sample_action(next_states_i)
         min_leaf = _safe_min_data_in_leaf(states_i.size)
 
         with _time_limit(config.estimator_timeout_sec):
@@ -204,6 +205,7 @@ def _run_boosted_tree_rows(
                 actions=one_hot(actions_i, env.num_actions),
                 next_states=one_hot(next_states_i, env.num_states),
                 target_actions=one_hot(target_actions_i, env.num_actions),
+                target_next_actions=one_hot(next_target_actions_i, env.num_actions),
                 gamma=float(common["gamma"]),
                 occupancy=OccupancyRegressionConfig(
                     num_iterations=int(config.boosted_num_iterations),
@@ -298,6 +300,7 @@ def _run_neural_network_rows(
         actions_i = np.asarray(all_data.action, dtype=np.int64).reshape(-1)
         next_states_i = np.asarray(all_data.next_state, dtype=np.int64).reshape(-1)
         target_actions_i = target_policy.sample_action(states_i)
+        next_target_actions_i = target_policy.sample_action(next_states_i)
         states = one_hot(states_i, env.num_states)
         actions = one_hot(actions_i, env.num_actions)
 
@@ -307,6 +310,7 @@ def _run_neural_network_rows(
                 actions=actions,
                 next_states=one_hot(next_states_i, env.num_states),
                 target_actions=one_hot(target_actions_i, env.num_actions),
+                target_next_actions=one_hot(next_target_actions_i, env.num_actions),
                 gamma=float(common["gamma"]),
                 occupancy=NeuralOccupancyRegressionConfig(
                     num_iterations=int(config.neural_num_iterations),
