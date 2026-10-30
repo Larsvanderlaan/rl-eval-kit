@@ -18,8 +18,12 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from policy_estimation import EstimatedPolicy, fit_airl_policy
-from utils import EPS, one_hot, standardize_fit
+try:
+    from .policy_estimation import EstimatedPolicy, fit_airl_policy
+    from .utils import EPS, one_hot, standardize_fit
+except ImportError:  # pragma: no cover - supports direct script execution
+    from policy_estimation import EstimatedPolicy, fit_airl_policy
+    from utils import EPS, one_hot, standardize_fit
 
 
 @dataclass
@@ -114,8 +118,10 @@ def fit_anchor_q_network(
     epochs_per_iter: int = 3,
     learning_rate: float = 1e-3,
     target_clip: float = 50.0,
+    seed: int = 0,
 ) -> AnchorQEstimate:
     """Estimate the anchor-action Q function using DeepPQR's FQI-I target."""
+    torch.manual_seed(seed)
     mean, std = standardize_fit(states)
 
     def transform(x: np.ndarray) -> np.ndarray:
@@ -181,8 +187,10 @@ def fit_reward_regression_from_q(
     n_epochs: int = 200,
     learning_rate: float = 1e-3,
     target_clip: float = 50.0,
+    seed: int = 0,
 ) -> RewardNetworkEstimate:
     """Fit DeepPQR Algorithm 1's auxiliary regression `h(s,a)`."""
+    torch.manual_seed(seed)
     mean, std = standardize_fit(states)
 
     def transform(x: np.ndarray) -> np.ndarray:
@@ -239,10 +247,16 @@ def fit_deeppqr_baseline(
     alpha: float = 1.0,
     min_policy_prob: float = 1e-2,
     behavior_policy: EstimatedPolicy | None = None,
+    seed: int = 0,
+    anchor_n_iters: int = 80,
+    anchor_epochs_per_iter: int = 3,
+    reward_n_epochs: int = 200,
 ) -> DeepPQRResult:
     """Implement a neural DeepPQR baseline in the anchor-action setting."""
     del rewards
     mask = np.asarray(actions) == anchor_action
+    if not np.any(mask):
+        raise ValueError(f"No observations are available for anchor action {anchor_action}.")
     if behavior_policy is None:
         behavior_policy = fit_airl_policy(
             states=states,
@@ -263,6 +277,9 @@ def fit_deeppqr_baseline(
         g_values=None if g_values is None else np.asarray(g_values)[mask],
         alpha=alpha,
         min_policy_prob=min_policy_prob,
+        seed=seed,
+        n_iters=anchor_n_iters,
+        epochs_per_iter=anchor_epochs_per_iter,
     )
     full_q = DeepPQRFullQEstimate(
         anchor_q=anchor_estimate,
@@ -282,6 +299,8 @@ def fit_deeppqr_baseline(
         gamma=gamma,
         alpha=alpha,
         min_policy_prob=min_policy_prob,
+        seed=seed + 1,
+        n_epochs=reward_n_epochs,
     )
     return DeepPQRResult(
         behavior_policy=behavior_policy,

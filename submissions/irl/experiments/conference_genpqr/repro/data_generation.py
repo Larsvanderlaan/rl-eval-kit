@@ -7,7 +7,10 @@ from typing import Callable, Dict, List
 
 import numpy as np
 
-from utils import set_random_seed, softmax
+try:
+    from .utils import set_random_seed, softmax
+except ImportError:  # pragma: no cover - supports direct script execution
+    from utils import set_random_seed, softmax
 
 
 PolicyFunction = Callable[[np.ndarray], np.ndarray]
@@ -239,6 +242,31 @@ def transition_step(
     return next_states
 
 
+def sample_bounded_initial_states(
+    n_trajectories: int,
+    config: SimulationConfig,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Sample Gaussian initial states truncated to the simulator's state cube."""
+    if n_trajectories <= 0:
+        raise ValueError("n_trajectories must be positive.")
+    if config.initial_state_scale <= 0.0:
+        raise ValueError("initial_state_scale must be positive.")
+    state_bound = float(config.state_dim)
+    states = rng.normal(
+        scale=config.initial_state_scale,
+        size=(n_trajectories, config.state_dim),
+    )
+    invalid = np.any(np.abs(states) > state_bound, axis=1)
+    while np.any(invalid):
+        states[invalid] = rng.normal(
+            scale=config.initial_state_scale,
+            size=(int(np.sum(invalid)), config.state_dim),
+        )
+        invalid = np.any(np.abs(states) > state_bound, axis=1)
+    return states
+
+
 def deterministic_transition_mean(
     states: np.ndarray,
     actions: np.ndarray,
@@ -303,15 +331,17 @@ def generate_deeppqr_style_data(
     g: NormalizerFunction | None = None,
     simulation_parameters: LinearGaussianDynamics | None = None,
 ) -> Dict[str, np.ndarray]:
-    """Generate trajectories under a generalized normalization condition.
+    """Generate trajectories from the exact zero-anchor DeepPQR construction.
 
-    The reward is built by first constructing an unrestricted action-value-like
-    signal and then shifting it so that
+    The generated reward always satisfies ``r(s, 0)=0``. The ``mu`` and ``g``
+    arguments are retained as experiment metadata and populate ``g_values``;
+    they do not alter the reward construction. A non-anchor normalization must
+    therefore compute its corresponding ``g(s)`` from the generated reward.
 
-        sum_a mu(a | s) r(s, a) = g(s)
-
-    for every visited state. Choosing `mu` as a point mass on an anchor action
-    and `g(s) = 0` recovers the anchor-action normalization used by DeepPQR.
+    Initial states are sampled from the configured Gaussian truncated to the
+    simulator's declared state cube. This support guard ensures that the
+    identity transition for action zero, and hence the exact anchor constraint,
+    also holds on the initial step.
     """
     config = config or SimulationConfig()
     params = simulation_parameters or sample_simulation_parameters(config)
@@ -331,7 +361,7 @@ def generate_deeppqr_style_data(
     normalized_reward_matrix_list = []
     g_value_list = []
 
-    states = rng.normal(scale=config.initial_state_scale, size=(n_trajectories, config.state_dim))
+    states = sample_bounded_initial_states(n_trajectories, config, rng)
     for time_step in range(config.horizon):
         normalized_reward_matrix = exact_anchor_pqr_reward_matrix(
             states=states,

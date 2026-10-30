@@ -6,7 +6,10 @@ from typing import Callable, Dict
 
 import numpy as np
 
-from utils import EPS
+try:
+    from .utils import EPS
+except ImportError:  # pragma: no cover - supports direct script execution
+    from utils import EPS
 
 
 PolicyFunction = Callable[[np.ndarray], np.ndarray]

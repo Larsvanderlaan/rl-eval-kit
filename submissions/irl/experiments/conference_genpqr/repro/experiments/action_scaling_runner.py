@@ -193,7 +193,7 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="IRL_neurips/experiments_neurips/outputs/many_action_regime",
+        default=str(ROOT / "outputs" / "action_scaling"),
     )
     args = parser.parse_args()
 
