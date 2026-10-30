@@ -129,9 +129,6 @@ Primary artifacts:
 - The paper should say that neither source alone identifies the data-driven
   normalization pair `(pi, g)`. The behavior source alone still identifies the
   reward under the known zero-anchor restriction used by DeepPQR.
-- The current finite-sample theorem treats the normalization pair as specified.
-  The plug-in experiment should not be described as covered directly by that
-  theorem.
 - DeepPQR's anchor fixed-point stage uses only anchor-action transitions; its
   final continuation regression uses all actions. Avoid saying that the entire
   method discards non-anchor observations.
